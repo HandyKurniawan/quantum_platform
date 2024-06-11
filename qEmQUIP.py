@@ -16,7 +16,7 @@ import sys, glob, os
 from commons import convert_to_json, triq_optimization, qiskit_optimization, \
     calibration_type_enum, qiskit_compilation_enum, normalize_counts, Config, num_sort
 import inspect
-from qiskit import Aer, QuantumCircuit, transpile
+from qiskit import QuantumCircuit, transpile
 from wrappers.qiskit_wrapper import QiskitCircuit
 from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler, Estimator, Options
 from qiskit_aer.noise import NoiseModel
@@ -124,8 +124,9 @@ class QEM:
             options.optimization_level = conf.optimization_level
             options.resilience_level = conf.resilience_level
 
-            if conf.rep_delay != 0:
-                options.execution.rep_delay = conf.rep_delay
+            # rep delay has been removed
+            # if conf.rep_delay != 0:
+            #     options.execution.rep_delay = conf.rep_delay
             
             # if conf.hardware_name != "ibm_perth":
             #     self.sampler = Sampler(self.backend, options=options) 

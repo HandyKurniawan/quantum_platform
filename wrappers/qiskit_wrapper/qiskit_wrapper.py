@@ -9,7 +9,7 @@ Functions:
 
 Example:
 """
-from qiskit import QuantumCircuit, transpile, Aer
+from qiskit import QuantumCircuit, transpile
 from qiskit.transpiler import CouplingMap
 from qiskit_ibm_runtime import Sampler
 from qiskit_aer.noise import NoiseModel
@@ -21,6 +21,8 @@ import json
 import requests
 import copy
 import mysql.connector
+from qiskit.qasm2 import dumps
+
 from .fake_ibm_perth import NewFakePerthRealAdjust, NewFakePerthRecent15, NewFakePerthRecent15Adjust, \
                         NewFakePerthMix, NewFakePerthMixAdjust, NewFakePerthAverage, NewFakePerthAverageAdjust
 from .fake_ibm_brisbane import NewFakeBrisbaneRealAdjust, NewFakeBrisbaneRecent15, NewFakeBrisbaneRecent15Adjust, \
@@ -62,11 +64,11 @@ class QiskitCircuit:
         if not (isinstance(qasm, str) or isinstance(qc, QuantumCircuit)):
             raise ValueError("Input must be a string or a QuantumCircuit object")
 
-        self.qasm_original = qc.qasm()
+        self.qasm_original = dumps(qc)
 
         qc = transpile_to_basis_gate(qc)
         self.circuit = qc
-        self.qasm = qc.qasm()
+        self.qasm = dumps(qc)
         self.circuit.name = name
         self.circuit.metadata = metadata
         self.gates = dict(qc.count_ops())
@@ -80,13 +82,15 @@ class QiskitCircuit:
                 # job_sim = sampler.run(transpile(qc, backend_sim, basis_gates=["u3", "cx"]), shots=conf.shots)
                 # result_sim = job_sim.result()  
                 # self.correct_output = dict(result_sim.quasi_dists[0])  
-                backend_sim = Aer.get_backend('qasm_simulator')
-                job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
+                backend_sim = AerSimulator()
+                # job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
+                job_sim = backend_sim.run(qc, shots=10000)
                 result_sim = job_sim.result()  
                 self.correct_output = normalize_counts(dict(result_sim.get_counts(qc)), shots=10000)
             else:
-                backend_sim = Aer.get_backend('qasm_simulator')
-                job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
+                backend_sim = AerSimulator()
+                # job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
+                job_sim = backend_sim.run(qc, shots=10000)
                 result_sim = job_sim.result()  
                 # self.correct_output = normalize_counts(dict(result_sim.get_counts(qc)))
                 self.correct_output = normalize_counts((result_sim.get_counts(qc)), shots=10000)
@@ -278,7 +282,7 @@ def optimize_qasm(input_qasm, backend, optimization, enable_noise_adaptive = Fal
     compilation_time = tmp_end_time - tmp_start_time
 
     # Convert the optimized circuit back to QASM
-    optimized_qasm = transpiled_circuit.qasm()
+    optimized_qasm = dumps(transpiled_circuit)
 
     # print(optimized_qasm)
 
@@ -306,7 +310,7 @@ def get_initial_layout_from_circuit(qc):
     
     for key, value in virtual_bits.items():
         if "'q'" in "{}".format(key):
-            initial_layout_dict[key.index] = value 
+            initial_layout_dict[key._index] = value 
     
     for i in range(len(initial_layout_dict.keys())):
         initial_layout.append(initial_layout_dict[i])
