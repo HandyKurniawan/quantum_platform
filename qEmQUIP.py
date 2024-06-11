@@ -59,14 +59,11 @@ class QEM:
         self.header_id = None
         self.user_id = user_id
 
-        # self.open_database_connection()
+        self.open_database_connection()
         self.set_backend(token=token)
         
-        # if conf.initialized_triq == 1:
-        #     triq_wrapper.generate_recent_average_calibration_data(self, 15, True)
-        #     triq_wrapper.generate_realtime_calibration_data(self)
-        #     triq_wrapper.generate_average_calibration_data(self)
-        #     triq_wrapper.generate_mix_calibration_data(self)
+        if conf.initialized_triq == 1:
+            self.update_hardware_configs()
 
         # if fixed_initial_layout:
         #     self.set_initial_layout()
@@ -85,9 +82,6 @@ class QEM:
         triq_wrapper.generate_realtime_calibration_data(self)
         triq_wrapper.generate_average_calibration_data(self)
         triq_wrapper.generate_mix_calibration_data(self)
-
-
-
 
     def set_backend(self, token=conf.qiskit_token, shots=conf.shots):
         # print("Set Backend:", token)
@@ -506,60 +500,11 @@ class QEM:
         for res_1 in results_1:
             header_id, qiskit_token, shots, runs = res_1
 
-            self.set_backend(qiskit_token, shots=shots)
-
-            self.cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level 
-FROM result_detail d
-INNER JOIN result_header h ON d.header_id = h.id
-INNER JOIN result_updated_qasm q ON d.id = q.detail_id 
-WHERE h.job_id IS NULL AND d.header_id = %s  ''', (header_id,))
-            results = self.cursor.fetchall()
-
-            success = False
-            list_circuits = []
-
-            for res in results:
-                detail_id, updated_qasm, compilation_name, noise_level = res
-
-                qc = QiskitCircuit(updated_qasm, skip_simulation=True)
-
-                circuit = None
-                if compilation_name == "triq_lcd" or compilation_name == "triq+_lcd":
-                    circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
-                else:
-                    # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
-                    circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
-                    print("transpile to target backend")
-
-                # circuit = qc.circuit
-
-                # if conf.run_in_simulator:
-                #     circuit = 
-
-                for i in range(runs):
-
-                    list_circuits.append(mm.deflate_circuit(circuit))
-                
-            print("Total no of circuits :",len(list_circuits))
-
             while not success:
                 try:
 
                     print("Running to {} with batch id: {} ... ".format("Local Simulator", header_id))
                     
-                    # job = self.sampler.run(list_circuits, skip_transpilation=True)
-                    # job_id = job.job_id()
-
-
-                    # moved to scheduler to run it one by one
-                    # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(self.backend, noise_level)
-                    # job = sim_noisy.run(list_circuits, shots=shots)
-                    # result = job.result()  
-                    # outputs = result.get_counts()
-                    # for output in outputs:
-                    #     output_normalize = normalize_counts(output, shots=shots)
-                    #     print(output_normalize["9"])
-
                     success = True
 
                     # update to result detail
