@@ -5,8 +5,8 @@ A platform for experimenting with and applying various quantum compilation techn
 
 - [Setup](#setup)
 - [Compilation Techniques](#compilation-techniques)
-  - [Qiskit](#qiskit)
-  - [TriQ](#triq)
+  - [Initial Mapping](#initial-mapping)
+  - [Routing](#routing)
 - [Simulators](#simulators)
 - [Tutorial](#tutorial)
 - [Acknowledgments](#acknowledgments)
@@ -74,37 +74,21 @@ measure q[103] -> c[1];
 
 ## Compilation Techniques
 
-### Qiskit 
+We integrated several compilation techniques that differ in the awareness of the error information from the calibration data. As you can see from the image below:
 
-Version: (0.44.3)
+![compilations](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/compilations.png)
 
-| Level | Initial mapping| Routing                  | Optimizations                            | Error-aware            |
-|--- |------------------ |------------------------- |----------------------------------------- |----------------------- |
-| 0  | Trivial           | Stochastic               | None                                     | No                     |
-| 1  | VF2 > Sabre       | Sabre (5 swap trials)    | Adjacent gate collapsing                 | Yes (VF2), No (Sabre)  |
-| 2  | VF2 > Sabre       | Sabre (10 swap trials)   | Gate cancellation                        | Yes (VF2), No (Sabre)  |
-| 3  | VF2 > Sabre       | Sabre (20 swap trials)   | Gate cancellation and unitary synthesis  | Yes (VF2), No (Sabre)  |
+### Initial Mapping 
 
-#### Initial mapping methods (layout)
+- **Noise-adaptive (NA)**: noise-aware initial mapping based on reliability matrix. More information [here](https://arxiv.org/pdf/1901.11054) 
+- **Mapomatic (Mapo)**: noise-aware initial mapping as a subgraph isomorphism problem based on the lowest error rate. More information [here](https://arxiv.org/pdf/2209.15512)
+- **SABRE**: non-noise-aware initial mapping. More information [here](https://arxiv.org/pdf/1809.02573.pdf)
 
-First, Qiskit tries to find the perfect initial mapping (no need to add swaps):
 
-- **[Trivial]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.TrivialLayout.html)):** Map the *i-th* virtual qubit to the *i-th* physical qubit.
-- **[VF2](https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.VF2Layout.html):** Find a subgraph of the connectivity graph isomorphic to the circuit's qubit interaction graph.
+### Routing
 
-If it cannot find the perfect initial mapping, it uses heuristic passes:
-
-- **[Sabre]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.SabreLayout.html)):** Use the Reverse Trasversal Technique several times to find a good initial mapping.
-- **[Dense]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.DenseLayout.html)):** Map the qubits to the most connected part of the chip and lower error rate (considering 2q and readout error rates).
-
-#### Routing methods
-
-- **[Stochastic]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.StochasticSwap.html)):** Use a random algorithm to insert swap gates.
+- **TriQ**: noise-aware routing uses a reliability matrix that stores the cost of performing a CNOT gate between any qubit pair. The following routing alternatives build this matrix differently. More information [here](https://doi.org/10.1145/3307650.3322273).
 - **[SabreSwap]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.SabreSwap.html)):** Divide the circuit into layers (resolved, front and extended) and inset swap gates considering previous gates (to increase parallelization) and future gates (extended layer) (to reduce circuit depth). More information [here](https://arxiv.org/pdf/1809.02573.pdf).
-
-### TriQ
-
-TriQ uses a reliability matrix that stores the cost of performing a CNOT gate between any qubit pair. The following routing alternatives build this matrix in a different way. More information [here](https://doi.org/10.1145/3307650.3322273).
 
 ## Simulators
 
@@ -121,3 +105,6 @@ See this jupyter notebook file for more in-depth examples: [here](https://github
 ## Acknowledgments
 
 This work is supported by the QuantERA grant EQUIP with the grant numbers PCI2022-133004 and PCI2022-132922, funded by Agencia Estatal de Investigación, Ministerio de Ciencia e Innovación, Gobierno de España, MCIN/AEI/10.13039/501100011033, and by the European Union “NextGenerationEU/PRTR”.
+
+
+
