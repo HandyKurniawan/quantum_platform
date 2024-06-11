@@ -126,7 +126,7 @@ def get_mapping(qasm_str, hardware_name, triq_optimization):
 
 def generate_initial_mapping_file(init_maps):
     string_maps = ', '.join(map(str, init_maps))
-    print("Initial mapping path :", string_maps)
+    # print("Initial mapping path :", string_maps)
     f = open(map_file_path, "w+")
     f.write(string_maps)
     f.close()

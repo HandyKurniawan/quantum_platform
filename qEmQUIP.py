@@ -71,14 +71,23 @@ class QEM:
         # if fixed_initial_layout:
         #     self.set_initial_layout()
 
-    # def open_database_connection(self):
-    #     self.conn = mysql.connector.connect(**conf.mysql_config)
-    #     self.cursor = self.conn.cursor()
+    def open_database_connection(self):
+        self.conn = mysql.connector.connect(**conf.mysql_config)
+        self.cursor = self.conn.cursor()
 
-    # def close_database_connection(self):
-    #     self.conn.commit()
-    #     self.cursor.close()
-    #     self.conn.close()
+    def close_database_connection(self):
+        self.conn.commit()
+        self.cursor.close()
+        self.conn.close()
+
+    def update_hardware_configs(self): 
+        triq_wrapper.generate_recent_average_calibration_data(self, 15, True)
+        triq_wrapper.generate_realtime_calibration_data(self)
+        triq_wrapper.generate_average_calibration_data(self)
+        triq_wrapper.generate_mix_calibration_data(self)
+
+
+
 
     def set_backend(self, token=conf.qiskit_token, shots=conf.shots):
         # print("Set Backend:", token)
@@ -569,11 +578,11 @@ WHERE h.job_id IS NULL AND d.header_id = %s  ''', (header_id,))
     def get_qasm_files_from_path(self, file_path = conf.base_folder):
         return glob.glob(os.path.expanduser(os.path.join(file_path, "*.qasm")))
 
-    def compile(self, qasm, compilation_name):
+    def compile(self, qasm, compilation_name, generate_props=False):
 
         updated_qasm = ""
         if "qiskit" in compilation_name or "mapomatic" in compilation_name:
-            updated_qasm = self.apply_qiskit(qasm=qasm, compilation_name=compilation_name, generate_props=False)
+            updated_qasm = self.apply_qiskit(qasm=qasm, compilation_name=compilation_name, generate_props=generate_props)
         elif "triq" in compilation_name:
             tmp = compilation_name.split("_")
             layout = tmp[2]
