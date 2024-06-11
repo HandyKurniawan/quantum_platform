@@ -16,6 +16,7 @@ from commons import Config, convert_utc_to_local, calculate_time_diff, get_count
 import wrappers.qiskit_wrapper as qiskit_wrapper
 from wrappers.qiskit_wrapper import QiskitCircuit
 import wrappers.polar_wrapper as polar_wrapper
+from qiskit.qasm2 import dumps
 
 conf = Config()
 
@@ -150,7 +151,7 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
 
                 avg_result[detail_id] = convert_to_json(sum_result)
                 std_json[detail_id] = convert_to_json(std_dict)
-                qasm_dict[detail_id] = job.inputs["circuits"][idx_2-1].qasm()
+                qasm_dict[detail_id] = dumps(job.inputs["circuits"][idx_2-1])
 
                 if is_mitigated(job):
                     mitigation_overhead_dict[detail_id] = job.result().metadata[idx_2-1]["readout_mitigation_overhead"]
@@ -238,7 +239,7 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
             quasi_dists = convert_to_json(output_normalize)
             quasi_dists_std = ""
-            qasm = circuit.qasm()
+            qasm = dumps(circuit)
             mapping_json = get_initial_mapping_json(qasm)
             mitigation_overhead = 0
             mitigation_time = 0

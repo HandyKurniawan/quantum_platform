@@ -1,9 +1,9 @@
 import os
-from qiskit.providers.fake_provider import fake_backend
+from qiskit.providers.fake_provider import GenericBackendV2
 
 hw_name = "ibm_brisbane"
 
-class NewFakeBrisbane(fake_backend.FakeBackendV2):
+class NewFakeBrisbane(GenericBackendV2):
     """A fake 7 qubit backend."""
     dirname = os.path.expanduser("./wrappers/qiskit_wrapper/fake_backend/ibm_brisbane")
 
