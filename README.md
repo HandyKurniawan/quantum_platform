@@ -7,8 +7,6 @@ A platform for experimenting with and applying various quantum compilation techn
 - [Optimization levels](#optimization-levels)
   - [Qiskit](#qiskit)
   - [TriQ](#triq)
-  - [Mirage](#mirage)
-- [Included optimizations](#included-optimizations)
 - [Acknowledgments](#acknowledgments)
 
 ## Setup
@@ -76,7 +74,9 @@ measure q[103] -> c[1];
 
 ## Optimization levels
 
-### Qiskit (0.44.3)
+### Qiskit 
+
+Version: (0.44.3)
 
 | Level | Initial mapping| Routing                  | Optimizations                            | Error-aware            |
 |--- |------------------ |------------------------- |----------------------------------------- |----------------------- |
