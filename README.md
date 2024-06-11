@@ -1,12 +1,14 @@
-# Quantum Platform
+# Quantum Compilations Platform
 A platform for experimenting with and applying various quantum compilation techniques across multiple quantum computing backends.
 
 ## Table of contents
 
 - [Setup](#setup)
-- [Optimization levels](#optimization-levels)
+- [Compilation Techniques](#compilation-techniques)
   - [Qiskit](#qiskit)
   - [TriQ](#triq)
+- [Simulators](#simulators)
+- [Tutorial](#tutorial)
 - [Acknowledgments](#acknowledgments)
 
 ## Setup
@@ -70,9 +72,7 @@ measure q[104] -> c[0];
 measure q[103] -> c[1];
 ```
 
-
-
-## Optimization levels
+## Compilation Techniques
 
 ### Qiskit 
 
@@ -100,17 +100,23 @@ If it cannot find the perfect initial mapping, it uses heuristic passes:
 #### Routing methods
 
 - **[Stochastic]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.StochasticSwap.html)):** Use a random algorithm to insert swap gates.
-- **[SabreSwap]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.SabreSwap.html)):** Divide the circuit into layers (resolved, front and extended) and inset swap gates consideing prevoius gates (to increase parallelization) and future gates (extended layer) (to reduce circuit depth). More information [here](https://arxiv.org/pdf/1809.02573.pdf).
+- **[SabreSwap]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.SabreSwap.html)):** Divide the circuit into layers (resolved, front and extended) and inset swap gates considering previous gates (to increase parallelization) and future gates (extended layer) (to reduce circuit depth). More information [here](https://arxiv.org/pdf/1809.02573.pdf).
 
 ### TriQ
 
 TriQ uses a reliability matrix that stores the cost of performing a CNOT gate between any qubit pair. The following routing alternatives build this matrix in a different way. More information [here](https://doi.org/10.1145/3307650.3322273).
 
-| Level  | Initial mapping                    | Routing                                         | Error aware                        |
-|------- |----------------------------------- |------------------------------------------------ |----------------------------------- |
-| 0      | Map communicating qubits together  |                                                 | Yes (initial mapping)              |
-| 1      | Map communicating qubits together  | Insert swap gates with the lowest hop count     | Yes (initial mapping)              |
-| 2      | Map communicating qubits together  | Insert swap gates with the highest reliability  | Yes (initial mapping and routing)  |
+## Simulators
+
+We included the noisy simulator embedded with noise coming from the real IBM's backends
+- IBM Brisbane
+- IBM Sherbrooke
+
+We also provided scaled noise from 0 (noiseless) to 1 (real backend) in the simulator.
+
+## Tutorial
+
+See this jupyter notebook file for more in-depth examples: [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
 
 ## Acknowledgments
 
