@@ -4,7 +4,6 @@ import json
 
 from qiskit import *
 from qiskit.result import *
-from qiskit_ibm_provider import IBMProvider
 from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit.providers import JobStatus
 from qiskit.primitives import SamplerResult
@@ -201,7 +200,7 @@ def check_result_availability_simulator(service, header_id, job_id, hw_name):
         conn = mysql.connector.connect(**conf.mysql_config)
         cursor = conn.cursor()
 
-        backend = service.get_backend(hw_name)
+        backend = service.backend(hw_name)
 
         cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
 FROM result_detail d
@@ -281,8 +280,7 @@ def get_executed_jobs():
         conn = mysql.connector.connect(**conf.mysql_config)
         cursor = conn.cursor()
 
-        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s 
-                       and (user_id IN (11,12,13,14,15,16,95) OR id = 2766) and id >= 697;''', ("executed", ))
+        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s ;''', ("executed", ))
 
         results = cursor.fetchall()
         cursor.close()

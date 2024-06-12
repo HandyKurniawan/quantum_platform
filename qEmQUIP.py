@@ -14,7 +14,7 @@ import wrappers.triq_wrapper as triq_wrapper
 import wrappers.qiskit_wrapper as qiskit_wrapper
 import sys, glob, os
 from commons import convert_to_json, triq_optimization, qiskit_optimization, \
-    calibration_type_enum, qiskit_compilation_enum, normalize_counts, Config, num_sort, convert_dict_binary_to_int
+    calibration_type_enum, qiskit_compilation_enum, normalize_counts, Config, num_sort, convert_dict_binary_to_int, calculate_success_rate_tvd
 import inspect
 from qiskit import QuantumCircuit, transpile
 from wrappers.qiskit_wrapper import QiskitCircuit
@@ -27,6 +27,7 @@ import time
 import json
 import mapomatic as mm
 import mthree
+import pandas as pd
 
 conf = Config()
 debug = conf.activate_debugging_time
@@ -59,6 +60,7 @@ class QEM:
         
         self.header_id = None
         self.user_id = user_id
+        self.token = token
 
         self.open_database_connection()
         self.set_backend(token=token)
@@ -136,41 +138,43 @@ class QEM:
             self.sampler = Sampler(self.backend, options=options) 
 
     def get_circuit_properties(self, qasm_source):
-        # circuit_name = qasm_source.split("/")[-1].split(".")[0]
+        circuit_name = qasm_source.split("/")[-1].split(".")[0]
 
-        # # check if the metric is already there, just update
-        # self.cursor.execute('SELECT name FROM circuit WHERE name = %s', (circuit_name,))
-        # existing_row = self.cursor.fetchone()
+        if conf.send_to_db:
+            # check if the metric is already there, just update
+            self.cursor.execute('SELECT name FROM circuit WHERE name = %s', (circuit_name,))
+            existing_row = self.cursor.fetchone()
 
         # # Handy Remark, remove later
         skip = conf.skip_update_simulator
 
-        # qc = QiskitCircuit(qasm_source, name=circuit_name)
-        qc = QiskitCircuit(qasm_source, skip_simulation=skip)
+        qc = QiskitCircuit(qasm_source, name=circuit_name)
+        # qc = QiskitCircuit(qasm_source, skip_simulation=skip)
         
-        # gates_json = convert_to_json(qc.gates)
+        gates_json = convert_to_json(qc.gates)
 
-        # if skip:
-        #     correct_output_json = ""
-        # else:
-        #     correct_output_json = convert_to_json(qc.correct_output)
+        if conf.send_to_db:
+            if skip:
+                correct_output_json = ""
+            else:
+                correct_output_json = convert_to_json(qc.correct_output)
 
-        # # insert to the table
-        # if not existing_row:
-        #     self.cursor.execute("""INSERT INTO circuit (name, qasm, depth, total_gates, gates, correct_output)
-        #     VALUES (%s, %s, %s, %s, %s, %s)""",
-        #     (circuit_name, qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json))
+            # insert to the table
+            if not existing_row:
+                self.cursor.execute("""INSERT INTO circuit (name, qasm, depth, total_gates, gates, correct_output)
+                VALUES (%s, %s, %s, %s, %s, %s)""",
+                (circuit_name, qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json))
 
-        #     self.conn.commit()
+                self.conn.commit()
 
-        #     print(circuit_name, "has been registered to the database.")
-        # else:
-        #     self.cursor.execute("""UPDATE circuit SET qasm = %s, depth  = %s, total_gates  = %s, gates = %s, correct_output = %s 
-        #                         WHERE name = %s""",
-        #     (qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json, circuit_name))
+                # print(circuit_name, "has been registered to the database.")
+            else:
+                self.cursor.execute("""UPDATE circuit SET qasm = %s, depth  = %s, total_gates  = %s, gates = %s, correct_output = %s 
+                                    WHERE name = %s""",
+                (qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json, circuit_name))
 
-        #     self.conn.commit()
-        #     print(circuit_name, "already exist.")
+                self.conn.commit()
+                # print(circuit_name, "already exist.")
 
         return qc
 
@@ -196,15 +200,15 @@ class QEM:
         # print("Initial Layout triq: ", self.initial_layout_triq )
 
 
-    # def init_result_header(self, token=conf.qiskit_token):
+    def init_result_header(self, token=conf.qiskit_token):
         
-    #     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    #     self.cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, shots, runs, created_datetime) 
-    #     VALUES (%s, %s, %s, %s, %s, %s)""",
-    #     (self.user_id, conf.hardware_name, token, conf.shots, conf.runs, now_time))
-    #     self.header_id = self.cursor.lastrowid
+        now_time = datetime.now().strftime("%Y%m%d%H%M%S")
+        self.cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, shots, runs, created_datetime) 
+        VALUES (%s, %s, %s, %s, %s, %s)""",
+        (self.user_id, conf.hardware_name, token, conf.shots, conf.runs, now_time))
+        self.header_id = self.cursor.lastrowid
 
-    #     # self.conn.commit()
+        # self.conn.commit()
 
 
     def apply_qiskit(self, 
@@ -286,7 +290,7 @@ class QEM:
                 enable_noise_adaptive=enable_noise_adaptive, enable_mirage=enable_mirage, enable_mapomatic=enable_mapomatic,
                 calibration_type=calibration_type, generate_props=generate_props, recent_n=recent_n)
 
-        # self.insert_to_result_detail(compilation_name, compilation_time, updated_qasm, initial_mapping)
+        if conf.send_to_backend: self.insert_to_result_detail(compilation_name, compilation_time, updated_qasm, initial_mapping)
         return updated_qasm, initial_mapping
 
     def apply_triq(self, compilation_name, qasm=None, layout="mapo",
@@ -347,7 +351,7 @@ class QEM:
         compilation_time = tmp_end_time - tmp_start_time
         
         compilation_name = layout + "_" + compilation_name
-        # self.insert_to_result_detail(compilation_name, compilation_time, updated_qasm, initial_mapping, final_mapping)
+        if conf.send_to_backend: self.insert_to_result_detail(compilation_name, compilation_time, updated_qasm, initial_mapping, final_mapping)
 
         return updated_qasm, initial_mapping
     
@@ -360,149 +364,148 @@ class QEM:
 
         return probs_int
 
-    # def insert_to_result_detail(self, compilation_name, compilation_time, updated_qasm, 
-    #                             initial_mapping = "", final_mapping = ""):
-    #     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
+    def insert_to_result_detail(self, compilation_name, compilation_time, updated_qasm, 
+                                initial_mapping = "", final_mapping = ""):
+        now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
-    #     if conf.noisy_simulator:
-    #         for noise_level in conf.noise_level:
+        if conf.noisy_simulator:
+            for noise_level in conf.noise_level:
 
-    #             sql = """
-    #             INSERT INTO result_detail
-    #             (header_id, circuit_name, compilation_name, compilation_time, 
-    #             initial_mapping, final_mapping, noisy_simulator, noise_level, 
-    #             created_datetime)
-    #             VALUES (%s, %s, %s, %s, 
-    #             %s, %s, %s, %s,
-    #             %s);
-    #             """
+                sql = """
+                INSERT INTO result_detail
+                (header_id, circuit_name, compilation_name, compilation_time, 
+                initial_mapping, final_mapping, noisy_simulator, noise_level, 
+                created_datetime)
+                VALUES (%s, %s, %s, %s, 
+                %s, %s, %s, %s,
+                %s);
+                """
 
-    #             str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
+                str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
 
-    #             json_final_mapping = ""
-    #             if final_mapping != "":
-    #                 json_final_mapping = json.dumps(final_mapping, default=str)
+                json_final_mapping = ""
+                if final_mapping != "":
+                    json_final_mapping = json.dumps(final_mapping, default=str)
 
-    #             # print("Initial mapping:", str_initial_mapping, ", final mapping:", json_final_mapping)
-    #             print(compilation_name)
+                # print("Initial mapping:", str_initial_mapping, ", final mapping:", json_final_mapping)
+                print(compilation_name)
 
-    #             self.cursor.execute(sql, (self.header_id, self.circuit_name, compilation_name, compilation_time, \
-    #                                     str_initial_mapping, json_final_mapping, 1, noise_level, now_time))
-    #             detail_id = self.cursor.lastrowid
+                self.cursor.execute(sql, (self.header_id, self.circuit_name, compilation_name, compilation_time, \
+                                        str_initial_mapping, json_final_mapping, 1, noise_level, now_time))
+                detail_id = self.cursor.lastrowid
 
-    #             sql = """
-    #             INSERT INTO result_updated_qasm
-    #             (detail_id, updated_qasm)
-    #             VALUES (%s, %s);
-    #             """
+                sql = """
+                INSERT INTO result_updated_qasm
+                (detail_id, updated_qasm)
+                VALUES (%s, %s);
+                """
 
-    #             self.cursor.execute(sql, (detail_id, updated_qasm))
+                self.cursor.execute(sql, (detail_id, updated_qasm))
 
-    #             self.conn.commit()
-    #     else:
+                self.conn.commit()
+        else:
 
 
-    #         sql = """
-    #         INSERT INTO result_detail
-    #         (header_id, circuit_name, compilation_name, compilation_time, 
-    #         initial_mapping, final_mapping, created_datetime)
-    #         VALUES (%s, %s, %s, %s, 
-    #         %s, %s, %s);
-    #         """
+            sql = """
+            INSERT INTO result_detail
+            (header_id, circuit_name, compilation_name, compilation_time, 
+            initial_mapping, final_mapping, created_datetime)
+            VALUES (%s, %s, %s, %s, 
+            %s, %s, %s);
+            """
 
-    #         str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
+            str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
 
-    #         json_final_mapping = ""
-    #         if final_mapping != "":
-    #             json_final_mapping = json.dumps(final_mapping, default=str)
+            json_final_mapping = ""
+            if final_mapping != "":
+                json_final_mapping = json.dumps(final_mapping, default=str)
 
-    #         # print("Initial mapping:", str_initial_mapping, ", final mapping:", json_final_mapping)
-    #         print(compilation_name)
+            # print("Initial mapping:", str_initial_mapping, ", final mapping:", json_final_mapping)
+            print(compilation_name)
 
-    #         self.cursor.execute(sql, (self.header_id, self.circuit_name, compilation_name, compilation_time, \
-    #                                 str_initial_mapping, json_final_mapping, now_time))
-    #         detail_id = self.cursor.lastrowid
+            self.cursor.execute(sql, (self.header_id, self.circuit_name, compilation_name, compilation_time, \
+                                    str_initial_mapping, json_final_mapping, now_time))
+            detail_id = self.cursor.lastrowid
 
-    #         sql = """
-    #         INSERT INTO result_updated_qasm
-    #         (detail_id, updated_qasm)
-    #         VALUES (%s, %s);
-    #         """
+            sql = """
+            INSERT INTO result_updated_qasm
+            (detail_id, updated_qasm)
+            VALUES (%s, %s);
+            """
 
-    #         self.cursor.execute(sql, (detail_id, updated_qasm))
+            self.cursor.execute(sql, (detail_id, updated_qasm))
 
-    #         self.conn.commit()
+            self.conn.commit()
 
         
-#     def send_qasm_to_real_backend(self):
+    def send_qasm_to_real_backend(self):
 
-#         self.cursor.execute('SELECT id, qiskit_token, shots, runs FROM result_header WHERE job_id IS NULL AND user_id NOT IN (17);')
-#         results_1 = self.cursor.fetchall()
+        self.cursor.execute('SELECT id, qiskit_token, shots, runs FROM result_header WHERE job_id IS NULL;')
+        results_1 = self.cursor.fetchall()
 
-#         print("Total send to backend :", len(results_1))
+        print("Total send to backend :", len(results_1))
 
-#         for res_1 in results_1:
-#             header_id, qiskit_token, shots, runs = res_1
+        for res_1 in results_1:
+            header_id, qiskit_token, shots, runs = res_1
 
-#             self.set_backend(qiskit_token, shots=shots)
+            self.set_backend(qiskit_token, shots=shots)
 
-#             self.cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name 
-# FROM result_detail d
-# INNER JOIN result_header h ON d.header_id = h.id
-# INNER JOIN result_updated_qasm q ON d.id = q.detail_id 
-# WHERE h.job_id IS NULL AND d.header_id = %s  ''', (header_id,))
-#             results = self.cursor.fetchall()
+            self.cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name 
+FROM result_detail d
+INNER JOIN result_header h ON d.header_id = h.id
+INNER JOIN result_updated_qasm q ON d.id = q.detail_id 
+WHERE h.job_id IS NULL AND d.header_id = %s  ''', (header_id,))
+            results = self.cursor.fetchall()
 
-#             success = False
-#             list_circuits = []
+            success = False
+            list_circuits = []
 
-#             for res in results:
-#                 detail_id, updated_qasm, compilation_name = res
+            for res in results:
+                detail_id, updated_qasm, compilation_name = res
 
-#                 qc = QiskitCircuit(updated_qasm, skip_simulation=True)
+                qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
-#                 circuit = None
-#                 if compilation_name == "triq_lcd" or compilation_name == "triq+_lcd":
-#                     circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
-#                 else:
-#                     # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
-#                     circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
-#                     print("transpile to target backend")
+                circuit = None
+                if compilation_name == "triq_lcd" or compilation_name == "triq+_lcd":
+                    circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
+                else:
+                    # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
+                    circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
+                    print("transpile to target backend")
 
-#                 # circuit = qc.circuit
+                # circuit = qc.circuit
 
-#                 # if conf.run_in_simulator:
-#                 #     circuit = 
+                # if conf.run_in_simulator:
+                #     circuit = 
 
-#                 for i in range(runs):
-#                     list_circuits.append(circuit)
+                for i in range(runs):
+                    list_circuits.append(circuit)
                 
-#             print("Total no of circuits :",len(list_circuits))
+            print("Total no of circuits :",len(list_circuits))
 
-#             while not success:
-#                 try:
+            while not success:
+                try:
 
-#                     print("Sending to {} with batch id: {} ... ".format(conf.hardware_name, header_id))
-#                     job = self.sampler.run(list_circuits, skip_transpilation=True)
-#                     job_id = job.job_id()
+                    print("Sending to {} with batch id: {} ... ".format(conf.hardware_name, header_id))
+                    job = self.sampler.run(list_circuits, skip_transpilation=True)
+                    job_id = job.job_id()
 
-#                     success = True
+                    success = True
 
-#                     # update to result detail
-#                     print("Sent!")
-#                     self.cursor.execute('UPDATE result_header SET job_id = %s, status = "pending", updated_datetime = NOW() WHERE id = %s', (job_id, header_id))
+                    # update to result detail
+                    print("Sent!")
+                    self.cursor.execute('UPDATE result_header SET job_id = %s, status = "pending", updated_datetime = NOW() WHERE id = %s', (job_id, header_id))
 
-#                     self.conn.commit()
+                    self.conn.commit()
 
-#                 except Exception as e:
-#                     print(f"An error occurred: {str(e)}. Will try again in 30 seconds...")
+                except Exception as e:
+                    print(f"An error occurred: {str(e)}. Will try again in 30 seconds...")
 
-#                     for i in range(30, 0, -1):
-#                         time.sleep(1)
-#                         print(i)
+                    for i in range(30, 0, -1):
+                        time.sleep(1)
+                        print(i)
 
     def run_on_noisy_simulator_local(self):
-
         self.cursor.execute('SELECT id, qiskit_token, shots, runs FROM result_header WHERE job_id IS NULL;')
         results_1 = self.cursor.fetchall()
 
@@ -510,12 +513,14 @@ class QEM:
 
         for res_1 in results_1:
             header_id, qiskit_token, shots, runs = res_1
+            
+            success = False
 
             while not success:
                 try:
 
                     print("Running to {} with batch id: {} ... ".format("Local Simulator", header_id))
-                    
+
                     success = True
 
                     # update to result detail
@@ -549,64 +554,76 @@ class QEM:
         return updated_qasm, initial_mapping
 
 #region Run
-    def run(self, generate_props = False):
+    def run_simulator(self, qasm_files, compilations, noise_levels, shots, mitigation = None, send_to_db = False):
         """
         
         """
 
-        if conf.program_type == "PolarRepeat":
-            self.apply_qiskit(compilation_name=qiskit_compilation_enum.qiskit_3.value, generate_props=generate_props)
-
-        elif conf.program_type == "Polar"  or conf.program_type == "PolarSimulation":
-            # self.apply_qiskit(compilation_name=qiskit_compilation_enum.qiskit_0.value, generate_props=generate_props)
-            self.apply_qiskit(compilation_name=qiskit_compilation_enum.qiskit_3.value, generate_props=generate_props)
+        if send_to_db:
+            conf.send_to_db = True
+            # init header
+            if debug: tmp_start_time  = time.perf_counter()
             
-            self.apply_triq(compilation_name="triq_lcd", layout="na")
-            self.apply_triq(compilation_name="triq_lcd", layout="sabre")
-
-            self.apply_triq(compilation_name="triq_avg", layout="na")
-            self.apply_triq(compilation_name="triq_avg", layout="sabre")
-
-            # self.apply_triq(compilation_name="triq_mix", layout="na")
-            # self.apply_triq(compilation_name="triq_mix", layout="sabre")
-
-            # self.apply_triq(compilation_name="triq_w15_adj", layout="na")
-            # self.apply_triq(compilation_name="triq_w15_adj", layout="sabre")
-
+            self.init_result_header(self.token)
             
-        elif conf.program_type == "Testing" or conf.program_type == "TriQP":
-            self.apply_qiskit(compilation_name=qiskit_compilation_enum.qiskit_0.value, generate_props=generate_props)
-            self.apply_qiskit(compilation_name=qiskit_compilation_enum.qiskit_3.value, generate_props=generate_props)
-            self.apply_triq(compilation_name="triq_lcd", layout="mapo")
-            self.apply_triq(compilation_name="triq_lcd", layout="na")
-            self.apply_triq(compilation_name="triq_lcd", layout="sabre")
-            # self.apply_laura(compilation_name="triq+_avg", laura_optimization=0, layout="mapo")
-            # self.apply_laura(compilation_name="triq+_avg", laura_optimization=0, layout="na")
-            # self.apply_laura(compilation_name="triq+_avg", laura_optimization=0, layout="sabre")
-            # self.apply_laura(compilation_name="triq+_avg", laura_optimization=2, layout="mapo")
-            # self.apply_laura(compilation_name="triq+_avg", laura_optimization=2, layout="na")
-            # self.apply_laura(compilation_name="triq+_avg", laura_optimization=2, layout="sabre")
+            if debug: tmp_end_time = time.perf_counter()
+            if debug: print("Time for running the init header: {} seconds".format(tmp_end_time - tmp_start_time))
+
+        res_circuit_name = []
+        res_compilations = []
+        res_noise_levels = []
+        res_success_rate = []
+        res_success_rate_m3 = []
+
+        for qasm in qasm_files:
+            for comp in compilations:
+                for noise in noise_levels:
+
+                    qc = self.get_circuit_properties(qasm_source=qasm)
+                    self.circuit_name = qasm.split("/")[-1].split(".")[0]
+                    self.qasm = qc.qasm
+                    self.qasm_original = qc.qasm_original
+
+                    updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, compilation_name=comp)
+                    compiled_qc = QiskitCircuit(updated_qasm)
+                    circuit = compiled_qc.transpile_to_target_backend(self.backend, False)
+                    
+                    noise_model, noisy_simulator, coupling_map = qiskit_wrapper.get_noisy_simulator(self.backend, noise)
+
+                    job = noisy_simulator.run(circuit, shots=shots)
+                    result = job.result()  
+                    output = result.get_counts()
+                    output_normalize = normalize_counts(output, shots=shots)
+
+                    tvd = calculate_success_rate_tvd(qc.correct_output,output_normalize)
+
+                    res_circuit_name.append(self.circuit_name)
+                    res_compilations.append(comp)
+                    res_noise_levels.append(noise)
+                    res_success_rate.append(tvd)
+
+                    if mitigation == "m3":
+                        probs_m3 = self.apply_mthree(noisy_simulator, initial_mapping, output, shots)
+                        tvd_m3 = calculate_success_rate_tvd(qc.correct_output, probs_m3)
+                        res_success_rate_m3.append(tvd_m3)
+
+        df = pd.DataFrame({
+            'circuit_name': res_circuit_name,
+            'compilation': res_compilations,
+            'noise_level': res_noise_levels,
+            'success_rate': res_success_rate,
+        })
+
+        if send_to_db:  
+            # Send to local simulator
+            if debug: tmp_start_time  = time.perf_counter()
+            self.run_on_noisy_simulator_local()
+            if debug: tmp_end_time = time.perf_counter()
+            if debug: print("Time for sending to backend: {} seconds".format(tmp_end_time - tmp_start_time))       
+
+        return df
 #endregion
         
-
-# if __name__ == "__main__":
-
-# #region with parameter
-#     # arglist = sys.argv[1:]
-#     # hardware_name = arglist[0]
-#     # qasm_source = arglist[1]
-#     # circuit_name = qasm_source.split("/")[-1].split(".")[0]
-#     # print("Selected circuit: {} ".format(circuit_name))
-#     # q = None
-
-#     # q = QEM(qasm_source, runs=20, run_in_simulator=True\
-#     #         , circuit_name=circuit_name, user_id=2)
-#     # q.run()
-#     # # Send to backend
-#     # q.send_qasm_to_real_backend()
-# #endregion
-
-
 #     #get active token
 #     token_list = qiskit_wrapper.get_active_token(conf.remaining, conf.repetition, conf.token_number)
 

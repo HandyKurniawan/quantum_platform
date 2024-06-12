@@ -116,7 +116,7 @@ CREATE TABLE `metric` (
   PRIMARY KEY (`id`),
   KEY `fk_metric_1_idx` (`detail_id`),
   CONSTRAINT `fk_metric_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19490 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -201,7 +201,7 @@ CREATE TABLE `result_backend_json` (
   PRIMARY KEY (`id`),
   KEY `fk_result_backend_json_1_idx` (`detail_id`),
   CONSTRAINT `fk_result_backend_json_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=22150 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -229,7 +229,7 @@ CREATE TABLE `result_detail` (
   KEY `fk_result_detail_3_idx` (`compilation_name`),
   CONSTRAINT `fk_result_detail_1` FOREIGN KEY (`header_id`) REFERENCES `result_header` (`id`),
   CONSTRAINT `fk_result_detail_2` FOREIGN KEY (`circuit_name`) REFERENCES `circuit` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=26981 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -260,7 +260,7 @@ CREATE TABLE `result_header` (
   KEY `fk_result_header_2_idx` (`hw_name`),
   CONSTRAINT `fk_result_header_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_result_header_2` FOREIGN KEY (`hw_name`) REFERENCES `hardware` (`hw_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=2929 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -277,7 +277,7 @@ CREATE TABLE `result_updated_qasm` (
   PRIMARY KEY (`id`),
   KEY `fk_result_updated_qasm_1_idx` (`detail_id`),
   CONSTRAINT `fk_result_updated_qasm_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=26627 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -295,7 +295,7 @@ CREATE TABLE `user` (
   `active` tinyint(1) DEFAULT 1,
   PRIMARY KEY (`user_id`),
   KEY `idx_user_user_id` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

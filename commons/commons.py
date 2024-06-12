@@ -30,6 +30,8 @@ class Config:
         self.program_type = self.config_parser['TypeConfig']['program_type']
 
         quantum_config_name = "QuantumConfig{}".format(self.program_type)
+        
+        self.send_to_db = False
 
         self.hardware_name = self.config_parser[quantum_config_name]['hardware_name']
         self.base_folder = self.config_parser[quantum_config_name]['base_folder']
