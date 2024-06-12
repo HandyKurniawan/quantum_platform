@@ -14,7 +14,7 @@ import wrappers.triq_wrapper as triq_wrapper
 import wrappers.qiskit_wrapper as qiskit_wrapper
 import sys, glob, os
 from commons import convert_to_json, triq_optimization, qiskit_optimization, \
-    calibration_type_enum, qiskit_compilation_enum, normalize_counts, Config, num_sort
+    calibration_type_enum, qiskit_compilation_enum, normalize_counts, Config, num_sort, convert_dict_binary_to_int
 import inspect
 from qiskit import QuantumCircuit, transpile
 from wrappers.qiskit_wrapper import QiskitCircuit
@@ -26,6 +26,7 @@ import mysql.connector
 import time
 import json
 import mapomatic as mm
+import mthree
 
 conf = Config()
 debug = conf.activate_debugging_time
@@ -286,7 +287,7 @@ class QEM:
                 calibration_type=calibration_type, generate_props=generate_props, recent_n=recent_n)
 
         # self.insert_to_result_detail(compilation_name, compilation_time, updated_qasm, initial_mapping)
-        return updated_qasm
+        return updated_qasm, initial_mapping
 
     def apply_triq(self, compilation_name, qasm=None, layout="mapo",
                      generate_props = False):
@@ -348,8 +349,17 @@ class QEM:
         compilation_name = layout + "_" + compilation_name
         # self.insert_to_result_detail(compilation_name, compilation_time, updated_qasm, initial_mapping, final_mapping)
 
-        return updated_qasm
+        return updated_qasm, initial_mapping
     
+    def apply_mthree(self, backend, initial_mapping, counts, shots):
+        mit = mthree.M3Mitigation(backend)
+        mit.cals_from_system(initial_mapping, shots)
+        m3_quasi = mit.apply_correction(counts, initial_mapping)
+        probs = m3_quasi.nearest_probability_distribution()
+        probs_int = convert_dict_binary_to_int(probs)
+
+        return probs_int
+
     # def insert_to_result_detail(self, compilation_name, compilation_time, updated_qasm, 
     #                             initial_mapping = "", final_mapping = ""):
     #     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -527,15 +537,16 @@ class QEM:
     def compile(self, qasm, compilation_name, generate_props=False):
 
         updated_qasm = ""
+        initial_mapping = ""
         if "qiskit" in compilation_name or "mapomatic" in compilation_name:
-            updated_qasm = self.apply_qiskit(qasm=qasm, compilation_name=compilation_name, generate_props=generate_props)
+            updated_qasm, initial_mapping = self.apply_qiskit(qasm=qasm, compilation_name=compilation_name, generate_props=generate_props)
         elif "triq" in compilation_name:
             tmp = compilation_name.split("_")
             layout = tmp[2]
             compilation = tmp[0] + "_" + tmp[1]
-            updated_qasm = self.apply_triq(qasm=qasm, compilation_name=compilation, layout=layout)
+            updated_qasm, initial_mapping = self.apply_triq(qasm=qasm, compilation_name=compilation, layout=layout)
 
-        return updated_qasm
+        return updated_qasm, initial_mapping
 
 #region Run
     def run(self, generate_props = False):

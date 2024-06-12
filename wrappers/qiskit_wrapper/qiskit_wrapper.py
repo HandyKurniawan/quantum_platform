@@ -872,7 +872,7 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
     noise_model = NoiseModel.from_backend_properties(new_properties)
     
     if noiseless or error_percentage == 0:
-        sim_noisy = AerSimulator()
+        sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties)
     else:
         sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties,
                                 noise_model=noise_model, 

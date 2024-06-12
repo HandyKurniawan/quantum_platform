@@ -22,7 +22,9 @@ from commons import calibration_type_enum, sql_query, normalize_counts, Config
 conf = Config()
 
 # triq_path = os.path.expanduser("./wrappers/triq_wrapper/")
-triq_path = os.path.expanduser("~/Github/quantum_platform/wrappers/triq_wrapper/")
+triq_path = os.path.expanduser("/Users/handy/Github/quantum_platform/wrappers/triq_wrapper")
+
+# triq_path = os.path.expanduser("cd/Github/quantum_platform/wrappers/triq_wrapper/")
 out_path = os.path.expanduser("./")
 dag_path = os.path.expanduser("./")
 map_path = os.path.expanduser("./")
@@ -73,6 +75,8 @@ def generate_qasm(qasm_str, hardware_name, triq_optimization, measurement_type):
     # print(call_triq)
 
     out_file=open("log/output.log",'w+')
+
+    print(call_triq)
 
     p = sp.Popen(call_triq, stdout=out_file, text=True, shell=False)    
     p.communicate()
