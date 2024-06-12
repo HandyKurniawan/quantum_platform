@@ -17,8 +17,10 @@ A platform for experimenting with and applying various quantum compilation techn
 
 #### MariaDB
 
-To setup the database, first, we need to install MariaDB. Note: Skip this step if you already installed it
+To set up the database, follow these steps:
 
+1. Install MariaDB:
+   
 ``` terminal
 sudo apt update
 sudo apt install mariadb-server
@@ -26,13 +28,15 @@ sudo systemctl start mariadb
 sudo systemctl enable mariadb
 ```
 
-Once you have installed and start the database, you need to setup the password for the root account
+2. Secure your MariaDB installation:
 
 ``` terminal
 sudo mysql_secure_installation
 ```
 
-After that you can login through the root account
+3. Create a database and user:
+
+Login with the root account to the database
 
 ``` terminal
 mysql -u root -p
@@ -49,7 +53,7 @@ CREATE DATABASE  IF NOT EXISTS `framework`;
 exit;
 ```
 
-Once we have created the database and the users, we can import the table structure from these files
+4. Import table structures:
 
 ``` terminal
 mysql -u user_1 -p framework < framework_structure.sql
@@ -61,30 +65,15 @@ Now your database is ready.
 
 #### Platform
 
-First, we need to install the necessary library
+Install dependencies and set up the Python environment:
 
 ``` terminal
 sudo apt-get update
 sudo apt-get install libmuparser2v5
-```
-
-Then, we need to create a Python environment to have a clean installation
-
-``` terminal
 python3 -m venv .venv
-```
-
-Then activate it
-
-``` terminal
-. .venv/bin/activate
-```
-Last, install the required libraries:
-
-``` terminal
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
-Now, it is ready to go! 
 
 ### Example in Python
 
