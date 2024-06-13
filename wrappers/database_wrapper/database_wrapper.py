@@ -20,16 +20,20 @@ from commons import sql_query, normalize_counts, Config, convert_to_json
 from ..qiskit_wrapper import QiskitCircuit
 
 conf = Config()
-
+debug = conf.activate_debugging_time
 
 def init_result_header(cursor, user_id, token=conf.qiskit_token):
-    
+    if debug: tmp_start_time  = time.perf_counter()
+
     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
     cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, shots, runs, created_datetime) 
     VALUES (%s, %s, %s, %s, %s, %s)""",
     (user_id, conf.hardware_name, token, conf.shots, conf.runs, now_time))
 
     header_id = cursor.lastrowid
+
+    if debug: tmp_end_time = time.perf_counter()
+    if debug: print("Time for running the init header: {} seconds".format(tmp_end_time - tmp_start_time))
 
     return header_id
     
@@ -40,6 +44,7 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noise_level, 
         noise_simulator = None
         if conf.noisy_simulator: 
             noise_simulator = 1
+            noise_level = 1
         else:
             noise_level = None
         
@@ -61,8 +66,9 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noise_level, 
             json_final_mapping = json.dumps(final_mapping, default=str)
 
 
-        cursor.execute(sql, (header_id, circuit_name, compilation_name, compilation_time, \
-                                str_initial_mapping, json_final_mapping, noise_simulator, noise_level, now_time))
+        params = (header_id, circuit_name, compilation_name, compilation_time, str_initial_mapping, json_final_mapping, noise_simulator, noise_level, now_time)
+
+        cursor.execute(sql, params)
         detail_id = cursor.lastrowid
 
         sql = """

@@ -76,7 +76,7 @@ def check_result_availability(service, header_id, job_id):
 
         job = service.job(job_id)
 
-        print(job.status())
+        print("Job status :", job.status())
 
         if(job.status() == JobStatus.ERROR or job.status() == JobStatus.CANCELLED):
             update_result_header_status_by_header_id(cursor, header_id, "error")
@@ -191,7 +191,7 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
         conn.close()
 
     except Exception as e:
-        print("Result not available yet", str(e))
+        print("Error for check result availability :", str(e))
 
 def check_result_availability_simulator(service, header_id, job_id, hw_name):
     print("Checking results for: ", job_id, "with header id :", header_id)
@@ -210,7 +210,7 @@ LEFT JOIN framework.result_backend_json j ON d.id = j.detail_id
 WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS NULL  ''', ('pending', job_id, header_id,))
         results_details = cursor.fetchall()
 
-        print(len(results_details))
+        # print(len(results_details))
         for idx, res in enumerate(results_details):
             detail_id, updated_qasm, compilation_name, noise_level, shots = res
 
@@ -222,7 +222,7 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
             else:
                 # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
                 circuit = qc.transpile_to_target_backend(backend, False)
-                print("transpile to target backend")
+                # print("transpile to target backend")
 
             print("preparing the noisy simulator", compilation_name, noise_level)
             noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level)
@@ -292,7 +292,7 @@ def get_executed_jobs():
     return results
 
 def get_metrics(header_id, job_id):
-    print("")
+    # print("")
     print("Getting qasm for :", header_id, job_id)
     conn = mysql.connector.connect(**conf.mysql_config)
     cursor = conn.cursor()
@@ -305,7 +305,7 @@ def get_metrics(header_id, job_id):
         WHERE h.status = %s AND h.job_id = %s AND h.id = %s AND j.quasi_dists IS NOT NULL;''', ("executed", job_id, header_id))
         results_details_json = cursor.fetchall()
 
-        print(len(results_details_json))
+        # print(len(results_details_json))
         for idx, res in enumerate(results_details_json):
             detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level = res
 

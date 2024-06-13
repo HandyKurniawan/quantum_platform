@@ -103,15 +103,8 @@ class QiskitCircuit:
             return transpile(self.circuit.decompose(), backend, basis_gates=backend.basis_gates, optimization_level=0, layout_method="trivial")
             # return transpile(self.circuit.decompose(), backend=backend, optimization_level=0)
         
-    def transpile_to_target_backend(self, backend, simulator = False, backend_sim=None):
-        if simulator:
-            pm = generate_preset_pass_manager(optimization_level=1, backend=backend)
-            isa_circuits = pm.run(self.circuit)
-            return isa_circuits
-
-            # return transpile(self.circuit.decompose(), backend, basis_gates=["u3", "cx"], optimization_level=0, layout_method="trivial")
-        else:
-            return transpile(self.circuit, backend=backend, optimization_level=0, layout_method="trivial")
+    def transpile_to_target_backend(self, backend):
+        return transpile(self.circuit, backend=backend, optimization_level=0, layout_method="trivial")
     
     def get_qasm(self):
         return self.qasm

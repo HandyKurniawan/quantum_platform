@@ -27,9 +27,7 @@ class Config:
 
         self.activate_debugging_time = True if self.config_parser['GeneralConfig']['activate_debugging_time'] == "1" else False
 
-        self.program_type = self.config_parser['TypeConfig']['program_type']
-
-        quantum_config_name = "QuantumConfig{}".format(self.program_type)
+        quantum_config_name = "QuantumConfig"
         
         self.send_to_db = False
 
@@ -41,15 +39,11 @@ class Config:
         self.qiskit_token = ""
         self.optimization_level = int(self.config_parser[quantum_config_name]['optimization_level'])
         self.resilience_level = int(self.config_parser[quantum_config_name]['resilience_level'])
-        self.rep_delay = float(self.config_parser[quantum_config_name]['rep_delay'])
         self.runs = int(self.config_parser[quantum_config_name]['runs'])
         self.repetition = int(self.config_parser[quantum_config_name]['repetition'])
         self.initialized_triq = int(self.config_parser[quantum_config_name]['initialized_triq'])
         self.user_id = int(self.config_parser[quantum_config_name]['user_id'])
-        self.run_in_simulator = True if self.config_parser[quantum_config_name]['run_in_simulator'] == "1" else False
         self.triq_measurement_type = self.config_parser[quantum_config_name]['triq_measurement_type']
-        self.remaining = int(self.config_parser[quantum_config_name]['remaining'])
-        self.token_number = int(self.config_parser[quantum_config_name]['token_number'])
         self.skip_update_simulator = True if self.config_parser[quantum_config_name]['skip_update_simulator'] == "1" else False
         self.noisy_simulator = True if self.config_parser[quantum_config_name]['noisy_simulator'] == "1" else False
         # self.noise_level = list(map(float, self.config_parser[quantum_config_name]['noise_level'].split(",")))

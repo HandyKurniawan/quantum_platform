@@ -36,11 +36,9 @@ debug = conf.activate_debugging_time
 
 class QEM:
     def __init__(self, runs=2, 
-                 fixed_initial_layout = False, 
-                 run_in_simulator = False, 
+                 fixed_initial_layout = False,  
                  user_id = 99,
                  token=conf.qiskit_token):
-        self.run_in_simulator = run_in_simulator
 
         self.session = None
         self.service = None
@@ -82,61 +80,37 @@ class QEM:
         self.conn.close()
 
     def update_hardware_configs(self): 
+        if debug: tmp_start_time  = time.perf_counter()
         triq_wrapper.generate_recent_average_calibration_data(self, 15, True)
         triq_wrapper.generate_realtime_calibration_data(self)
         triq_wrapper.generate_average_calibration_data(self)
         triq_wrapper.generate_mix_calibration_data(self)
+        if debug: tmp_end_time = time.perf_counter()
+        if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))
 
     def set_backend(self, token=conf.qiskit_token, shots=conf.shots):
-        # print("Set Backend:", token)
+        if debug: tmp_start_time  = time.perf_counter()
         QiskitRuntimeService.save_account(channel="ibm_quantum", token=token, overwrite=True)
 
         if conf.hardware_name == "ibm_algiers":
             self.service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
         else:
             self.service = QiskitRuntimeService(channel="ibm_quantum", token=token)
-            # self.service = QiskitRuntimeService()
+        
+        self.backend = self.service.get_backend(conf.hardware_name)
+        coupling_map = self.backend.configuration().coupling_map
+        noise_model = NoiseModel.from_backend(self.backend)
+        basis_gates = self.backend.configuration().basis_gates
+        
+        options = Options()
+        options.execution.shots = shots
+        options.optimization_level = conf.optimization_level
+        options.resilience_level = conf.resilience_level
+        
+        self.sampler = Sampler(self.backend, options=options) 
 
-        if conf.hardware_name == "ibm_brisbane_32":
-            tmp_backend = self.service.get_backend("ibm_brisbane")
-            noise_model, self.backend, coupling_map = qiskit_wrapper.generate_brisbane_32_noisy_simulator(tmp_backend, 1)
-            basis_gates = tmp_backend.configuration().basis_gates
-        else:
-            self.backend = self.service.get_backend(conf.hardware_name)
-            coupling_map = self.backend.configuration().coupling_map
-            noise_model = NoiseModel.from_backend(self.backend)
-            basis_gates = self.backend.configuration().basis_gates
-
-        if (self.run_in_simulator):            
-            options = Options()
-            options.simulator = {
-                "noise_model": noise_model,
-                "basis_gates": basis_gates,
-                "coupling_map": coupling_map
-            }
-            # options.transpilation.initial_layout = "noise_adaptive"
-            # options.transpilation.routing_method = "sabre"
-            options.execution.shots = shots
-            options.optimization_level = conf.optimization_level
-            options.resilience_level = conf.resilience_level
-            self.backend_sim = self.service.get_backend(conf.simulator_hardware)
-            #self.session = Session(service=service, backend=backend_sim, max_time="25m")
-            self.sampler = Sampler(self.backend_sim, options=options) 
-        else:
-            options = Options()
-            options.execution.shots = shots
-            options.optimization_level = conf.optimization_level
-            options.resilience_level = conf.resilience_level
-
-            # rep delay has been removed
-            # if conf.rep_delay != 0:
-            #     options.execution.rep_delay = conf.rep_delay
-            
-            # if conf.hardware_name != "ibm_perth":
-            #     self.sampler = Sampler(self.backend, options=options) 
-            # else:
-            #     self.sampler = Sampler(backend_sim, options=options) 
-            self.sampler = Sampler(self.backend, options=options) 
+        if debug: tmp_end_time = time.perf_counter()
+        if debug: print("Time for setup the backends: {} seconds".format(tmp_end_time - tmp_start_time))
 
     def get_circuit_properties(self, qasm_source):
         circuit_name = qasm_source.split("/")[-1].split(".")[0]
@@ -173,7 +147,7 @@ class QEM:
     def apply_qiskit(self, 
                      qasm = None,
                      compilation_name = qiskit_compilation_enum.qiskit_3,
-                     generate_props = False, recent_n = None, noise_level = []
+                     generate_props = False, recent_n = None, noise_level=None
                      ):
         """
         hmmm
@@ -200,8 +174,7 @@ class QEM:
             
         return updated_qasm, initial_mapping
 
-    def apply_triq(self, compilation_name, qasm=None, layout="mapo",
-                     generate_props = False, noise_level=[]):
+    def apply_triq(self, compilation_name, qasm=None, layout="mapo", generate_props = False, noise_level=None):
         """
         """    
         if qasm is None:
@@ -255,10 +228,10 @@ class QEM:
 
         
     def send_qasm_to_real_backend(self):
+        if debug: tmp_start_time  = time.perf_counter()
 
         results_1 = database_wrapper.get_header_with_null_job(self.cursor)
-        print("Total send to backend :", len(results_1))
-
+        print("Total send to real backend :", len(results_1))
         for res_1 in results_1:
             header_id, qiskit_token, shots, runs = res_1
 
@@ -274,19 +247,12 @@ class QEM:
 
                 qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
-                circuit = None
-                if compilation_name == "triq_lcd" or compilation_name == "triq+_lcd":
-                    circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
-                else:
-                    # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
-                    circuit = qc.transpile_to_target_backend(self.backend, self.run_in_simulator)
-                    print("transpile to target backend")
+                circuit = qc.transpile_to_target_backend(self.backend)
 
                 for i in range(runs):
                     list_circuits.append(circuit)
                 
             print("Total no of circuits :",len(list_circuits))
-
             while not success:
                 try:
 
@@ -309,7 +275,11 @@ class QEM:
                         time.sleep(1)
                         print(i)
 
+        if debug: tmp_end_time = time.perf_counter()
+        if debug: print("Time for sending to real backend: {} seconds".format(tmp_end_time - tmp_start_time))
+
     def run_on_noisy_simulator_local(self):
+        if debug: tmp_start_time  = time.perf_counter()
         
         results_1 = database_wrapper.get_header_with_null_job(self.cursor)
         print("Total send to local simulator :", len(results_1))
@@ -338,10 +308,13 @@ class QEM:
                         time.sleep(1)
                         print(i)
 
+        if debug: tmp_end_time = time.perf_counter()
+        if debug: print("Time for sending to local simulator: {} seconds".format(tmp_end_time - tmp_start_time)) 
+
     def get_qasm_files_from_path(self, file_path = conf.base_folder):
         return glob.glob(os.path.expanduser(os.path.join(file_path, "*.qasm")))
 
-    def compile(self, qasm, compilation_name, generate_props=False, noise_level=[]):
+    def compile(self, qasm, compilation_name, generate_props=False, noise_level=None):
 
         updated_qasm = ""
         initial_mapping = ""
@@ -360,22 +333,12 @@ class QEM:
         """
         
         """
-
         if send_to_db:
             conf.send_to_db = True
             # init header
-            if debug: tmp_start_time  = time.perf_counter()
-            
             self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token)
-            
-            if debug: tmp_end_time = time.perf_counter()
-            if debug: print("Time for running the init header: {} seconds".format(tmp_end_time - tmp_start_time))
 
-        res_circuit_name = []
-        res_compilations = []
-        res_noise_levels = []
-        res_success_rate = []
-        res_success_rate_m3 = []
+        res_circuit_name, res_compilations, res_noise_levels, res_success_rate, res_success_rate_m3 = ([] for _ in range(5))
 
         for noise_level in noise_levels:
             noise_model, noisy_simulator, coupling_map = qiskit_wrapper.get_noisy_simulator(self.backend, noise_level)
@@ -418,13 +381,36 @@ class QEM:
 
         if send_to_db:  
             # Send to local simulator
-            if debug: tmp_start_time  = time.perf_counter()
+            
             self.run_on_noisy_simulator_local()
-            if debug: tmp_end_time = time.perf_counter()
-            if debug: print("Time for sending to backend: {} seconds".format(tmp_end_time - tmp_start_time))       
+                  
 
         return df
     
-    def send_to_real_backend(self):
-        pass
+    def send_to_real_backend(self, qasm_files, compilations, hardware_name = conf.hardware_name):
+        # Update the
+        conf.send_to_db = True
+        conf.hardware_name = hardware_name
+
+        # init header
+        self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token)
+
+        for qasm in qasm_files:
+            qc = self.get_circuit_properties(qasm_source=qasm)
+            self.circuit_name = qasm.split("/")[-1].split(".")[0]
+            self.qasm = qc.qasm
+            self.qasm_original = qc.qasm_original
+
+            for comp in compilations:
+                print("Compiling circuit: {} for compilation: {}".format(self.circuit_name, comp))
+                self.compile(qasm=qc.qasm_original, compilation_name=comp)
+
+        if conf.noisy_simulator:
+            # Send to local simulator
+            self.run_on_noisy_simulator_local()
+        else:
+            # Send to backend
+            self.send_qasm_to_real_backend()
+            
+                
 #endregion
