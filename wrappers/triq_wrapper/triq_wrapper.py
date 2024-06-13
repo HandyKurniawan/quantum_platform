@@ -135,6 +135,32 @@ def generate_initial_mapping_file(init_maps):
     f.write(string_maps)
     f.close()
 
+def get_compilation_config(compilation_name):
+    calibration_type = calibration_type_enum.lcd.value
+
+    if compilation_name == "triq_lcd":
+        calibration_type = calibration_type_enum.lcd.value
+    elif compilation_name == "triq_avg":
+        calibration_type = calibration_type_enum.average.value
+    elif compilation_name == "triq_mix":
+        calibration_type = calibration_type_enum.mix.value
+    elif compilation_name == "triq_w15_adj":
+        calibration_type = calibration_type_enum.recent_15_adjust.value
+
+    hardware_name = ""
+    if compilation_name == "triq_lcd":
+        hardware_name = conf.hardware_name + "_" + "real"
+    elif compilation_name == "triq_avg":
+        hardware_name = conf.hardware_name + "_" + "avg"
+    elif compilation_name == "triq_mix":
+        hardware_name = conf.hardware_name + "_" + "mix"
+    elif compilation_name == "triq_w15_adj":
+        hardware_name = conf.hardware_name + "_" + "recent_15_adj"
+
+    return calibration_type, hardware_name
+
+#region Calibration Config
+
 def generate_realtime_calibration_data(qem):
     # Connect to the MySQL database
     conn = mysql.connector.connect(**conf.mysql_config)
@@ -578,3 +604,4 @@ WHERE q.calibration_id = %s;
 
     conn.close()
 
+#endregion

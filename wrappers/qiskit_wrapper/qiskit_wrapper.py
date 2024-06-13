@@ -15,7 +15,7 @@ from qiskit_ibm_runtime import Sampler
 from qiskit_aer.noise import NoiseModel
 from qiskit_aer import AerSimulator
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-from commons import calibration_type_enum, sql_query, normalize_counts, Config
+from commons import calibration_type_enum, sql_query, normalize_counts, Config, qiskit_compilation_enum
 from qiskit.providers.models import BackendProperties
 import json
 import requests
@@ -716,6 +716,70 @@ def generate_brisbane_32_noisy_simulator(backend, scale_error):
     return noise_brisbane_32_cx, sim_brisbane_32, brisbane_32_map
 
 
+def get_compilation_setup(compilation_name, recent_n):
+    qiskit_optimization_level = 0
+    enable_noise_adaptive = False
+    enable_mapomatic = False
+    calibration_type = None
+
+    if compilation_name == qiskit_compilation_enum.qiskit_3.value:    
+        qiskit_optimization_level = 3
+    elif compilation_name == qiskit_compilation_enum.qiskit_0.value:    
+        qiskit_optimization_level = 0            
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_avg.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.average.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_lcd.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.lcd.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_mix.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.mix.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_w15.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_15.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_avg_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.average_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_lcd_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.lcd_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_mix_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.mix_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_w15_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_15_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_wn.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_n.value
+
+        compilation_name = compilation_name.replace("_wn", "_w{}".format(recent_n))
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_wn_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_n_adjust.value
+
+        compilation_name = compilation_name.replace("_wn", "_w{}".format(recent_n))
+    elif compilation_name == qiskit_compilation_enum.mapomatic_lcd.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.lcd.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_avg.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.average.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_mix.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.mix.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_avg_adj.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.average_adjust.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_w15_adj.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.recent_15_adjust.value
+
+    return compilation_name, calibration_type, enable_noise_adaptive, enable_mapomatic
+
+#region REST API
+
 def send_rest_api_request(url, token):
     response = requests.request(
         "GET",
@@ -750,8 +814,6 @@ def get_qiskit_usage_info(token):
     maxPendingJobs = response_json["byInstance"][0]["maxPendingJobs"]
 
     return instance, quota, usage, pendingJobs, maxPendingJobs
-
-#region REST API
 
 def update_qiskit_usage_info(token):
 

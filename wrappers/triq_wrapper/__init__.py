@@ -1,5 +1,5 @@
 from .triq_wrapper import run, get_mapping, generate_realtime_calibration_data, generate_average_calibration_data, \
-generate_mix_calibration_data, generate_recent_average_calibration_data, generate_initial_mapping_file
+generate_mix_calibration_data, generate_recent_average_calibration_data, generate_initial_mapping_file, get_compilation_config
 
 __all__ = [
     "run",
@@ -8,5 +8,6 @@ __all__ = [
     "generate_average_calibration_data",
     "generate_mix_calibration_data",
     "generate_recent_average_calibration_data",
-    "generate_initial_mapping_file"
+    "generate_initial_mapping_file",
+    "get_compilation_config"
 ]

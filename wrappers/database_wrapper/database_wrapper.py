@@ -1,0 +1,124 @@
+"""
+file name: triq_wrapper.py
+author: Handy
+date: 13 June 2024
+
+This module provides all the function necesary dealing with database
+
+Functions:
+
+
+Example:
+"""
+import subprocess as sp
+import sys
+import os
+from datetime import datetime
+import time, json
+import mysql.connector
+from commons import sql_query, normalize_counts, Config, convert_to_json
+from ..qiskit_wrapper import QiskitCircuit
+
+conf = Config()
+
+
+def init_result_header(cursor, user_id, token=conf.qiskit_token):
+    
+    now_time = datetime.now().strftime("%Y%m%d%H%M%S")
+    cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, shots, runs, created_datetime) 
+    VALUES (%s, %s, %s, %s, %s, %s)""",
+    (user_id, conf.hardware_name, token, conf.shots, conf.runs, now_time))
+
+    header_id = cursor.lastrowid
+
+    return header_id
+    
+def insert_to_result_detail(conn, cursor, header_id, circuit_name, noise_level, compilation_name, compilation_time, updated_qasm, 
+                                initial_mapping = "", final_mapping = ""):
+        now_time = datetime.now().strftime("%Y%m%d%H%M%S")
+        
+        noise_simulator = None
+        if conf.noisy_simulator: 
+            noise_simulator = 1
+        else:
+            noise_level = None
+        
+            
+        sql = """
+        INSERT INTO result_detail
+        (header_id, circuit_name, compilation_name, compilation_time, 
+        initial_mapping, final_mapping, noisy_simulator, noise_level, 
+        created_datetime)
+        VALUES (%s, %s, %s, %s, 
+        %s, %s, %s, %s,
+        %s);
+        """
+
+        str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
+
+        json_final_mapping = ""
+        if final_mapping != "":
+            json_final_mapping = json.dumps(final_mapping, default=str)
+
+
+        cursor.execute(sql, (header_id, circuit_name, compilation_name, compilation_time, \
+                                str_initial_mapping, json_final_mapping, noise_simulator, noise_level, now_time))
+        detail_id = cursor.lastrowid
+
+        sql = """
+        INSERT INTO result_updated_qasm
+        (detail_id, updated_qasm)
+        VALUES (%s, %s);
+        """
+
+        cursor.execute(sql, (detail_id, updated_qasm))
+
+        conn.commit()
+
+def update_circuit_data(conn, cursor, qc: QiskitCircuit, skip):
+    gates_json = convert_to_json(qc.gates)
+    circuit_name = qc.circuit.name
+
+    # check if the metric is already there, just update
+    sql = 'SELECT name FROM circuit WHERE name = %s'
+    param = (circuit_name,)
+    cursor.execute(sql, param)
+    existing_row = cursor.fetchone()
+
+    if skip:
+        correct_output_json = ""
+    else:
+        correct_output_json = convert_to_json(qc.correct_output)
+
+    # insert to the table
+    if not existing_row:
+        cursor.execute("""INSERT INTO circuit (name, qasm, depth, total_gates, gates, correct_output)
+        VALUES (%s, %s, %s, %s, %s, %s)""",
+        (circuit_name, qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json))
+
+        conn.commit()
+
+        # print(circuit_name, "has been registered to the database.")
+    else:
+        cursor.execute("""UPDATE circuit SET qasm = %s, depth  = %s, total_gates  = %s, gates = %s, correct_output = %s 
+                            WHERE name = %s""",
+        (qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json, circuit_name))
+
+        conn.commit()
+        # print(circuit_name, "already exist.")
+
+def get_header_with_null_job(cursor):
+
+    cursor.execute('SELECT id, qiskit_token, shots, runs FROM result_header WHERE job_id IS NULL;')
+
+    return cursor.fetchall()
+
+def get_detail_with_header_id(cursor, header_id):
+    cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name 
+FROM result_detail d
+INNER JOIN result_header h ON d.header_id = h.id
+INNER JOIN result_updated_qasm q ON d.id = q.detail_id 
+WHERE h.job_id IS NULL AND d.header_id = %s  ''', (header_id,)
+)
+    
+    return cursor.fetchall()

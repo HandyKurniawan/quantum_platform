@@ -52,7 +52,7 @@ class Config:
         self.token_number = int(self.config_parser[quantum_config_name]['token_number'])
         self.skip_update_simulator = True if self.config_parser[quantum_config_name]['skip_update_simulator'] == "1" else False
         self.noisy_simulator = True if self.config_parser[quantum_config_name]['noisy_simulator'] == "1" else False
-        self.noise_level = list(map(float, self.config_parser[quantum_config_name]['noise_level'].split(",")))
+        # self.noise_level = list(map(float, self.config_parser[quantum_config_name]['noise_level'].split(",")))
         self.send_to_backend = True if self.config_parser[quantum_config_name]['send_to_backend'] == "1" else False
         
 conf = Config()
