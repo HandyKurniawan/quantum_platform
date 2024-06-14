@@ -22,6 +22,7 @@ First, you need to clone the project to get all the necessary files
 
 ``` terminal
 git clone https://github.com/HandyKurniawan/quantum_platform.git
+cd quantum_platform
 ```
 
 #### MariaDB
@@ -65,9 +66,9 @@ exit;
 4. Import table structures:
 
 ``` terminal
-mysql -u user_1 -p framework < quantum_platform\mariadb\framework_structure.sql
-mysql -u user_1 -p framework < quantum_platform\mariadb\calibration_data_structure.sql
-mysql -u user_1 -p framework < quantum_platform\mariadb\data.sql
+mysql -u user_1 -p framework < mariadb/framework_structure.sql
+mysql -u user_1 -p framework < mariadb/calibration_data_structure.sql
+mysql -u user_1 -p framework < mariadb/data.sql
 ```
 Note: These commands need to be run one by one, and the password for user_1 is 1234
 
@@ -91,17 +92,16 @@ Install dependencies and set up the Python environment:
 sudo apt-get update
 sudo apt-get install python3.xx-venv 
 sudo apt-get install libmuparser2v5
+sudo apt-get install libz3-dev
 python3.xx -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-`3.xx` is depends on what Python3.xx version you have)
-
-Now, we are good to go 🚀
+`Python3.xx` is depends on what Python3.xx version you have)
 
 #### Config
 
-Now, we need to change the config for the database, and the path for the TriQ before continue
+Now, we need to update the `config.ini` file to change the config for the database, and the path for the TriQ before continue
 
 ```terminal
 [MySQLConfig]
@@ -117,6 +117,49 @@ database = framework
 triq_path = ~/Github/quantum_platform/wrappers/triq_wrapper/
 ...
 ```
+Now, we are good to go 🚀
+
+## Tutorial
+
+To run them on jupyter notebook,  we need to create a kernel 
+
+``` terminal
+pip install ipykernel
+python -m ipykernel install --user --name .venv --display-name "platform"
+jupyter notebook
+``` 
+
+When you open jupyter notebook, don't forget to change the kernel to `platform`
+
+![compilations](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/screen.png)
+
+See this jupyter notebook file for more in-depth examples: [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
+
+## Compilation Techniques
+
+We integrated several compilation techniques that differ in the awareness of the error information from the calibration data. As you can see from the image below:
+
+![compilations](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/compilations.png)
+
+### Initial Mapping 
+
+- **Noise-adaptive (NA)**: noise-aware initial mapping based on reliability matrix. More information [here](https://arxiv.org/pdf/1901.11054) 
+- **Mapomatic (Mapo)**: noise-aware initial mapping as a subgraph isomorphism problem based on the lowest error rate. More information [here](https://arxiv.org/pdf/2209.15512)
+- **SABRE**: non-noise-aware initial mapping. More information [here](https://arxiv.org/pdf/1809.02573.pdf)
+
+
+### Routing
+
+- **TriQ**: noise-aware routing uses a reliability matrix that stores the cost of performing a CNOT gate between any qubit pair. The following routing alternatives build this matrix differently. More information [here](https://doi.org/10.1145/3307650.3322273).
+- **[SabreSwap]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.SabreSwap.html)):** Divide the circuit into layers (resolved, front and extended) and inset swap gates considering previous gates (to increase parallelization) and future gates (extended layer) (to reduce circuit depth). More information [here](https://arxiv.org/pdf/1809.02573.pdf).
+
+## Simulators
+
+We included the noisy simulator embedded with noise coming from the real IBM's backends
+- IBM Brisbane
+- IBM Sherbrooke
+
+We also provided scaled noise from 0 (noiseless) to 1 (real backend) in the simulator.
 
 ## Example in Python
 
@@ -189,36 +232,6 @@ cx q[104],q[103];
 measure q[104] -> c[0];
 measure q[103] -> c[1];
 ```
-
-## Compilation Techniques
-
-We integrated several compilation techniques that differ in the awareness of the error information from the calibration data. As you can see from the image below:
-
-![compilations](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/compilations.png)
-
-### Initial Mapping 
-
-- **Noise-adaptive (NA)**: noise-aware initial mapping based on reliability matrix. More information [here](https://arxiv.org/pdf/1901.11054) 
-- **Mapomatic (Mapo)**: noise-aware initial mapping as a subgraph isomorphism problem based on the lowest error rate. More information [here](https://arxiv.org/pdf/2209.15512)
-- **SABRE**: non-noise-aware initial mapping. More information [here](https://arxiv.org/pdf/1809.02573.pdf)
-
-
-### Routing
-
-- **TriQ**: noise-aware routing uses a reliability matrix that stores the cost of performing a CNOT gate between any qubit pair. The following routing alternatives build this matrix differently. More information [here](https://doi.org/10.1145/3307650.3322273).
-- **[SabreSwap]((https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.SabreSwap.html)):** Divide the circuit into layers (resolved, front and extended) and inset swap gates considering previous gates (to increase parallelization) and future gates (extended layer) (to reduce circuit depth). More information [here](https://arxiv.org/pdf/1809.02573.pdf).
-
-## Simulators
-
-We included the noisy simulator embedded with noise coming from the real IBM's backends
-- IBM Brisbane
-- IBM Sherbrooke
-
-We also provided scaled noise from 0 (noiseless) to 1 (real backend) in the simulator.
-
-## Tutorial
-
-See this jupyter notebook file for more in-depth examples: [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
 
 ## Acknowledgments
 
