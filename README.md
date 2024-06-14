@@ -78,6 +78,25 @@ pip install -r requirements.txt
 
 Now, we are good to go 🚀
 
+#### Config
+
+Now, we need to change the config for the database, and the path for the TriQ before continue
+
+```terminal
+[MySQLConfig]
+user = user_1
+password = 1234
+host = localhost
+database = framework
+
+...
+
+[QuantumConfig]
+...
+triq_path = ~/Github/quantum_platform/wrappers/triq_wrapper/
+...
+```
+
 ## Example in Python
 
 First, we need to set the object
