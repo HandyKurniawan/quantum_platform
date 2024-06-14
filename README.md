@@ -65,24 +65,37 @@ exit;
 4. Import table structures:
 
 ``` terminal
-mysql -u user_1 -p framework < framework_structure.sql
-mysql -u user_1 -p framework < calibration_data_structure.sql
-mysql -u user_1 -p framework < data.sql
+mysql -u user_1 -p framework < quantum_platform\mariadb\framework_structure.sql
+mysql -u user_1 -p framework < quantum_platform\mariadb\calibration_data_structure.sql
+mysql -u user_1 -p framework < quantum_platform\mariadb\data.sql
 ```
+Note: These commands need to be run one by one, and the password for user_1 is 1234
 
 Now your database is ready.
 
 #### Platform
 
+First, we need to go to the home folder of the project (\quantum_platform)
+
+Note: If you have an older version (or if you don't have it) of Python please upgrade (install) it first:
+
+``` terminal
+sudo add-apt-repository ppa:deadsnakes/ppa    
+sudo apt update  
+sudo apt install python-3.12
+```
+
 Install dependencies and set up the Python environment:
 
 ``` terminal
 sudo apt-get update
+sudo apt-get install pythonx.x-venv 
 sudo apt-get install libmuparser2v5
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+`x.x` is depends on what python version you have)
 
 Now, we are good to go 🚀
 
