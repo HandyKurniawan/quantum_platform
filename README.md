@@ -133,7 +133,7 @@ When you open jupyter notebook, don't forget to change the kernel to `platform`
 
 ![screen](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/screen.png)
 
-See this jupyter notebook file for more in-depth examples: [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
+**In order to see that everything is going well, please execute this jupyter notebook file with in-depth examples:** [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
 
 ## Compilation Techniques
 
