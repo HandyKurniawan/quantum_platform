@@ -21,15 +21,13 @@ class Config:
             'database': self.config_parser['MySQLConfig']['database']
         }
 
-        self.simulator_hardware = self.config_parser['SimulationConfig']['simulator_hardware']
-
         self.bit_format = self.config_parser['MathConfig']['bit_format']
 
         self.activate_debugging_time = True if self.config_parser['GeneralConfig']['activate_debugging_time'] == "1" else False
 
-        self.program_type = self.config_parser['TypeConfig']['program_type']
-
-        quantum_config_name = "QuantumConfig{}".format(self.program_type)
+        quantum_config_name = "QuantumConfig"
+        
+        self.send_to_db = False
 
         self.hardware_name = self.config_parser[quantum_config_name]['hardware_name']
         self.base_folder = self.config_parser[quantum_config_name]['base_folder']
@@ -39,18 +37,14 @@ class Config:
         self.qiskit_token = ""
         self.optimization_level = int(self.config_parser[quantum_config_name]['optimization_level'])
         self.resilience_level = int(self.config_parser[quantum_config_name]['resilience_level'])
-        self.rep_delay = float(self.config_parser[quantum_config_name]['rep_delay'])
         self.runs = int(self.config_parser[quantum_config_name]['runs'])
-        self.repetition = int(self.config_parser[quantum_config_name]['repetition'])
         self.initialized_triq = int(self.config_parser[quantum_config_name]['initialized_triq'])
         self.user_id = int(self.config_parser[quantum_config_name]['user_id'])
-        self.run_in_simulator = True if self.config_parser[quantum_config_name]['run_in_simulator'] == "1" else False
+        self.triq_path = self.config_parser[quantum_config_name]['triq_path']
         self.triq_measurement_type = self.config_parser[quantum_config_name]['triq_measurement_type']
-        self.remaining = int(self.config_parser[quantum_config_name]['remaining'])
-        self.token_number = int(self.config_parser[quantum_config_name]['token_number'])
         self.skip_update_simulator = True if self.config_parser[quantum_config_name]['skip_update_simulator'] == "1" else False
         self.noisy_simulator = True if self.config_parser[quantum_config_name]['noisy_simulator'] == "1" else False
-        self.noise_level = list(map(float, self.config_parser[quantum_config_name]['noise_level'].split(",")))
+        # self.noise_level = list(map(float, self.config_parser[quantum_config_name]['noise_level'].split(",")))
         self.send_to_backend = True if self.config_parser[quantum_config_name]['send_to_backend'] == "1" else False
         
 conf = Config()
@@ -334,3 +328,16 @@ def calculate_hellinger_distance(correct_output, dists):
     hellinger_distance = math.sqrt(hd_aux)/math.sqrt(2)
 
     return hellinger_distance
+
+def sum_last_n_digits_dict(tmp_dict, n):
+
+    shortened_dict = {}
+
+    for key, value in tmp_dict.items():
+        last_digits = key[-n:]
+        if last_digits in shortened_dict:
+            shortened_dict[last_digits] += value
+        else:
+            shortened_dict[last_digits] = value
+    
+    return shortened_dict

@@ -9,18 +9,20 @@ Functions:
 
 Example:
 """
-from qiskit import QuantumCircuit, transpile, Aer
+from qiskit import QuantumCircuit, transpile
 from qiskit.transpiler import CouplingMap
 from qiskit_ibm_runtime import Sampler
 from qiskit_aer.noise import NoiseModel
 from qiskit_aer import AerSimulator
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-from commons import calibration_type_enum, sql_query, normalize_counts, Config
+from commons import calibration_type_enum, sql_query, normalize_counts, Config, qiskit_compilation_enum
 from qiskit.providers.models import BackendProperties
 import json
 import requests
 import copy
 import mysql.connector
+from qiskit.qasm2 import dumps
+
 from .fake_ibm_perth import NewFakePerthRealAdjust, NewFakePerthRecent15, NewFakePerthRecent15Adjust, \
                         NewFakePerthMix, NewFakePerthMixAdjust, NewFakePerthAverage, NewFakePerthAverageAdjust
 from .fake_ibm_brisbane import NewFakeBrisbaneRealAdjust, NewFakeBrisbaneRecent15, NewFakeBrisbaneRecent15Adjust, \
@@ -62,11 +64,11 @@ class QiskitCircuit:
         if not (isinstance(qasm, str) or isinstance(qc, QuantumCircuit)):
             raise ValueError("Input must be a string or a QuantumCircuit object")
 
-        self.qasm_original = qc.qasm()
+        self.qasm_original = dumps(qc)
 
         qc = transpile_to_basis_gate(qc)
         self.circuit = qc
-        self.qasm = qc.qasm()
+        self.qasm = dumps(qc)
         self.circuit.name = name
         self.circuit.metadata = metadata
         self.gates = dict(qc.count_ops())
@@ -74,23 +76,11 @@ class QiskitCircuit:
         self.depth = qc.depth()
 
         if not skip_simulation:
-            if conf.simulator_hardware != "ibmq_qasm_simulator":
-                # backend_sim = self.service.get_backend(conf.simulator_hardware)
-                # sampler = Sampler(backend_sim) 
-                # job_sim = sampler.run(transpile(qc, backend_sim, basis_gates=["u3", "cx"]), shots=conf.shots)
-                # result_sim = job_sim.result()  
-                # self.correct_output = dict(result_sim.quasi_dists[0])  
-                backend_sim = Aer.get_backend('qasm_simulator')
-                job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
-                result_sim = job_sim.result()  
-                self.correct_output = normalize_counts(dict(result_sim.get_counts(qc)), shots=10000)
-            else:
-                backend_sim = Aer.get_backend('qasm_simulator')
-                job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
-                result_sim = job_sim.result()  
-                # self.correct_output = normalize_counts(dict(result_sim.get_counts(qc)))
-                self.correct_output = normalize_counts((result_sim.get_counts(qc)), shots=10000)
-                # print(self.correct_output)
+            backend_sim = AerSimulator()
+            job_sim = backend_sim.run(qc, shots=10000)
+            result_sim = job_sim.result()  
+            self.correct_output = normalize_counts((result_sim.get_counts(qc)), shots=10000)
+            # print(self.correct_output)
 
     def get_native_gates_circuit(self, backend, simulator = False):
         if simulator:
@@ -99,15 +89,8 @@ class QiskitCircuit:
             return transpile(self.circuit.decompose(), backend, basis_gates=backend.basis_gates, optimization_level=0, layout_method="trivial")
             # return transpile(self.circuit.decompose(), backend=backend, optimization_level=0)
         
-    def transpile_to_target_backend(self, backend, simulator = False, backend_sim=None):
-        if simulator:
-            pm = generate_preset_pass_manager(optimization_level=1, backend=backend)
-            isa_circuits = pm.run(self.circuit)
-            return isa_circuits
-
-            # return transpile(self.circuit.decompose(), backend, basis_gates=["u3", "cx"], optimization_level=0, layout_method="trivial")
-        else:
-            return transpile(self.circuit, backend=backend, optimization_level=0, layout_method="trivial")
+    def transpile_to_target_backend(self, backend):
+        return transpile(self.circuit, backend=backend, optimization_level=0, layout_method="trivial")
     
     def get_qasm(self):
         return self.qasm
@@ -278,7 +261,7 @@ def optimize_qasm(input_qasm, backend, optimization, enable_noise_adaptive = Fal
     compilation_time = tmp_end_time - tmp_start_time
 
     # Convert the optimized circuit back to QASM
-    optimized_qasm = transpiled_circuit.qasm()
+    optimized_qasm = dumps(transpiled_circuit)
 
     # print(optimized_qasm)
 
@@ -306,7 +289,7 @@ def get_initial_layout_from_circuit(qc):
     
     for key, value in virtual_bits.items():
         if "'q'" in "{}".format(key):
-            initial_layout_dict[key.index] = value 
+            initial_layout_dict[key._index] = value 
     
     for i in range(len(initial_layout_dict.keys())):
         initial_layout.append(initial_layout_dict[i])
@@ -712,6 +695,70 @@ def generate_brisbane_32_noisy_simulator(backend, scale_error):
     return noise_brisbane_32_cx, sim_brisbane_32, brisbane_32_map
 
 
+def get_compilation_setup(compilation_name, recent_n):
+    qiskit_optimization_level = 0
+    enable_noise_adaptive = False
+    enable_mapomatic = False
+    calibration_type = None
+
+    if compilation_name == qiskit_compilation_enum.qiskit_3.value:    
+        qiskit_optimization_level = 3
+    elif compilation_name == qiskit_compilation_enum.qiskit_0.value:    
+        qiskit_optimization_level = 0            
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_avg.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.average.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_lcd.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.lcd.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_mix.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.mix.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_w15.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_15.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_avg_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.average_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_lcd_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.lcd_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_mix_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.mix_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_w15_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_15_adjust.value
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_wn.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_n.value
+
+        compilation_name = compilation_name.replace("_wn", "_w{}".format(recent_n))
+    elif compilation_name == qiskit_compilation_enum.qiskit_NA_wn_adj.value:    
+        enable_noise_adaptive = True
+        calibration_type = calibration_type_enum.recent_n_adjust.value
+
+        compilation_name = compilation_name.replace("_wn", "_w{}".format(recent_n))
+    elif compilation_name == qiskit_compilation_enum.mapomatic_lcd.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.lcd.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_avg.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.average.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_mix.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.mix.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_avg_adj.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.average_adjust.value
+    elif compilation_name == qiskit_compilation_enum.mapomatic_w15_adj.value:    
+        enable_mapomatic = True
+        calibration_type = calibration_type_enum.recent_15_adjust.value
+
+    return compilation_name, calibration_type, enable_noise_adaptive, enable_mapomatic
+
+#region REST API
+
 def send_rest_api_request(url, token):
     response = requests.request(
         "GET",
@@ -746,8 +793,6 @@ def get_qiskit_usage_info(token):
     maxPendingJobs = response_json["byInstance"][0]["maxPendingJobs"]
 
     return instance, quota, usage, pendingJobs, maxPendingJobs
-
-#region REST API
 
 def update_qiskit_usage_info(token):
 
@@ -868,7 +913,7 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
     noise_model = NoiseModel.from_backend_properties(new_properties)
     
     if noiseless or error_percentage == 0:
-        sim_noisy = AerSimulator()
+        sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties)
     else:
         sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties,
                                 noise_model=noise_model, 

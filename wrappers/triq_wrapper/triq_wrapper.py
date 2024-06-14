@@ -21,8 +21,9 @@ from commons import calibration_type_enum, sql_query, normalize_counts, Config
 
 conf = Config()
 
-# triq_path = os.path.expanduser("./wrappers/triq_wrapper/")
-triq_path = os.path.expanduser("~/Github/quantum_platform/wrappers/triq_wrapper/")
+triq_path = os.path.expanduser(conf.triq_path)
+# triq_path = os.path.expanduser("/Users/handy/Github/quantum_platform/wrappers/triq_wrapper")
+
 out_path = os.path.expanduser("./")
 dag_path = os.path.expanduser("./")
 map_path = os.path.expanduser("./")
@@ -63,14 +64,10 @@ def generate_qasm(qasm_str, hardware_name, triq_optimization, measurement_type):
     # parse qasm into .in
     parse_ir(qasm_str, os.path.join(dag_path, dag_name))
 
-    # print(map_file_path)
-
     # call triq
     call_triq = [os.path.join(triq_path, "triq"), 
                 dag_file_path, 
                 out_file_path, tmp_hw_name, str(triq_optimization), map_file_path, measurement_type]
-
-    # print(call_triq)
 
     out_file=open("log/output.log",'w+')
 
@@ -130,6 +127,32 @@ def generate_initial_mapping_file(init_maps):
     f = open(map_file_path, "w+")
     f.write(string_maps)
     f.close()
+
+def get_compilation_config(compilation_name):
+    calibration_type = calibration_type_enum.lcd.value
+
+    if compilation_name == "triq_lcd":
+        calibration_type = calibration_type_enum.lcd.value
+    elif compilation_name == "triq_avg":
+        calibration_type = calibration_type_enum.average.value
+    elif compilation_name == "triq_mix":
+        calibration_type = calibration_type_enum.mix.value
+    elif compilation_name == "triq_w15_adj":
+        calibration_type = calibration_type_enum.recent_15_adjust.value
+
+    hardware_name = ""
+    if compilation_name == "triq_lcd":
+        hardware_name = conf.hardware_name + "_" + "real"
+    elif compilation_name == "triq_avg":
+        hardware_name = conf.hardware_name + "_" + "avg"
+    elif compilation_name == "triq_mix":
+        hardware_name = conf.hardware_name + "_" + "mix"
+    elif compilation_name == "triq_w15_adj":
+        hardware_name = conf.hardware_name + "_" + "recent_15_adj"
+
+    return calibration_type, hardware_name
+
+#region Calibration Config
 
 def generate_realtime_calibration_data(qem):
     # Connect to the MySQL database
@@ -574,3 +597,4 @@ WHERE q.calibration_id = %s;
 
     conn.close()
 
+#endregion

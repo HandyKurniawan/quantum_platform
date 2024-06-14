@@ -4,7 +4,6 @@ import json
 
 from qiskit import *
 from qiskit.result import *
-from qiskit_ibm_provider import IBMProvider
 from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit.providers import JobStatus
 from qiskit.primitives import SamplerResult
@@ -16,6 +15,7 @@ from commons import Config, convert_utc_to_local, calculate_time_diff, get_count
 import wrappers.qiskit_wrapper as qiskit_wrapper
 from wrappers.qiskit_wrapper import QiskitCircuit
 import wrappers.polar_wrapper as polar_wrapper
+from qiskit.qasm2 import dumps
 
 conf = Config()
 
@@ -76,7 +76,7 @@ def check_result_availability(service, header_id, job_id):
 
         job = service.job(job_id)
 
-        print(job.status())
+        print("Job status :", job.status())
 
         if(job.status() == JobStatus.ERROR or job.status() == JobStatus.CANCELLED):
             update_result_header_status_by_header_id(cursor, header_id, "error")
@@ -150,7 +150,7 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
 
                 avg_result[detail_id] = convert_to_json(sum_result)
                 std_json[detail_id] = convert_to_json(std_dict)
-                qasm_dict[detail_id] = job.inputs["circuits"][idx_2-1].qasm()
+                qasm_dict[detail_id] = dumps(job.inputs["circuits"][idx_2-1])
 
                 if is_mitigated(job):
                     mitigation_overhead_dict[detail_id] = job.result().metadata[idx_2-1]["readout_mitigation_overhead"]
@@ -191,7 +191,7 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
         conn.close()
 
     except Exception as e:
-        print("Result not available yet", str(e))
+        print("Error for check result availability :", str(e))
 
 def check_result_availability_simulator(service, header_id, job_id, hw_name):
     print("Checking results for: ", job_id, "with header id :", header_id)
@@ -200,7 +200,7 @@ def check_result_availability_simulator(service, header_id, job_id, hw_name):
         conn = mysql.connector.connect(**conf.mysql_config)
         cursor = conn.cursor()
 
-        backend = service.get_backend(hw_name)
+        backend = service.backend(hw_name)
 
         cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
 FROM result_detail d
@@ -210,7 +210,7 @@ LEFT JOIN framework.result_backend_json j ON d.id = j.detail_id
 WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS NULL  ''', ('pending', job_id, header_id,))
         results_details = cursor.fetchall()
 
-        print(len(results_details))
+        # print(len(results_details))
         for idx, res in enumerate(results_details):
             detail_id, updated_qasm, compilation_name, noise_level, shots = res
 
@@ -222,7 +222,7 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
             else:
                 # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
                 circuit = qc.transpile_to_target_backend(backend, False)
-                print("transpile to target backend")
+                # print("transpile to target backend")
 
             print("preparing the noisy simulator", compilation_name, noise_level)
             noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level)
@@ -238,7 +238,7 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
             quasi_dists = convert_to_json(output_normalize)
             quasi_dists_std = ""
-            qasm = circuit.qasm()
+            qasm = dumps(circuit)
             mapping_json = get_initial_mapping_json(qasm)
             mitigation_overhead = 0
             mitigation_time = 0
@@ -280,8 +280,7 @@ def get_executed_jobs():
         conn = mysql.connector.connect(**conf.mysql_config)
         cursor = conn.cursor()
 
-        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s 
-                       and (user_id IN (11,12,13,14,15,16,95) OR id = 2766) and id >= 697;''', ("executed", ))
+        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s ;''', ("executed", ))
 
         results = cursor.fetchall()
         cursor.close()
@@ -293,7 +292,7 @@ def get_executed_jobs():
     return results
 
 def get_metrics(header_id, job_id):
-    print("")
+    # print("")
     print("Getting qasm for :", header_id, job_id)
     conn = mysql.connector.connect(**conf.mysql_config)
     cursor = conn.cursor()
@@ -306,7 +305,7 @@ def get_metrics(header_id, job_id):
         WHERE h.status = %s AND h.job_id = %s AND h.id = %s AND j.quasi_dists IS NOT NULL;''', ("executed", job_id, header_id))
         results_details_json = cursor.fetchall()
 
-        print(len(results_details_json))
+        # print(len(results_details_json))
         for idx, res in enumerate(results_details_json):
             detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level = res
 

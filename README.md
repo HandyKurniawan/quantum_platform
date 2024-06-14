@@ -4,6 +4,7 @@ A platform for experimenting with and applying various quantum compilation techn
 ## Table of contents
 
 - [Setup](#setup)
+- [Example in Python](#example-in-python)
 - [Compilation Techniques](#compilation-techniques)
   - [Initial Mapping](#initial-mapping)
   - [Routing](#routing)
@@ -15,10 +16,21 @@ A platform for experimenting with and applying various quantum compilation techn
 
 ### Installation
 
+#### Clone Github
+
+First, you need to clone the project to get all the necessary files
+
+``` terminal
+git clone https://github.com/HandyKurniawan/quantum_platform.git
+cd quantum_platform
+```
+
 #### MariaDB
 
-To setup the database, first, we need to install MariaDB. Note: Skip this step if you already installed it
+To set up the database, follow these steps:
 
+1. Install MariaDB:
+   
 ``` terminal
 sudo apt update
 sudo apt install mariadb-server
@@ -26,13 +38,15 @@ sudo systemctl start mariadb
 sudo systemctl enable mariadb
 ```
 
-Once you have installed and start the database, you need to setup the password for the root account
+2. Secure your MariaDB installation:
 
 ``` terminal
 sudo mysql_secure_installation
 ```
 
-After that you can login through the root account
+3. Create a database and user:
+
+Login with the root account to the database
 
 ``` terminal
 mysql -u root -p
@@ -49,73 +63,77 @@ CREATE DATABASE  IF NOT EXISTS `framework`;
 exit;
 ```
 
-Once we have created the database and the users, we can import the table structure from these files
+4. Import table structures:
 
 ``` terminal
-mysql -u user_1 -p framework < framework_structure.sql
-mysql -u user_1 -p framework < calibration_data_structure.sql
-mysql -u user_1 -p framework < data.sql
+mysql -u user_1 -p framework < mariadb/framework_structure.sql
+mysql -u user_1 -p framework < mariadb/calibration_data_structure.sql
+mysql -u user_1 -p framework < mariadb/data.sql
 ```
+Note: These commands need to be run one by one, and the password for user_1 is 1234
 
 Now your database is ready.
 
 #### Platform
 
-First, we need to install the necessary library
+First, we need to go to the home folder of the project (\quantum_platform)
+
+Note: If you have an older version (or if you don't have it) of Python please upgrade (install) it first:
+
+``` terminal
+sudo add-apt-repository ppa:deadsnakes/ppa    
+sudo apt update  
+sudo apt install python.3.12
+```
+
+Install dependencies and set up the Python environment:
 
 ``` terminal
 sudo apt-get update
+sudo apt-get install python3.xx-venv 
 sudo apt-get install libmuparser2v5
-```
-
-Then, we need to create a Python environment to have a clean installation
-
-``` terminal
-python3 -m venv .venv
-```
-
-Then activate it
-
-``` terminal
-. .venv/bin/activate
-```
-Last, install the required libraries:
-
-``` terminal
+sudo apt-get install libz3-dev
+python3.xx -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
-Now, it is ready to go! 
+`Python3.xx` is depends on what Python3.xx version you have)
 
-### Example in Python
+#### Config
 
-```python
-from qEmQUIP import QEM, conf
-q = QEM(runs=conf.runs, fixed_initial_layout = False, run_in_simulator=conf.run_in_simulator, user_id=conf.user_id, token=token)
-qasm_text = """OPENQASM 2.0;
-include "qelib1.inc";
-qreg q[2];
-creg c[2];
-h q[0];
-cx q[0], q[1];
-barrier q[0], q[1];
-measure q[0] -> c[0];
-measure q[1] -> c[1];
-"""
-qc = q.get_circuit_properties(qasm_source=qasm_text)
-updated_qasm = q.compile(qasm=qc.qasm_original, compilation_name="triq_avg_na")
+Now, we need to update the `config.ini` file to change the config for the database, and the path for the TriQ before continue
+
+```terminal
+[MySQLConfig]
+user = user_1
+password = 1234
+host = localhost
+database = framework
+
+...
+
+[QuantumConfig]
+...
+triq_path = ~/Github/quantum_platform/wrappers/triq_wrapper/
+...
 ```
+Now, we are good to go 🚀
 
-**Results**
-```text
-OPENQASM 2.0;
-include "qelib1.inc";
-qreg q[127];
-creg c[127];
-u2(0,3.14159265358979) q[104];
-cx q[104],q[103];
-measure q[104] -> c[0];
-measure q[103] -> c[1];
-```
+## Tutorial
+
+To run them on jupyter notebook,  we need to create a kernel 
+
+``` terminal
+pip install ipykernel
+python -m ipykernel install --user --name .venv --display-name "platform"
+jupyter notebook
+``` 
+
+When you open jupyter notebook, don't forget to change the kernel to `platform`
+
+![screen](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/screen.png)
+
+See this jupyter notebook file for more in-depth examples: [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
 
 ## Compilation Techniques
 
@@ -143,9 +161,77 @@ We included the noisy simulator embedded with noise coming from the real IBM's b
 
 We also provided scaled noise from 0 (noiseless) to 1 (real backend) in the simulator.
 
-## Tutorial
+## Example in Python
 
-See this jupyter notebook file for more in-depth examples: [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
+First, we need to set the object
+
+```python
+# Setup the object
+from qEmQUIP import QEM, conf
+token = "74076e69ed0d571c8e0ff8c0b2c912c28681d47426cf16a5d817825de16f7dbd95bf6ff7c604b706803b78b2e21d1dd5cacf9f1b0aa81d672d938bded8049a17"
+q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
+```
+
+1. To run the circuit directly to the real backend with the selected compilation
+
+```python
+# prepare quantum circuit 
+qasm_text = """OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+h q[0];
+cx q[0], q[1];
+barrier q[0], q[1];
+measure q[0] -> c[0];
+measure q[1] -> c[1];
+"""
+
+# select compilation techniques
+compilations = ["qiskit_0", "qiskit_3", "triq_lcd_sabre"]
+
+# send the circuit result to the backend and database, later to get the result we need to run a script to retrieve the result from the cloud
+q.send_to_real_backend(qasm_files, compilations)
+```
+
+2. Compiled them through a series of quantum circuits, compilations and different noise_levels in the simulator
+
+```python
+
+df = q.run_simulator(qasm_files, compilations, noise_levels, shots, True)
+```
+
+3. Compiled using the selected compilation and retrieved the compiled QASM
+   
+```python
+# prepare the circuit
+conf.base_folder = "./circuits/testing/"
+qasm_files = q.get_qasm_files_from_path()
+
+# set the number of shots
+shots = 10000
+
+# select compilation techniques
+compilations = ["qiskit_0", "qiskit_3", "triq_lcd_sabre"]
+
+# get the circuit properties
+qc = q.get_circuit_properties(qasm_source=qasm_text)
+
+# compiled with the chosen compilation
+updated_qasm = q.compile(qasm=qc.qasm_original, compilation_name="triq_avg_na")
+```
+
+**Results**
+```text
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[127];
+creg c[127];
+u2(0,3.14159265358979) q[104];
+cx q[104],q[103];
+measure q[104] -> c[0];
+measure q[103] -> c[1];
+```
 
 ## Acknowledgments
 
