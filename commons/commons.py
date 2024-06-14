@@ -21,8 +21,6 @@ class Config:
             'database': self.config_parser['MySQLConfig']['database']
         }
 
-        self.simulator_hardware = self.config_parser['SimulationConfig']['simulator_hardware']
-
         self.bit_format = self.config_parser['MathConfig']['bit_format']
 
         self.activate_debugging_time = True if self.config_parser['GeneralConfig']['activate_debugging_time'] == "1" else False
@@ -43,6 +41,7 @@ class Config:
         self.repetition = int(self.config_parser[quantum_config_name]['repetition'])
         self.initialized_triq = int(self.config_parser[quantum_config_name]['initialized_triq'])
         self.user_id = int(self.config_parser[quantum_config_name]['user_id'])
+        self.triq_path = self.config_parser[quantum_config_name]['triq_path']
         self.triq_measurement_type = self.config_parser[quantum_config_name]['triq_measurement_type']
         self.skip_update_simulator = True if self.config_parser[quantum_config_name]['skip_update_simulator'] == "1" else False
         self.noisy_simulator = True if self.config_parser[quantum_config_name]['noisy_simulator'] == "1" else False

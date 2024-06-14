@@ -76,25 +76,11 @@ class QiskitCircuit:
         self.depth = qc.depth()
 
         if not skip_simulation:
-            if conf.simulator_hardware != "ibmq_qasm_simulator":
-                # backend_sim = self.service.get_backend(conf.simulator_hardware)
-                # sampler = Sampler(backend_sim) 
-                # job_sim = sampler.run(transpile(qc, backend_sim, basis_gates=["u3", "cx"]), shots=conf.shots)
-                # result_sim = job_sim.result()  
-                # self.correct_output = dict(result_sim.quasi_dists[0])  
-                backend_sim = AerSimulator()
-                # job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
-                job_sim = backend_sim.run(qc, shots=10000)
-                result_sim = job_sim.result()  
-                self.correct_output = normalize_counts(dict(result_sim.get_counts(qc)), shots=10000)
-            else:
-                backend_sim = AerSimulator()
-                # job_sim = backend_sim.run(transpile(qc, backend_sim), shots=10000)
-                job_sim = backend_sim.run(qc, shots=10000)
-                result_sim = job_sim.result()  
-                # self.correct_output = normalize_counts(dict(result_sim.get_counts(qc)))
-                self.correct_output = normalize_counts((result_sim.get_counts(qc)), shots=10000)
-                # print(self.correct_output)
+            backend_sim = AerSimulator()
+            job_sim = backend_sim.run(qc, shots=10000)
+            result_sim = job_sim.result()  
+            self.correct_output = normalize_counts((result_sim.get_counts(qc)), shots=10000)
+            # print(self.correct_output)
 
     def get_native_gates_circuit(self, backend, simulator = False):
         if simulator:

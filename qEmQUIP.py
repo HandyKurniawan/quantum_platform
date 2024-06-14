@@ -353,7 +353,7 @@ class QEM:
                 
                     updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, compilation_name=comp, noise_level=noise_level)
                     compiled_qc = QiskitCircuit(updated_qasm)
-                    circuit = compiled_qc.transpile_to_target_backend(self.backend, False)
+                    circuit = compiled_qc.transpile_to_target_backend(self.backend)
                     
                     job = noisy_simulator.run(circuit, shots=shots)
                     result = job.result()  
