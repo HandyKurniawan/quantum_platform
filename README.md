@@ -4,6 +4,7 @@ A platform for experimenting with and applying various quantum compilation techn
 ## Table of contents
 
 - [Setup](#setup)
+- [Example in Python](#example-in-python)
 - [Compilation Techniques](#compilation-techniques)
   - [Initial Mapping](#initial-mapping)
   - [Routing](#routing)
@@ -75,11 +76,23 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Example in Python
+Now, we are good to go 🚀
+
+## Example in Python
+
+First, we need to set the object
 
 ```python
+# Setup the object
 from qEmQUIP import QEM, conf
-q = QEM(runs=conf.runs, fixed_initial_layout = False, run_in_simulator=conf.run_in_simulator, user_id=conf.user_id, token=token)
+token = "74076e69ed0d571c8e0ff8c0b2c912c28681d47426cf16a5d817825de16f7dbd95bf6ff7c604b706803b78b2e21d1dd5cacf9f1b0aa81d672d938bded8049a17"
+q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
+```
+
+1. To run the circuit directly to the real backend with the selected compilation
+
+```python
+# prepare quantum circuit 
 qasm_text = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[2];
@@ -90,7 +103,38 @@ barrier q[0], q[1];
 measure q[0] -> c[0];
 measure q[1] -> c[1];
 """
+
+# select compilation techniques
+compilations = ["qiskit_0", "qiskit_3", "triq_lcd_sabre"]
+
+# send the circuit result to the backend and database, later to get the result we need to run a script to retrieve the result from the cloud
+q.send_to_real_backend(qasm_files, compilations)
+```
+
+2. Compiled them through a series of quantum circuits, compilations and different noise_levels in the simulator
+
+```python
+
+df = q.run_simulator(qasm_files, compilations, noise_levels, shots, True)
+```
+
+3. Compiled using the selected compilation and retrieved the compiled QASM
+   
+```python
+# prepare the circuit
+conf.base_folder = "./circuits/testing/"
+qasm_files = q.get_qasm_files_from_path()
+
+# set the number of shots
+shots = 10000
+
+# select compilation techniques
+compilations = ["qiskit_0", "qiskit_3", "triq_lcd_sabre"]
+
+# get the circuit properties
 qc = q.get_circuit_properties(qasm_source=qasm_text)
+
+# compiled with the chosen compilation
 updated_qasm = q.compile(qasm=qc.qasm_original, compilation_name="triq_avg_na")
 ```
 
