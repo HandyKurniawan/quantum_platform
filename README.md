@@ -82,20 +82,20 @@ Note: If you have an older version (or if you don't have it) of Python please up
 ``` terminal
 sudo add-apt-repository ppa:deadsnakes/ppa    
 sudo apt update  
-sudo apt install python-3.12
+sudo apt install python.3.12
 ```
 
 Install dependencies and set up the Python environment:
 
 ``` terminal
 sudo apt-get update
-sudo apt-get install pythonx.x-venv 
+sudo apt-get install python3.xx-venv 
 sudo apt-get install libmuparser2v5
-python3 -m venv .venv
+python3.xx -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-`x.x` is depends on what python version you have)
+`3.xx` is depends on what Python3.xx version you have)
 
 Now, we are good to go 🚀
 
