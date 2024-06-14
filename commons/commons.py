@@ -38,7 +38,6 @@ class Config:
         self.optimization_level = int(self.config_parser[quantum_config_name]['optimization_level'])
         self.resilience_level = int(self.config_parser[quantum_config_name]['resilience_level'])
         self.runs = int(self.config_parser[quantum_config_name]['runs'])
-        self.repetition = int(self.config_parser[quantum_config_name]['repetition'])
         self.initialized_triq = int(self.config_parser[quantum_config_name]['initialized_triq'])
         self.user_id = int(self.config_parser[quantum_config_name]['user_id'])
         self.triq_path = self.config_parser[quantum_config_name]['triq_path']
@@ -329,3 +328,16 @@ def calculate_hellinger_distance(correct_output, dists):
     hellinger_distance = math.sqrt(hd_aux)/math.sqrt(2)
 
     return hellinger_distance
+
+def sum_last_n_digits_dict(tmp_dict, n):
+
+    shortened_dict = {}
+
+    for key, value in tmp_dict.items():
+        last_digits = key[-n:]
+        if last_digits in shortened_dict:
+            shortened_dict[last_digits] += value
+        else:
+            shortened_dict[last_digits] = value
+    
+    return shortened_dict

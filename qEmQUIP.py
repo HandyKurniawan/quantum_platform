@@ -15,7 +15,8 @@ import wrappers.qiskit_wrapper as qiskit_wrapper
 import wrappers.database_wrapper as database_wrapper
 import sys, glob, os
 from commons import convert_to_json, triq_optimization, qiskit_optimization, \
-    calibration_type_enum, qiskit_compilation_enum, normalize_counts, Config, num_sort, convert_dict_binary_to_int, calculate_success_rate_tvd
+    calibration_type_enum, qiskit_compilation_enum, normalize_counts, Config,  \
+    num_sort, convert_dict_binary_to_int, calculate_success_rate_tvd, sum_last_n_digits_dict
 import inspect
 from qiskit import QuantumCircuit, transpile
 from wrappers.qiskit_wrapper import QiskitCircuit
@@ -220,7 +221,10 @@ class QEM:
     def apply_mthree(self, backend, initial_mapping, counts, shots):
         mit = mthree.M3Mitigation(backend)
         mit.cals_from_system(initial_mapping, shots)
-        m3_quasi = mit.apply_correction(counts, initial_mapping)
+
+        shortened_counts = sum_last_n_digits_dict(counts, len(initial_mapping))
+
+        m3_quasi = mit.apply_correction(shortened_counts, initial_mapping)
         probs = m3_quasi.nearest_probability_distribution()
         probs_int = convert_dict_binary_to_int(probs)
 
