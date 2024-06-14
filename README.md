@@ -16,6 +16,14 @@ A platform for experimenting with and applying various quantum compilation techn
 
 ### Installation
 
+#### Clone Github
+
+First, you need to clone the project to get all the necessary files
+
+``` terminal
+git clone https://github.com/HandyKurniawan/quantum_platform.git
+```
+
 #### MariaDB
 
 To set up the database, follow these steps:
