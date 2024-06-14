@@ -131,7 +131,7 @@ jupyter notebook
 
 When you open jupyter notebook, don't forget to change the kernel to `platform`
 
-![compilations](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/screen.png)
+![screen](https://github.com/HandyKurniawan/quantum_platform/blob/main/img/screen.png)
 
 See this jupyter notebook file for more in-depth examples: [here](https://github.com/HandyKurniawan/quantum_platform/blob/main/tutorial.ipynb)
 
