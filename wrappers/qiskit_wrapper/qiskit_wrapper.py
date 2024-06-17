@@ -910,7 +910,7 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
     coupling_map = _backend.configuration().coupling_map
     # print(coupling_map)
     
-    noise_model = NoiseModel.from_backend_properties(new_properties)
+    noise_model = NoiseModel.from_backend_properties(new_properties, dt = 0.1)
     
     if noiseless or error_percentage == 0:
         sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties)
