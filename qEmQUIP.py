@@ -20,7 +20,9 @@ from commons import convert_to_json, triq_optimization, qiskit_optimization, \
 import inspect
 from qiskit import QuantumCircuit, transpile
 from wrappers.qiskit_wrapper import QiskitCircuit
-from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler, Estimator, Options
+from qiskit_ibm_runtime import QiskitRuntimeService, Session, Options
+from qiskit_ibm_runtime import SamplerV2 as Sampler, EstimatorV2 as Estimator
+from qiskit_ibm_runtime.options import SamplerOptions, EstimatorOptions, DynamicalDecouplingOptions, TwirlingOptions
 from qiskit_aer.noise import NoiseModel
 
 from datetime import datetime
@@ -30,6 +32,10 @@ import json
 import mapomatic as mm
 import mthree
 import pandas as pd
+
+from qiskit.circuit.library import XGate, YGate
+from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
+from qiskit.transpiler import PassManager
 
 conf = Config()
 debug = conf.activate_debugging_time
@@ -42,9 +48,10 @@ class QEM:
                  token=conf.qiskit_token):
 
         self.session = None
-        self.service = None
+        self.service: QiskitRuntimeService = None
         self.backend = None
-        self.sampler = None
+        self.program: (Sampler | Estimator) = None
+        self.sampler:Sampler = None
 
         self.fixed_initial_layout = fixed_initial_layout
         self.initial_layout_qiskit = None
@@ -89,7 +96,8 @@ class QEM:
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))
 
-    def set_backend(self, token=conf.qiskit_token, shots=conf.shots):
+    def set_backend(self, program: (Sampler | Estimator), token=conf.qiskit_token, shots=conf.shots, 
+                    dd_options: DynamicalDecouplingOptions = None, twirling_options: TwirlingOptions = None):
         if debug: tmp_start_time  = time.perf_counter()
         QiskitRuntimeService.save_account(channel="ibm_quantum", token=token, overwrite=True)
 
@@ -103,13 +111,25 @@ class QEM:
         noise_model = NoiseModel.from_backend(self.backend)
         basis_gates = self.backend.configuration().basis_gates
         
-        options = Options()
-        options.execution.shots = shots
-        options.optimization_level = conf.optimization_level
-        options.resilience_level = conf.resilience_level
-        
-        self.sampler = Sampler(self.backend, options=options) 
+        if isinstance(program, Sampler):
+            options = SamplerOptions(
+                default_shots=shots,
+                dynamical_decoupling=dd_options,
+                twirling= twirling_options
+            )
+            self.program = Sampler(mode=self.backend, options=options) 
+            self.sampler = Sampler(mode=self.backend, options=options) 
+        elif isinstance(program, Estimator):
+            options = EstimatorOptions(
+                default_shots=shots,
+                optimization_level=conf.optimization_level,
+                resilience_level=conf.resilience_level,
+                dynamical_decoupling=dd_options,
+                twirling= twirling_options
+            )
+            self.program = Estimator(mode=self.backend,options=options)
 
+        
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for setup the backends: {} seconds".format(tmp_end_time - tmp_start_time))
 
@@ -229,9 +249,40 @@ class QEM:
         probs_int = convert_dict_binary_to_int(probs)
 
         return probs_int
+    
+    def apply_dd(self, circuit, backend, sequence_type = "XX", scheduling_method = "alap"):
+
+        X = XGate()
+        Y = YGate()
+        
+        if sequence_type == "XX":
+            dd_sequence = [X, X]
+        elif sequence_type == "XpXm":
+            dd_sequence = [X, X]
+        elif sequence_type == "XY4":
+            dd_sequence = [X, Y, X, Y]
+
+        target = backend.target
+
+        # Set the scheduling method
+        if scheduling_method == "alap":
+            scheduling = ALAPScheduleAnalysis(target=target)
+        elif scheduling_method == "asap":
+            scheduling = ASAPScheduleAnalysis(target=target)
+
+        dd_pm = PassManager(
+        [
+            scheduling,
+            PadDynamicalDecoupling(target=target, dd_sequence=dd_sequence),
+        ]
+        )
+        
+        circuit_dd = dd_pm.run(circuit)
+
+        return circuit_dd
 
         
-    def send_qasm_to_real_backend(self):
+    def send_qasm_to_real_backend(self, program: (Sampler | Estimator) = None, dd_options: DynamicalDecouplingOptions = None):
         if debug: tmp_start_time  = time.perf_counter()
 
         results_1 = database_wrapper.get_header_with_null_job(self.cursor)
@@ -333,7 +384,9 @@ class QEM:
         return updated_qasm, initial_mapping
 
 #region Run
-    def run_simulator(self, qasm_files, compilations, noise_levels, shots, mitigation = None, send_to_db = False):
+    def run_simulator(self, qasm_files, compilations, noise_levels, shots, 
+                      mitigation = None, send_to_db = False,
+                      apply_dd = False, sequence_type = "XX", scheduling_method = "alap"):
         """
         
         """
@@ -344,21 +397,25 @@ class QEM:
 
         res_circuit_name, res_compilations, res_noise_levels, res_success_rate, res_success_rate_m3 = ([] for _ in range(5))
 
-        for noise_level in noise_levels:
-            noise_model, noisy_simulator, coupling_map = qiskit_wrapper.get_noisy_simulator(self.backend, noise_level)
 
-            for qasm in qasm_files:
-                qc = self.get_circuit_properties(qasm_source=qasm)
-                self.circuit_name = qasm.split("/")[-1].split(".")[0]
-                self.qasm = qc.qasm
-                self.qasm_original = qc.qasm_original
+        for qasm in qasm_files:
+            qc = self.get_circuit_properties(qasm_source=qasm)
+            self.circuit_name = qasm.split("/")[-1].split(".")[0]
+            self.qasm = qc.qasm
+            self.qasm_original = qc.qasm_original
 
-                for comp in compilations:
+            for comp in compilations:
                 
-                    updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, compilation_name=comp, noise_level=noise_level)
-                    compiled_qc = QiskitCircuit(updated_qasm)
-                    circuit = compiled_qc.transpile_to_target_backend(self.backend)
-                    
+                updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, compilation_name=comp, noise_level=noise_level)
+                compiled_qc = QiskitCircuit(updated_qasm)
+                circuit = compiled_qc.transpile_to_target_backend(self.backend)
+
+                if apply_dd:
+                    circuit = self.apply_dd(circuit, noisy_simulator)
+
+                for noise_level in noise_levels:
+                    noise_model, noisy_simulator, coupling_map = qiskit_wrapper.get_noisy_simulator(self.backend, noise_level)
+
                     job = noisy_simulator.run(circuit, shots=shots)
                     result = job.result()  
                     output = result.get_counts()
@@ -391,7 +448,8 @@ class QEM:
 
         return df
     
-    def send_to_real_backend(self, qasm_files, compilations, hardware_name = conf.hardware_name):
+    def send_to_real_backend(self, qasm_files, compilations, hardware_name = conf.hardware_name,
+                             dd_options: DynamicalDecouplingOptions = None):
         # Update the
         conf.send_to_db = True
         conf.hardware_name = hardware_name

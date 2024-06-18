@@ -871,7 +871,11 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
                 j["value"] = new_val
                 # print(j["name"], j["value"])
             elif (j["name"] in ("T1", "T2")):
-                new_val = j["value"] + (1000 - (100 * error_percentage))
+                if error_percentage == 0:
+                    new_val = j["value"]  / 0.00001
+                else:
+                    new_val = j["value"]  / error_percentage
+                
                 j["value"] = new_val
 
     # print(_prop_dict["qubits"][0])
