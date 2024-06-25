@@ -24,6 +24,7 @@ from qiskit_ibm_runtime import QiskitRuntimeService, Session, Options
 from qiskit_ibm_runtime import SamplerV2 as Sampler, EstimatorV2 as Estimator
 from qiskit_ibm_runtime.options import SamplerOptions, EstimatorOptions, DynamicalDecouplingOptions, TwirlingOptions
 from qiskit_aer.noise import NoiseModel
+from qiskit.quantum_info import SparsePauliOp
 
 from datetime import datetime
 import mysql.connector
@@ -45,6 +46,7 @@ class QEM:
     def __init__(self, runs=1, 
                  user_id = 99,
                  token=conf.qiskit_token,
+                 skip_db=False
                  ):
 
         self.session: Session = None
@@ -65,7 +67,12 @@ class QEM:
         self.user_id = user_id
         self.token = token
 
-        self.open_database_connection()
+        if not skip_db:
+            self.open_database_connection()
+            conf.send_to_backend = True
+        else:
+            conf.send_to_backend = False
+
         self.set_service(hardware_name=conf.hardware_name, token=token)
         
         if conf.initialized_triq == 1:
@@ -138,10 +145,10 @@ class QEM:
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for setup the backends: {} seconds".format(tmp_end_time - tmp_start_time))
 
-    def get_circuit_properties(self, qasm_source):
+    def get_circuit_properties(self, qasm_source, skip_simulation=False):
         self.circuit_name = qasm_source.split("/")[-1].split(".")[0]
 
-        qc = QiskitCircuit(qasm_source, name=self.circuit_name)
+        qc = QiskitCircuit(qasm_source, name=self.circuit_name, skip_simulation=skip_simulation)
         self.qasm = qc.qasm
         self.qasm_original = qc.qasm_original
             
@@ -387,9 +394,10 @@ class QEM:
         """
         
         """
-
+        skip_simulation = False
         # validation
         if program_type == "estimator":
+            skip_simulation = True
             if len(qasm_files) != len(observables):
                 raise ValueError("The number of observables should be the same as the number of circuits when using the program type 'estimator'.")
 
@@ -406,7 +414,7 @@ class QEM:
                                                                  token=self.token, program_type=program_type)
 
         for idx, qasm in enumerate(qasm_files):
-            qc = self.get_circuit_properties(qasm_source=qasm)
+            qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=skip_simulation)
 
             for comp in compilations:
 
@@ -421,7 +429,7 @@ class QEM:
                         observable = observables[idx]
 
                     updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, observable=observable, compilation_name=comp, generate_props=False, noise_level=noise_level)
-                    compiled_qc = QiskitCircuit(updated_qasm)
+                    compiled_qc = QiskitCircuit(updated_qasm, skip_simulation=skip_simulation)
                     circuit = compiled_qc.transpile_to_target_backend(self.real_backend)
 
                     if apply_dd:
@@ -437,7 +445,15 @@ class QEM:
                         tvd = calculate_success_rate_tvd(qc.correct_output,output_normalize)
 
                     elif isinstance(self.program, Estimator):
-                        pub = (circuit, observable)
+
+                        p_obs = []
+                        for obs in observable:
+                            print(obs)
+                            tmp = SparsePauliOp(obs)
+                            p_obs.append(tmp)
+
+                        print(p_obs)
+                        pub = (circuit, p_obs)
                         job = self.program.run(pubs=[pub])
 
                         tvd = job.result()[0].data.evs

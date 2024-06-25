@@ -72,7 +72,7 @@ class QiskitCircuit:
         self.circuit.name = name
         self.circuit.metadata = metadata
         self.gates = dict(qc.count_ops())
-        self.total_gate = sum(qc.count_ops().values()) - self.gates["measure"]
+        self.total_gate = sum(qc.count_ops().values()) # - self.gates["measure"]
         self.depth = qc.depth()
 
         if not skip_simulation:
