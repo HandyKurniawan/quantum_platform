@@ -484,7 +484,7 @@ class QEM:
 
         return df
     
-    def send_to_real_backend(self, qasm_files, compilations, hardware_name = conf.hardware_name,
+    def send_to_real_backend(self, program_type, qasm_files, compilations, hardware_name = conf.hardware_name,
                              dd_options: DynamicalDecouplingOptions = {}, twirling_options: TwirlingOptions = {}):
         # Update the
         conf.send_to_db = True
@@ -505,7 +505,7 @@ class QEM:
             self.run_on_noisy_simulator_local()
         else:
             # Send to backend
-            self.send_qasm_to_real_backend(dd_options=dd_options, twirling_options=twirling_options)
+            self.send_qasm_to_real_backend(program_type, dd_options=dd_options, twirling_options=twirling_options)
             
                 
 #endregion

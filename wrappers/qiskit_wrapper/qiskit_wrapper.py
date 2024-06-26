@@ -67,8 +67,9 @@ class QiskitCircuit:
         self.qasm_original = dumps(qc)
 
         qc = transpile_to_basis_gate(qc)
-        self.circuit = qc
+        self.circuit: QuantumCircuit = qc
         self.qasm = dumps(qc)
+        self.name = name
         self.circuit.name = name
         self.circuit.metadata = metadata
         self.gates = dict(qc.count_ops())
