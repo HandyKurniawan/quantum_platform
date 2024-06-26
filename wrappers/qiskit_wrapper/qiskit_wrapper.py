@@ -67,12 +67,13 @@ class QiskitCircuit:
         self.qasm_original = dumps(qc)
 
         qc = transpile_to_basis_gate(qc)
-        self.circuit = qc
+        self.circuit: QuantumCircuit = qc
         self.qasm = dumps(qc)
+        self.name = name
         self.circuit.name = name
         self.circuit.metadata = metadata
         self.gates = dict(qc.count_ops())
-        self.total_gate = sum(qc.count_ops().values()) - self.gates["measure"]
+        self.total_gate = sum(qc.count_ops().values()) # - self.gates["measure"]
         self.depth = qc.depth()
 
         if not skip_simulation:
@@ -101,103 +102,103 @@ def get_fake_backend(calibration_type, backend, recent_n, generate_props):
         if generate_props: generate_new_props(backend, calibration_type)
 
         if backend.name == "ibm_brisbane":
-            tmp_backend = NewFakeBrisbaneRealAdjust()
+            tmp_backend = NewFakeBrisbaneRealAdjust(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
-            tmp_backend = NewFakeSherbrookeRealAdjust()
+            tmp_backend = NewFakeSherbrookeRealAdjust(num_qubits=127)
     elif calibration_type == calibration_type_enum.recent_15.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
         if backend.name == "ibm_brisbane":
-            tmp_backend = NewFakeBrisbaneRecent15()
+            tmp_backend = NewFakeBrisbaneRecent15(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
-            tmp_backend = NewFakeSherbrookeRecent15()
+            tmp_backend = NewFakeSherbrookeRecent15(num_qubits=127)
     elif calibration_type == calibration_type_enum.recent_15_adjust.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
         if backend.name == "ibm_brisbane":
-            tmp_backend = NewFakeBrisbaneRecent15Adjust()
+            tmp_backend = NewFakeBrisbaneRecent15Adjust(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
-            tmp_backend = NewFakeSherbrookeRecent15Adjust()
+            tmp_backend = NewFakeSherbrookeRecent15Adjust(num_qubits=127)
     elif calibration_type == calibration_type_enum.mix.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
         if backend.name == "ibm_brisbane":
-            tmp_backend = NewFakeBrisbaneMix()
+            tmp_backend = NewFakeBrisbaneMix(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
-            tmp_backend = NewFakeSherbrookeMix()
+            tmp_backend = NewFakeSherbrookeMix(num_qubits=127)
     elif calibration_type == calibration_type_enum.mix_adjust.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
         if backend.name == "ibm_brisbane":
-            tmp_backend = NewFakeBrisbaneMixAdjust()
+            tmp_backend = NewFakeBrisbaneMixAdjust(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
-            tmp_backend = NewFakeSherbrookeMixAdjust()
+            tmp_backend = NewFakeSherbrookeMixAdjust(num_qubits=127)
     elif calibration_type == calibration_type_enum.average.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
         if backend.name == "ibm_brisbane":
-            tmp_backend = NewFakeBrisbaneAverage()
+            tmp_backend = NewFakeBrisbaneAverage(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
-            tmp_backend = NewFakeSherbrookeAverage()
+            tmp_backend = NewFakeSherbrookeAverage(num_qubits=127)
     elif calibration_type == calibration_type_enum.average_adjust.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
         if backend.name == "ibm_brisbane":
-            tmp_backend = NewFakeBrisbaneAverageAdjust()
+            tmp_backend = NewFakeBrisbaneAverageAdjust(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
-            tmp_backend = NewFakeSherbrookeAverageAdjust()
+            tmp_backend = NewFakeSherbrookeAverageAdjust(num_qubits=127)
     elif calibration_type == calibration_type_enum.recent_n.value:
         if generate_props: generate_new_props(backend, calibration_type, recent_n)
 
-        if   recent_n == 1 : tmp_backend = NewFakeBrisbaneRecent1()
-        elif recent_n == 2 : tmp_backend = NewFakeBrisbaneRecent2()
-        elif recent_n == 3 : tmp_backend = NewFakeBrisbaneRecent3()
-        elif recent_n == 4 : tmp_backend = NewFakeBrisbaneRecent4()
-        elif recent_n == 5 : tmp_backend = NewFakeBrisbaneRecent5()
-        elif recent_n == 6 : tmp_backend = NewFakeBrisbaneRecent6()
-        elif recent_n == 7 : tmp_backend = NewFakeBrisbaneRecent7()
-        elif recent_n == 8 : tmp_backend = NewFakeBrisbaneRecent8()
-        elif recent_n == 9 : tmp_backend = NewFakeBrisbaneRecent9()
-        elif recent_n == 10 : tmp_backend = NewFakeBrisbaneRecent10()
-        elif recent_n == 11 : tmp_backend = NewFakeBrisbaneRecent11()
-        elif recent_n == 12 : tmp_backend = NewFakeBrisbaneRecent12()
-        elif recent_n == 13 : tmp_backend = NewFakeBrisbaneRecent13()
-        elif recent_n == 14 : tmp_backend = NewFakeBrisbaneRecent14()
-        elif recent_n == 15 : tmp_backend = NewFakeBrisbaneRecent15()
-        elif recent_n == 16 : tmp_backend = NewFakeBrisbaneRecent16()
-        elif recent_n == 17 : tmp_backend = NewFakeBrisbaneRecent17()
-        elif recent_n == 18 : tmp_backend = NewFakeBrisbaneRecent18()
-        elif recent_n == 19 : tmp_backend = NewFakeBrisbaneRecent19()
-        elif recent_n == 20 : tmp_backend = NewFakeBrisbaneRecent20()
-        elif recent_n == 21 : tmp_backend = NewFakeBrisbaneRecent21()
-        elif recent_n == 22 : tmp_backend = NewFakeBrisbaneRecent22()
-        elif recent_n == 23 : tmp_backend = NewFakeBrisbaneRecent23()
-        elif recent_n == 24 : tmp_backend = NewFakeBrisbaneRecent24()
-        elif recent_n == 25 : tmp_backend = NewFakeBrisbaneRecent25()
-        elif recent_n == 26 : tmp_backend = NewFakeBrisbaneRecent26()
-        elif recent_n == 27 : tmp_backend = NewFakeBrisbaneRecent27()
-        elif recent_n == 28 : tmp_backend = NewFakeBrisbaneRecent28()
-        elif recent_n == 29 : tmp_backend = NewFakeBrisbaneRecent29()
-        elif recent_n == 30 : tmp_backend = NewFakeBrisbaneRecent30()
-        elif recent_n == 31 : tmp_backend = NewFakeBrisbaneRecent31()
-        elif recent_n == 32 : tmp_backend = NewFakeBrisbaneRecent32()
-        elif recent_n == 33 : tmp_backend = NewFakeBrisbaneRecent33()
-        elif recent_n == 34 : tmp_backend = NewFakeBrisbaneRecent34()
-        elif recent_n == 35 : tmp_backend = NewFakeBrisbaneRecent35()
-        elif recent_n == 36 : tmp_backend = NewFakeBrisbaneRecent36()
-        elif recent_n == 37 : tmp_backend = NewFakeBrisbaneRecent37()
-        elif recent_n == 38 : tmp_backend = NewFakeBrisbaneRecent38()
-        elif recent_n == 39 : tmp_backend = NewFakeBrisbaneRecent39()
-        elif recent_n == 40 : tmp_backend = NewFakeBrisbaneRecent40()
-        elif recent_n == 41 : tmp_backend = NewFakeBrisbaneRecent41()
-        elif recent_n == 42 : tmp_backend = NewFakeBrisbaneRecent42()
-        elif recent_n == 43 : tmp_backend = NewFakeBrisbaneRecent43()
-        elif recent_n == 44 : tmp_backend = NewFakeBrisbaneRecent44()
-        elif recent_n == 45 : tmp_backend = NewFakeBrisbaneRecent45()  
+        if   recent_n == 1 : tmp_backend = NewFakeBrisbaneRecent1(num_qubits=127)
+        elif recent_n == 2 : tmp_backend = NewFakeBrisbaneRecent2(num_qubits=127)
+        elif recent_n == 3 : tmp_backend = NewFakeBrisbaneRecent3(num_qubits=127)
+        elif recent_n == 4 : tmp_backend = NewFakeBrisbaneRecent4(num_qubits=127)
+        elif recent_n == 5 : tmp_backend = NewFakeBrisbaneRecent5(num_qubits=127)
+        elif recent_n == 6 : tmp_backend = NewFakeBrisbaneRecent6(num_qubits=127)
+        elif recent_n == 7 : tmp_backend = NewFakeBrisbaneRecent7(num_qubits=127)
+        elif recent_n == 8 : tmp_backend = NewFakeBrisbaneRecent8(num_qubits=127)
+        elif recent_n == 9 : tmp_backend = NewFakeBrisbaneRecent9(num_qubits=127)
+        elif recent_n == 10 : tmp_backend = NewFakeBrisbaneRecent10(num_qubits=127)
+        elif recent_n == 11 : tmp_backend = NewFakeBrisbaneRecent11(num_qubits=127)
+        elif recent_n == 12 : tmp_backend = NewFakeBrisbaneRecent12(num_qubits=127)
+        elif recent_n == 13 : tmp_backend = NewFakeBrisbaneRecent13(num_qubits=127)
+        elif recent_n == 14 : tmp_backend = NewFakeBrisbaneRecent14(num_qubits=127)
+        elif recent_n == 15 : tmp_backend = NewFakeBrisbaneRecent15(num_qubits=127)
+        elif recent_n == 16 : tmp_backend = NewFakeBrisbaneRecent16(num_qubits=127)
+        elif recent_n == 17 : tmp_backend = NewFakeBrisbaneRecent17(num_qubits=127)
+        elif recent_n == 18 : tmp_backend = NewFakeBrisbaneRecent18(num_qubits=127)
+        elif recent_n == 19 : tmp_backend = NewFakeBrisbaneRecent19(num_qubits=127)
+        elif recent_n == 20 : tmp_backend = NewFakeBrisbaneRecent20(num_qubits=127)
+        elif recent_n == 21 : tmp_backend = NewFakeBrisbaneRecent21(num_qubits=127)
+        elif recent_n == 22 : tmp_backend = NewFakeBrisbaneRecent22(num_qubits=127)
+        elif recent_n == 23 : tmp_backend = NewFakeBrisbaneRecent23(num_qubits=127)
+        elif recent_n == 24 : tmp_backend = NewFakeBrisbaneRecent24(num_qubits=127)
+        elif recent_n == 25 : tmp_backend = NewFakeBrisbaneRecent25(num_qubits=127)
+        elif recent_n == 26 : tmp_backend = NewFakeBrisbaneRecent26(num_qubits=127)
+        elif recent_n == 27 : tmp_backend = NewFakeBrisbaneRecent27(num_qubits=127)
+        elif recent_n == 28 : tmp_backend = NewFakeBrisbaneRecent28(num_qubits=127)
+        elif recent_n == 29 : tmp_backend = NewFakeBrisbaneRecent29(num_qubits=127)
+        elif recent_n == 30 : tmp_backend = NewFakeBrisbaneRecent30(num_qubits=127)
+        elif recent_n == 31 : tmp_backend = NewFakeBrisbaneRecent31(num_qubits=127)
+        elif recent_n == 32 : tmp_backend = NewFakeBrisbaneRecent32(num_qubits=127)
+        elif recent_n == 33 : tmp_backend = NewFakeBrisbaneRecent33(num_qubits=127)
+        elif recent_n == 34 : tmp_backend = NewFakeBrisbaneRecent34(num_qubits=127)
+        elif recent_n == 35 : tmp_backend = NewFakeBrisbaneRecent35(num_qubits=127)
+        elif recent_n == 36 : tmp_backend = NewFakeBrisbaneRecent36(num_qubits=127)
+        elif recent_n == 37 : tmp_backend = NewFakeBrisbaneRecent37(num_qubits=127)
+        elif recent_n == 38 : tmp_backend = NewFakeBrisbaneRecent38(num_qubits=127)
+        elif recent_n == 39 : tmp_backend = NewFakeBrisbaneRecent39(num_qubits=127)
+        elif recent_n == 40 : tmp_backend = NewFakeBrisbaneRecent40(num_qubits=127)
+        elif recent_n == 41 : tmp_backend = NewFakeBrisbaneRecent41(num_qubits=127)
+        elif recent_n == 42 : tmp_backend = NewFakeBrisbaneRecent42(num_qubits=127)
+        elif recent_n == 43 : tmp_backend = NewFakeBrisbaneRecent43(num_qubits=127)
+        elif recent_n == 44 : tmp_backend = NewFakeBrisbaneRecent44(num_qubits=127)
+        elif recent_n == 45 : tmp_backend = NewFakeBrisbaneRecent45(num_qubits=127)  
 
     elif calibration_type == calibration_type_enum.recent_n_adjust.value:
         if generate_props: generate_new_props(backend, calibration_type, recent_n)
-        tmp_backend = NewFakeBrisbaneRecentNAdjust(n=recent_n)
+        tmp_backend = NewFakeBrisbaneRecentNAdjust(num_qubits=127, n=recent_n)
 
     return tmp_backend
 
@@ -245,7 +246,7 @@ def optimize_qasm(input_qasm, backend, optimization, enable_noise_adaptive = Fal
         transpiled_circuit = transpile(new_circuit, tmp_backend, initial_layout = initial_layout)
         initial_mapping = get_initial_layout_from_circuit(transpiled_circuit)
 
-        print("Mapomatic Map: ", initial_layout)
+        # print("Mapomatic Map: ", initial_layout)
     else:
         transpiled_circuit = transpile(circuit, 
                                 tmp_backend,
@@ -269,7 +270,7 @@ def optimize_qasm(input_qasm, backend, optimization, enable_noise_adaptive = Fal
 
 def get_best_circuit_sabre(circ, backend):
     trans_qc_list = transpile([circ]*10, backend, optimization_level=3)
-    best_cx_count = [circ.count_ops()['ecr'] for circ in trans_qc_list]
+    best_cx_count = [circ.depth(lambda x: len(x.qubits) == 2) for circ in trans_qc_list]
     best_idx = np.argmin(best_cx_count)
     best_qc = trans_qc_list[best_idx]
     best_small_qc = mm.deflate_circuit(best_qc)
@@ -871,7 +872,11 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
                 j["value"] = new_val
                 # print(j["name"], j["value"])
             elif (j["name"] in ("T1", "T2")):
-                new_val = j["value"] + (1000 - (100 * error_percentage))
+                if error_percentage == 0:
+                    new_val = j["value"]  / 0.00001
+                else:
+                    new_val = j["value"]  / error_percentage
+                
                 j["value"] = new_val
 
     # print(_prop_dict["qubits"][0])
@@ -910,7 +915,7 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
     coupling_map = _backend.configuration().coupling_map
     # print(coupling_map)
     
-    noise_model = NoiseModel.from_backend_properties(new_properties)
+    noise_model = NoiseModel.from_backend_properties(new_properties, dt = 0.1)
     
     if noiseless or error_percentage == 0:
         sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties)

@@ -22,13 +22,15 @@ from ..qiskit_wrapper import QiskitCircuit
 conf = Config()
 debug = conf.activate_debugging_time
 
-def init_result_header(cursor, user_id, token=conf.qiskit_token):
+def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = "sampler"):
     if debug: tmp_start_time  = time.perf_counter()
 
     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, shots, runs, created_datetime) 
-    VALUES (%s, %s, %s, %s, %s, %s)""",
-    (user_id, conf.hardware_name, token, conf.shots, conf.runs, now_time))
+    cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, program_type, 
+                   shots, runs, created_datetime) 
+    VALUES (%s, %s, %s, %s, 
+            %s, %s, %s)""",
+    (user_id, conf.hardware_name, token, program_type, conf.shots, conf.runs, now_time))
 
     header_id = cursor.lastrowid
 
@@ -37,36 +39,42 @@ def init_result_header(cursor, user_id, token=conf.qiskit_token):
 
     return header_id
     
-def insert_to_result_detail(conn, cursor, header_id, circuit_name, noise_level, compilation_name, compilation_time, updated_qasm, 
-                                initial_mapping = "", final_mapping = ""):
+def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulator, noise_level, compilation_name, compilation_time, updated_qasm, 
+                                observable=None, initial_mapping = "", final_mapping = ""):
         now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
-        noise_simulator = None
-        if conf.noisy_simulator: 
-            noise_simulator = 1
-            noise_level = 1
+        noisy_simulator_flag = None
+        if noisy_simulator: 
+            noisy_simulator_flag = 1
+            # noise_level = 1
         else:
             noise_level = None
         
             
         sql = """
         INSERT INTO result_detail
-        (header_id, circuit_name, compilation_name, compilation_time, 
+        (header_id, circuit_name, observable, compilation_name, compilation_time, 
         initial_mapping, final_mapping, noisy_simulator, noise_level, 
         created_datetime)
-        VALUES (%s, %s, %s, %s, 
+        VALUES (%s, %s, %s, %s, %s, 
         %s, %s, %s, %s,
         %s);
         """
 
         str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
 
+        str_observable = None
+        if observable != None:
+            str_observable = ",".join(observable)
+
         json_final_mapping = ""
         if final_mapping != "":
             json_final_mapping = json.dumps(final_mapping, default=str)
 
 
-        params = (header_id, circuit_name, compilation_name, compilation_time, str_initial_mapping, json_final_mapping, noise_simulator, noise_level, now_time)
+        params = (header_id, circuit_name, str_observable, compilation_name, compilation_time, 
+                  str_initial_mapping, json_final_mapping, noisy_simulator_flag, noise_level, 
+                  now_time)
 
         cursor.execute(sql, params)
         detail_id = cursor.lastrowid
@@ -83,7 +91,7 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noise_level, 
 
 def update_circuit_data(conn, cursor, qc: QiskitCircuit, skip):
     gates_json = convert_to_json(qc.gates)
-    circuit_name = qc.circuit.name
+    circuit_name = qc.name
 
     # check if the metric is already there, just update
     sql = 'SELECT name FROM circuit WHERE name = %s'

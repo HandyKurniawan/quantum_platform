@@ -218,23 +218,24 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
             circuit = None
             if compilation_name == "triq_lcd" or compilation_name == "triq+_lcd":
-                circuit = qc.transpile_to_target_backend(backend, False)
+                circuit = qc.transpile_to_target_backend(backend)
             else:
                 # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
-                circuit = qc.transpile_to_target_backend(backend, False)
+                circuit = qc.transpile_to_target_backend(backend)
                 # print("transpile to target backend")
 
             print("preparing the noisy simulator", compilation_name, noise_level)
             noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level)
             # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
+            print("run the jobbb")
             job = sim_noisy.run(circuit, shots=shots)
-            # print("run the job")
+            print("run the job")
             result = job.result()  
-            # print("get result")
+            print("get result")
             output = result.get_counts()
-            # print("get counts")
+            print("get counts")
             output_normalize = normalize_counts(output, shots=shots)
-            # print(output_normalize)
+            print(output_normalize)
 
             quasi_dists = convert_to_json(output_normalize)
             quasi_dists_std = ""

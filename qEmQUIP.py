@@ -20,8 +20,11 @@ from commons import convert_to_json, triq_optimization, qiskit_optimization, \
 import inspect
 from qiskit import QuantumCircuit, transpile
 from wrappers.qiskit_wrapper import QiskitCircuit
-from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler, Estimator, Options
+from qiskit_ibm_runtime import QiskitRuntimeService, Session, Options
+from qiskit_ibm_runtime import SamplerV2 as Sampler, EstimatorV2 as Estimator
+from qiskit_ibm_runtime.options import SamplerOptions, EstimatorOptions, DynamicalDecouplingOptions, TwirlingOptions
 from qiskit_aer.noise import NoiseModel
+from qiskit.quantum_info import SparsePauliOp
 
 from datetime import datetime
 import mysql.connector
@@ -31,24 +34,26 @@ import mapomatic as mm
 import mthree
 import pandas as pd
 
+from qiskit.circuit.library import XGate, YGate
+from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
+from qiskit.transpiler import PassManager
+
 conf = Config()
 debug = conf.activate_debugging_time
 
 
 class QEM:
-    def __init__(self, runs=2, 
-                 fixed_initial_layout = False,  
+    def __init__(self, runs=1, 
                  user_id = 99,
-                 token=conf.qiskit_token):
+                 token=conf.qiskit_token,
+                 skip_db=False
+                 ):
 
-        self.session = None
-        self.service = None
+        self.session: Session = None
+        self.service: QiskitRuntimeService = None
+        self.real_backend = None
         self.backend = None
-        self.sampler = None
-
-        self.fixed_initial_layout = fixed_initial_layout
-        self.initial_layout_qiskit = None
-        self.initial_layout_triq = None 
+        self.program: (Sampler | Estimator) = None
 
         self.conn = None
         self.cursor = None    
@@ -62,14 +67,17 @@ class QEM:
         self.user_id = user_id
         self.token = token
 
-        self.open_database_connection()
-        self.set_backend(token=token)
+        if not skip_db:
+            self.open_database_connection()
+            conf.send_to_backend = True
+        else:
+            conf.send_to_backend = False
+
+        self.set_service(hardware_name=conf.hardware_name, token=token)
         
         if conf.initialized_triq == 1:
             self.update_hardware_configs()
 
-        # if fixed_initial_layout:
-        #     self.set_initial_layout()
 
     def open_database_connection(self):
         self.conn = mysql.connector.connect(**conf.mysql_config)
@@ -89,64 +97,69 @@ class QEM:
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))
 
-    def set_backend(self, token=conf.qiskit_token, shots=conf.shots):
+    def set_service(self, hardware_name=conf.hardware_name, token=None):
+        
         if debug: tmp_start_time  = time.perf_counter()
+
+        if token == None: token = self.token
         QiskitRuntimeService.save_account(channel="ibm_quantum", token=token, overwrite=True)
 
-        if conf.hardware_name == "ibm_algiers":
+        if hardware_name == "ibm_algiers":
             self.service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
         else:
             self.service = QiskitRuntimeService(channel="ibm_quantum", token=token)
         
-        self.backend = self.service.get_backend(conf.hardware_name)
-        coupling_map = self.backend.configuration().coupling_map
-        noise_model = NoiseModel.from_backend(self.backend)
-        basis_gates = self.backend.configuration().basis_gates
+        self.real_backend = self.service.get_backend(hardware_name)
         
-        options = Options()
-        options.execution.shots = shots
-        options.optimization_level = conf.optimization_level
-        options.resilience_level = conf.resilience_level
-        
-        self.sampler = Sampler(self.backend, options=options) 
+        if debug: tmp_end_time = time.perf_counter()
+        if debug: print("Time for setup the services: {} seconds".format(tmp_end_time - tmp_start_time))
 
+    def set_backend(self, program_type="sampler", backend=None, shots=conf.shots, 
+                    dd_options: DynamicalDecouplingOptions = {}, twirling_options: TwirlingOptions = {}):
+        
+        if debug: tmp_start_time  = time.perf_counter()
+
+        if backend == None: 
+            self.backend = self.real_backend
+        else:
+            self.backend = backend
+        
+        if program_type == "sampler":
+            options = SamplerOptions(
+                default_shots=shots,
+                dynamical_decoupling=dd_options,
+                twirling= twirling_options
+            )
+            self.program = Sampler(mode=self.backend, options=options) 
+        elif program_type == "estimator":
+            options = EstimatorOptions(
+                default_shots=shots,
+                optimization_level=conf.optimization_level,
+                resilience_level=conf.resilience_level,
+                dynamical_decoupling=dd_options,
+                twirling= twirling_options
+            )
+            self.program = Estimator(mode=self.backend,options=options)
+
+        
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for setup the backends: {} seconds".format(tmp_end_time - tmp_start_time))
 
-    def get_circuit_properties(self, qasm_source):
-        circuit_name = qasm_source.split("/")[-1].split(".")[0]
+    def get_circuit_properties(self, qasm_source, skip_simulation=False):
+        self.circuit_name = qasm_source.split("/")[-1].split(".")[0]
 
-        qc = QiskitCircuit(qasm_source, name=circuit_name)
+        qc = QiskitCircuit(qasm_source, name=self.circuit_name, skip_simulation=skip_simulation)
+        self.qasm = qc.qasm
+        self.qasm_original = qc.qasm_original
             
         if conf.send_to_db:
             database_wrapper.update_circuit_data(self.conn, self.cursor, qc, conf.skip_update_simulator)
 
         return qc
 
-    def set_initial_layout(self):
-        initial_layout_dict = triq_wrapper.get_mapping(self.qasm, 
-                                                       conf.hardware_name + "_" + self.calibration_type.value, 
-                                                       "2")
-
-        self.initial_layout_qiskit = []
-        self.initial_layout_triq = []
-        # for virtual, physical in initial_layout_dict.items():
-        #     self.initial_layout.append(physical)
-
-        for i in range(len(initial_layout_dict)):
-            self.initial_layout_qiskit.append(initial_layout_dict[str(i)])
-            self.initial_layout_triq.append(initial_layout_dict[str(i)])
-
-        for i in range(self.backend.n_qubits):
-            if i not in self.initial_layout_triq:
-                self.initial_layout_triq.append(i)
-
-        # print("Initial Layout qiskit: ", self.initial_layout_qiskit )
-        # print("Initial Layout triq: ", self.initial_layout_triq )
-
 
     def apply_qiskit(self, 
-                     qasm = None,
+                     qasm = None, observable= None,
                      compilation_name = qiskit_compilation_enum.qiskit_3,
                      generate_props = False, recent_n = None, noise_level=None
                      ):
@@ -165,17 +178,17 @@ class QEM:
         compilation_name, calibration_type, enable_noise_adaptive, enable_mapomatic = qiskit_wrapper.get_compilation_setup(compilation_name, recent_n)
         
         updated_qasm, compilation_time, initial_mapping = qiskit_wrapper.optimize_qasm(
-            qasm, self.backend, qiskit_optimization_level,
+            qasm, self.real_backend, qiskit_optimization_level,
             enable_noise_adaptive=enable_noise_adaptive, enable_mirage=enable_mirage, enable_mapomatic=enable_mapomatic,
             calibration_type=calibration_type, generate_props=generate_props, recent_n=recent_n)
 
         if conf.send_to_backend: 
-            database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, noise_level, 
-                                                     compilation_name, compilation_time, updated_qasm, initial_mapping)
+            database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
+                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping)
             
         return updated_qasm, initial_mapping
 
-    def apply_triq(self, compilation_name, qasm=None, layout="mapo", generate_props = False, noise_level=None):
+    def apply_triq(self, compilation_name, qasm=None, observable=None, layout="mapo", generate_props = False, noise_level=None):
         """
         """    
         if qasm is None:
@@ -188,15 +201,15 @@ class QEM:
         if layout == "mapo":
             # Generate Initial Mapping from Mapomatic to a File
             initial_mapping = qiskit_wrapper.get_initial_mapping_mapomatic(
-                    qasm, self.backend, calibration_type=calibration_type, 
+                    qasm, self.real_backend, calibration_type=calibration_type, 
                     generate_props=generate_props, recent_n=0)
         elif layout == "na":
             initial_mapping = qiskit_wrapper.get_initial_mapping_na(
-                    qasm, self.backend, calibration_type=calibration_type, 
+                    qasm, self.real_backend, calibration_type=calibration_type, 
                     generate_props=generate_props, recent_n=0)
         elif layout == "sabre":
             initial_mapping = qiskit_wrapper.get_initial_mapping_sabre(
-                    qasm, self.backend, calibration_type=calibration_type, 
+                    qasm, self.real_backend, calibration_type=calibration_type, 
                     generate_props=generate_props, recent_n=0)
         
         triq_wrapper.generate_initial_mapping_file(initial_mapping)
@@ -213,8 +226,8 @@ class QEM:
         
         compilation_name = layout + "_" + compilation_name
         if conf.send_to_backend: 
-            database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, noise_level, 
-                                                     compilation_name, compilation_time, updated_qasm, initial_mapping, final_mapping)
+            database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
+                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping, final_mapping)
 
         return updated_qasm, initial_mapping
     
@@ -229,9 +242,41 @@ class QEM:
         probs_int = convert_dict_binary_to_int(probs)
 
         return probs_int
+    
+    def apply_dd(self, circuit, backend, sequence_type = "XX", scheduling_method = "alap"):
+
+        X = XGate()
+        Y = YGate()
+        
+        if sequence_type == "XX":
+            dd_sequence = [X, X]
+        elif sequence_type == "XpXm":
+            dd_sequence = [X, X]
+        elif sequence_type == "XY4":
+            dd_sequence = [X, Y, X, Y]
+
+        target = backend.target
+
+        # Set the scheduling method
+        if scheduling_method == "alap":
+            scheduling = ALAPScheduleAnalysis(target=target)
+        elif scheduling_method == "asap":
+            scheduling = ASAPScheduleAnalysis(target=target)
+
+        dd_pm = PassManager(
+        [
+            scheduling,
+            PadDynamicalDecoupling(target=target, dd_sequence=dd_sequence),
+        ]
+        )
+        
+        circuit_dd = dd_pm.run(circuit)
+
+        return circuit_dd
 
         
-    def send_qasm_to_real_backend(self):
+    def send_qasm_to_real_backend(self, program_type, dd_options: DynamicalDecouplingOptions = {}, 
+                                  twirling_options: TwirlingOptions = {}):
         if debug: tmp_start_time  = time.perf_counter()
 
         results_1 = database_wrapper.get_header_with_null_job(self.cursor)
@@ -239,7 +284,9 @@ class QEM:
         for res_1 in results_1:
             header_id, qiskit_token, shots, runs = res_1
 
-            self.set_backend(qiskit_token, shots=shots)
+            # Set backend
+            # TODO: save program_type, dd_options and twirling_options in the database
+            self.set_backend(program_type=program_type, shots=shots, dd_options=dd_options, twirling_options=twirling_options)
 
             results = database_wrapper.get_detail_with_header_id(self.cursor, header_id)
             
@@ -251,7 +298,7 @@ class QEM:
 
                 qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
-                circuit = qc.transpile_to_target_backend(self.backend)
+                circuit = qc.transpile_to_target_backend(self.real_backend)
 
                 for i in range(runs):
                     list_circuits.append(circuit)
@@ -261,8 +308,15 @@ class QEM:
                 try:
 
                     print("Sending to {} with batch id: {} ... ".format(conf.hardware_name, header_id))
-                    job = self.sampler.run(list_circuits, skip_transpilation=True)
-                    job_id = job.job_id()
+                    job_id = None
+
+                    if isinstance(self.program, Sampler):
+
+                        job = self.program.run(list_circuits)
+                        job_id = job.job_id()
+
+                    elif isinstance(self.program, Estimator):
+                        pass
 
                     success = True
 
@@ -318,53 +372,93 @@ class QEM:
     def get_qasm_files_from_path(self, file_path = conf.base_folder):
         return glob.glob(os.path.expanduser(os.path.join(file_path, "*.qasm")))
 
-    def compile(self, qasm, compilation_name, generate_props=False, noise_level=None):
+    def compile(self, qasm, compilation_name, observable=None, generate_props=False, noise_level=None):
 
         updated_qasm = ""
         initial_mapping = ""
         if "qiskit" in compilation_name or "mapomatic" in compilation_name:
-            updated_qasm, initial_mapping = self.apply_qiskit(qasm=qasm, compilation_name=compilation_name, generate_props=generate_props, noise_level=noise_level)
+            updated_qasm, initial_mapping = self.apply_qiskit(qasm=qasm, observable=observable, compilation_name=compilation_name, generate_props=generate_props, noise_level=noise_level)
         elif "triq" in compilation_name:
             tmp = compilation_name.split("_")
             layout = tmp[2]
             compilation = tmp[0] + "_" + tmp[1]
-            updated_qasm, initial_mapping = self.apply_triq(qasm=qasm, compilation_name=compilation, layout=layout, noise_level=noise_level)
+            updated_qasm, initial_mapping = self.apply_triq(qasm=qasm, observable=observable, compilation_name=compilation, layout=layout, noise_level=noise_level)
 
         return updated_qasm, initial_mapping
 
 #region Run
-    def run_simulator(self, qasm_files, compilations, noise_levels, shots, mitigation = None, send_to_db = False):
+    def run_simulator(self, program_type, qasm_files, compilations, noise_levels, shots, 
+                      observables = None,
+                      mitigation = None, send_to_db = False,
+                      apply_dd = False, sequence_type = "XX", scheduling_method = "alap"):
         """
         
         """
+        skip_simulation = False
+        # validation
+        if program_type == "estimator":
+            skip_simulation = True
+            if len(qasm_files) != len(observables):
+                raise ValueError("The number of observables should be the same as the number of circuits when using the program type 'estimator'.")
+
+        # initialize variables
+        res_circuit_name, res_compilations, res_noise_levels, res_success_rate, res_success_rate_m3 = ([] for _ in range(5))
+
+        # this function always run on a simulator
+        conf.noisy_simulator = True
+
         if send_to_db:
             conf.send_to_db = True
             # init header
-            self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token)
+            self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, 
+                                                                 token=self.token, program_type=program_type)
 
-        res_circuit_name, res_compilations, res_noise_levels, res_success_rate, res_success_rate_m3 = ([] for _ in range(5))
+        for idx, qasm in enumerate(qasm_files):
+            qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=skip_simulation)
 
-        for noise_level in noise_levels:
-            noise_model, noisy_simulator, coupling_map = qiskit_wrapper.get_noisy_simulator(self.backend, noise_level)
+            for comp in compilations:
 
-            for qasm in qasm_files:
-                qc = self.get_circuit_properties(qasm_source=qasm)
-                self.circuit_name = qasm.split("/")[-1].split(".")[0]
-                self.qasm = qc.qasm
-                self.qasm_original = qc.qasm_original
+                for noise_level in noise_levels:
+                    noise_model, noisy_simulator, coupling_map = qiskit_wrapper.get_noisy_simulator(self.real_backend, noise_level)
 
-                for comp in compilations:
-                
-                    updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, compilation_name=comp, noise_level=noise_level)
-                    compiled_qc = QiskitCircuit(updated_qasm)
-                    circuit = compiled_qc.transpile_to_target_backend(self.backend)
+                    # set the backend and the program
+                    self.set_backend(program_type=program_type, backend=noisy_simulator, shots=shots)
+
+                    observable = None
+                    if program_type == "estimator":
+                        observable = observables[idx]
+
+                    updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, observable=observable, compilation_name=comp, generate_props=False, noise_level=noise_level)
+                    compiled_qc = QiskitCircuit(updated_qasm, skip_simulation=skip_simulation)
+                    circuit = compiled_qc.transpile_to_target_backend(self.real_backend)
+
+                    if apply_dd:
+                        circuit = self.apply_dd(circuit, noisy_simulator, sequence_type=sequence_type, scheduling_method=scheduling_method)
+
+                    if isinstance(self.program, Sampler):
+
+                        job = self.program.run(pubs=[circuit])
+                        result = job.result()[0]  
+                        output = result.data.c.get_counts()
+                        output_normalize = normalize_counts(output, shots=shots)
+
+                        tvd = calculate_success_rate_tvd(qc.correct_output,output_normalize)
+
+                    elif isinstance(self.program, Estimator):
+
+                        p_obs = []
+                        for obs in observable:
+                            print(obs)
+                            tmp = SparsePauliOp(obs)
+                            p_obs.append(tmp)
+
+                        print(p_obs)
+                        pub = (circuit, p_obs)
+                        job = self.program.run(pubs=[pub])
+
+                        tvd = job.result()[0].data.evs
+
                     
-                    job = noisy_simulator.run(circuit, shots=shots)
-                    result = job.result()  
-                    output = result.get_counts()
-                    output_normalize = normalize_counts(output, shots=shots)
-
-                    tvd = calculate_success_rate_tvd(qc.correct_output,output_normalize)
 
                     res_circuit_name.append(self.circuit_name)
                     res_compilations.append(comp)
@@ -385,13 +479,13 @@ class QEM:
 
         if send_to_db:  
             # Send to local simulator
-            
             self.run_on_noisy_simulator_local()
                   
 
         return df
     
-    def send_to_real_backend(self, qasm_files, compilations, hardware_name = conf.hardware_name):
+    def send_to_real_backend(self, program_type, qasm_files, compilations, hardware_name = conf.hardware_name,
+                             dd_options: DynamicalDecouplingOptions = {}, twirling_options: TwirlingOptions = {}):
         # Update the
         conf.send_to_db = True
         conf.hardware_name = hardware_name
@@ -401,20 +495,17 @@ class QEM:
 
         for qasm in qasm_files:
             qc = self.get_circuit_properties(qasm_source=qasm)
-            self.circuit_name = qasm.split("/")[-1].split(".")[0]
-            self.qasm = qc.qasm
-            self.qasm_original = qc.qasm_original
-
+            
             for comp in compilations:
                 print("Compiling circuit: {} for compilation: {}".format(self.circuit_name, comp))
                 self.compile(qasm=qc.qasm_original, compilation_name=comp)
 
         if conf.noisy_simulator:
-            # Send to local simulator
+            # Send to local simulator, just send to the database, execution is on scheduler.py
             self.run_on_noisy_simulator_local()
         else:
             # Send to backend
-            self.send_qasm_to_real_backend()
+            self.send_qasm_to_real_backend(program_type, dd_options=dd_options, twirling_options=twirling_options)
             
                 
 #endregion
