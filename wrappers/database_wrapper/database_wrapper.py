@@ -16,7 +16,8 @@ import os
 from datetime import datetime
 import time, json
 import mysql.connector
-from commons import sql_query, normalize_counts, Config, convert_to_json
+
+from commons import (Config, convert_utc_to_local, calculate_time_diff, convert_to_json)
 from ..qiskit_wrapper import QiskitCircuit
 
 conf = Config()
@@ -136,3 +137,72 @@ WHERE h.job_id IS NULL AND d.header_id = %s  ''', (header_id,)
 )
     
     return cursor.fetchall()
+
+def get_pending_jobs():
+    '''
+    Returns job_id if the status in the calibration_data.result_detail table is pending (job has been sent to backend and we are waiting for the result)
+    '''
+    
+    try:
+        conn = mysql.connector.connect(**conf.mysql_config)
+        cursor = conn.cursor()
+        
+        cursor.execute('''SELECT distinct h.id, h.job_id, qiskit_token, hw_name 
+                       FROM framework.result_header h 
+                        INNER JOIN framework.result_detail d ON h.id = d.header_id 
+                        WHERE h.status = %s ''', ("pending",))
+        
+        results = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        print("An error occurred:", str(e))
+        
+    return results
+
+def get_executed_jobs():
+    '''
+    Returns job_id if the status in the result_detail table is executed (job has been executed in the backend and we have to compute metrics)
+    '''
+    
+    try:
+        conn = mysql.connector.connect(**conf.mysql_config)
+        cursor = conn.cursor()
+
+        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s ;''', ("executed", ))
+
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        print("An error occurred:", str(e))
+        
+    return results
+
+def update_result_header_status_by_header_id(header_id, new_status):
+    '''
+    Updates result_header entries that contained prev_status to new_status by header_id
+    '''
+    conn = mysql.connector.connect(**conf.mysql_config)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE result_header SET status = %s, updated_datetime = NOW() WHERE id = %s', (new_status, header_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def update_result_header(cursor, job):
+    execution_time = job.metrics()["usage"]["quantum_seconds"]
+    job_time = job.metrics()["timestamps"]
+    created_datetime = convert_utc_to_local(job_time["created"])
+    running_datetime = convert_utc_to_local(job_time["running"])
+    completed_datetime = convert_utc_to_local(job_time["finished"])
+    in_queue_second = calculate_time_diff(job_time["created"], job_time["running"])
+    job_id = job.job_id()
+
+    cursor.execute("""UPDATE result_header SET status = %s, execution_time = %s, job_created_datetime = %s, 
+    job_in_queue_second = %s, job_running_datetime = %s, job_completed_datetime = %s, updated_datetime = NOW()  
+    WHERE job_id = %s""", ("executed", execution_time, created_datetime, 
+                            in_queue_second, running_datetime, completed_datetime, job_id))

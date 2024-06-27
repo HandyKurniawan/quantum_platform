@@ -4,100 +4,53 @@ import json
 
 from qiskit import *
 from qiskit.result import *
-from qiskit_ibm_runtime import QiskitRuntimeService
+from qiskit_ibm_runtime import QiskitRuntimeService, RuntimeJob, RuntimeJobV2
 from qiskit.providers import JobStatus
-from qiskit.primitives import SamplerResult
+from qiskit.primitives import SamplerResult, PrimitiveResult
 from qiskit_ibm_runtime.utils.runner_result import RunnerResult
-from commons import Config, convert_utc_to_local, calculate_time_diff, get_count_1q, get_count_2q, \
-    calculate_circuit_cost, get_correct_output_dict, calculate_success_rate_nassc, calculate_success_rate_tvd, \
-    calculate_success_rate_polar, calculate_hellinger_distance, calculate_success_rate_tvd_new, \
-    convert_to_json, is_mitigated, get_initial_mapping_json, normalize_counts, convert_dict_int_to_binary, reverse_string_keys
+from commons import (Config, convert_utc_to_local, calculate_time_diff, get_count_1q, get_count_2q, 
+    calculate_circuit_cost, get_correct_output_dict, calculate_success_rate_nassc, calculate_success_rate_tvd, 
+    calculate_success_rate_polar, calculate_hellinger_distance, calculate_success_rate_tvd_new, 
+    convert_to_json, is_mitigated, get_initial_mapping_json, normalize_counts, convert_dict_int_to_binary, reverse_string_keys, convert_dict_binary_to_int
+)
+
 import wrappers.qiskit_wrapper as qiskit_wrapper
-from wrappers.qiskit_wrapper import QiskitCircuit
 import wrappers.polar_wrapper as polar_wrapper
+import wrappers.database_wrapper as database_wrapper
+
+from wrappers.qiskit_wrapper import QiskitCircuit
+
 from qiskit.qasm2 import dumps
 
 conf = Config()
 
-def get_pending_jobs():
-    '''
-    Returns job_id if the status in the calibration_data.result_detail table is pending (job has been sent to backend and we are waiting for the result)
-    '''
-    
+def check_result_availability(job: (RuntimeJob | RuntimeJobV2), header_id):
+
+    print("Job status :", job.status())
+
+    if(job.errored() or job.cancelled()):
+        database_wrapper.update_result_header_status_by_header_id(cursor, header_id, "error")
+        return False
+
+    if(not job.done()):
+        return False
+
+    if(job.done()):
+        return True
+
+def get_result(job: (RuntimeJob | RuntimeJobV2)):        
     try:
-        conn = mysql.connector.connect(**conf.mysql_config)
-        cursor = conn.cursor()
-        
-        cursor.execute('''SELECT distinct h.id, h.job_id, qiskit_token, hw_name 
-                       FROM framework.result_header h 
-                        INNER JOIN framework.result_detail d ON h.id = d.header_id 
-                        WHERE h.status = %s ''', ("pending",))
-        
-        results = cursor.fetchall()
-        
-        cursor.close()
-        conn.close()
-
-    except Exception as e:
-        print("An error occurred:", str(e))
-        
-    return results
-
-
-def update_result_header_status_by_header_id(cursor, header_id, new_status):
-    '''
-    Updates result_header entries that contained prev_status to new_status by header_id
-    '''
-
-    cursor.execute('UPDATE result_header SET status = %s, updated_datetime = NOW() WHERE id = %s', (new_status, header_id))
-
-def update_result_header(cursor, job):
-    execution_time = job.metrics()["usage"]["quantum_seconds"]
-    job_time = job.metrics()["timestamps"]
-    created_datetime = convert_utc_to_local(job_time["created"])
-    running_datetime = convert_utc_to_local(job_time["running"])
-    completed_datetime = convert_utc_to_local(job_time["finished"])
-    in_queue_second = calculate_time_diff(job_time["created"], job_time["running"])
-
-
-    cursor.execute("""UPDATE result_header SET status = %s, execution_time = %s, job_created_datetime = %s, 
-    job_in_queue_second = %s, job_running_datetime = %s, job_completed_datetime = %s, updated_datetime = NOW()  
-    WHERE job_id = %s""", ("executed", execution_time, created_datetime, 
-                            in_queue_second, running_datetime, completed_datetime, job_id))
-
-    
-
-def check_result_availability(service, header_id, job_id):
-    print("Checking results for: ", job_id, "with header id :", header_id)
-    try:
-
-        conn = mysql.connector.connect(**conf.mysql_config)
-        cursor = conn.cursor()
-
-        job = service.job(job_id)
-
-        print("Job status :", job.status())
-
-        if(job.status() == JobStatus.ERROR or job.status() == JobStatus.CANCELLED):
-            update_result_header_status_by_header_id(cursor, header_id, "error")
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return
-
-        if(job.status() != JobStatus.DONE):
-            cursor.close()
-            conn.close()
-            return 10
+        job_id = job.job_id()
 
         # get list of detail_id here
-        cursor.execute('''SELECT d.id FROM framework.result_header h 
+        cursor.execute('''SELECT d.id, h.shots FROM framework.result_header h 
 INNER JOIN framework.result_detail d ON h.id = d.header_id
 WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
         results_details = cursor.fetchall()
 
-        if (type(job.result()) is SamplerResult):
-            quasi_dists = job.result().quasi_dists
+        if (type(job.result()) is PrimitiveResult):
+            # quasi_dists = job.result().quasi_dists
+            job_results = job.result()
 
             avg_result = {}
             std_json = {}
@@ -105,13 +58,12 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
             mitigation_overhead_dict = {}
             mitigation_time_dict = {}
             no_of_optimization = len(results_details)
-            no_of_result = len(quasi_dists)
+            no_of_result = len(job_results)
             runs = int(no_of_result / no_of_optimization)
             idx_1, idx_2 = 0, 0
-            shots = job.result().metadata[0]["shots"]
 
             for idx, res in enumerate(results_details):
-                detail_id = res[0]    
+                detail_id, shots = res
                 avg_result[detail_id] = []
                 std_json[detail_id] = []
                 qasm_dict[detail_id] = []
@@ -121,11 +73,11 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
                 std_dev = {}
                 std_dict = {}
 
+                # to initialize the dict
                 for j in range(runs):
-                    res_dict = quasi_dists[idx_1]
-                    
+                    res_dict = convert_dict_binary_to_int(job_results[idx_1].data.c.get_counts())
+
                     for key, value in res_dict.items():
-                        key_bin = conf.bit_format.format(key)
                         key_bin = key
                         sum_result[key_bin] = 0
                         std_dict[key_bin] = 0
@@ -133,14 +85,14 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
                         
                     idx_1 += 1
 
+                # to put them together
                 for j in range(runs):
-                    res_dict = quasi_dists[idx_2]
+                    res_dict = convert_dict_binary_to_int(job_results[idx_2].data.c.get_counts())
                     
                     for key, value in res_dict.items():
-                        key_bin = conf.bit_format.format(key)
                         key_bin = key
-                        sum_result[key_bin] += value
-                        std_dev[key_bin].append(value)
+                        sum_result[key_bin] += (value / shots)
+                        std_dev[key_bin].append((value / shots))
                         
                     idx_2 += 1
                     
@@ -150,16 +102,16 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
 
                 avg_result[detail_id] = convert_to_json(sum_result)
                 std_json[detail_id] = convert_to_json(std_dict)
-                qasm_dict[detail_id] = dumps(job.inputs["circuits"][idx_2-1])
+                qasm_dict[detail_id] = dumps(job.inputs["pubs"][idx_2-1][0])
 
                 if is_mitigated(job):
                     mitigation_overhead_dict[detail_id] = job.result().metadata[idx_2-1]["readout_mitigation_overhead"]
                     mitigation_time_dict[detail_id] = job.result().metadata[idx_2-1]["readout_mitigation_time"]
 
             for idx, res in enumerate(results_details):
-                detail_id = res[0] 
-                quasi_dists = avg_result[detail_id]
-                quasi_dists_std = std_json[detail_id]
+                detail_id, shots = res
+                job_results = avg_result[detail_id]
+                job_results_std = std_json[detail_id]
                 qasm = qasm_dict[detail_id]
                 mapping_json = get_initial_mapping_json(qasm)
                 mitigation_overhead = mitigation_overhead_dict[detail_id]
@@ -172,15 +124,15 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
                 if existing_row:
                     cursor.execute('''UPDATE result_backend_json SET quasi_dists = %s, quasi_dists_std = %s, qasm = %s, 
                     shots = %s, mapping_json = %s, mitigation_overhead = %s, mitigation_time = %s  WHERE detail_id = %s;''',
-                    (quasi_dists, quasi_dists_std, qasm, shots, mapping_json, mitigation_overhead, mitigation_time, detail_id))
+                    (job_results, job_results_std, qasm, shots, mapping_json, mitigation_overhead, mitigation_time, detail_id))
                 else:
                     cursor.execute('''INSERT INTO result_backend_json 
                                     (detail_id, quasi_dists, quasi_dists_std, qasm, shots, mapping_json, mitigation_overhead, mitigation_time) 
                                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''',
-                    (detail_id, quasi_dists, quasi_dists_std, qasm, shots, mapping_json, mitigation_overhead, mitigation_time))
+                    (detail_id, job_results, job_results_std, qasm, shots, mapping_json, mitigation_overhead, mitigation_time))
                 
 
-                update_result_header(cursor, job)
+                database_wrapper.update_result_header(cursor, job)
 
             conn.commit()
         
@@ -193,7 +145,7 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
     except Exception as e:
         print("Error for check result availability :", str(e))
 
-def check_result_availability_simulator(service, header_id, job_id, hw_name):
+def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name):
     print("Checking results for: ", job_id, "with header id :", header_id)
     try:
 
@@ -215,27 +167,19 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
             detail_id, updated_qasm, compilation_name, noise_level, shots = res
 
             qc = QiskitCircuit(updated_qasm, skip_simulation=True)
+            circuit = qc.transpile_to_target_backend(backend)
 
-            circuit = None
-            if compilation_name == "triq_lcd" or compilation_name == "triq+_lcd":
-                circuit = qc.transpile_to_target_backend(backend)
-            else:
-                # circuit = qc.get_native_gates_circuit(self.backend, self.run_in_simulator)
-                circuit = qc.transpile_to_target_backend(backend)
-                # print("transpile to target backend")
-
-            print("preparing the noisy simulator", compilation_name, noise_level)
+            # print("Preparing the noisy simulator", compilation_name, noise_level)
             noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level)
             # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
-            print("run the jobbb")
             job = sim_noisy.run(circuit, shots=shots)
-            print("run the job")
+            # print("run the job")
             result = job.result()  
-            print("get result")
+            # print("get result")
             output = result.get_counts()
-            print("get counts")
+            # print("get counts")
             output_normalize = normalize_counts(output, shots=shots)
-            print(output_normalize)
+            # print(output_normalize)
 
             quasi_dists = convert_to_json(output_normalize)
             quasi_dists_std = ""
@@ -258,8 +202,6 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''',
                 (detail_id, quasi_dists, quasi_dists_std, qasm, shots, mapping_json, mitigation_overhead, mitigation_time))
 
-            
-
             conn.commit()
 
         cursor.execute('UPDATE result_header SET status = "executed", updated_datetime = NOW() WHERE id = %s', (header_id,))
@@ -270,27 +212,6 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
     except Exception as e:
         print("Result not available yet", str(e))
-
-
-def get_executed_jobs():
-    '''
-    Returns job_id if the status in the result_detail table is executed (job has been executed in the backend and we have to compute metrics)
-    '''
-    
-    try:
-        conn = mysql.connector.connect(**conf.mysql_config)
-        cursor = conn.cursor()
-
-        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s ;''', ("executed", ))
-
-        results = cursor.fetchall()
-        cursor.close()
-        conn.close()
-
-    except Exception as e:
-        print("An error occurred:", str(e))
-        
-    return results
 
 def get_metrics(header_id, job_id):
     # print("")
@@ -397,55 +318,57 @@ def get_metrics(header_id, job_id):
 
             conn.commit()
 
+        database_wrapper.update_result_header_status_by_header_id(header_id, 'done')
+
     except Exception as e:
         print("Error in getting the metrics : ", e)
 
-    update_result_header_status_by_header_id(cursor, header_id, 'done')
-
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-if __name__ == "__main__":
-    conn = mysql.connector.connect(**conf.mysql_config)
-    cursor = conn.cursor()
-
-    pending_jobs = get_pending_jobs()
-        
-    tmp_qiskit_token = ""
-    header_id, job_id, qiskit_token = None, None, None
-    provider, backend, service = None, None, None
     
-    print('Pending jobs: ', len(pending_jobs))
-    for result in pending_jobs:
-        header_id, job_id, qiskit_token, hw_name = result
-
-        if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
-            # QiskitRuntimeService.save_account(channel="ibm_cloud", token=qiskit_token, instance="Qiskit Runtime-ucm", overwrite=True)
-            # service = QiskitRuntimeService(channel="ibm_cloud", token=qiskit_token, instance="Qiskit Runtime-ucm")
-
-            QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
-            service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
-        
-        if job_id == "simulator":
-            status = check_result_availability_simulator(service, header_id, job_id, hw_name)
-        else:
-            status = check_result_availability(service, header_id, job_id)
-
-        if (status == 10):
-            continue
-
-        tmp_qiskit_token = qiskit_token
-
+    conn.commit()
     cursor.close()
     conn.close()
 
-    executed_jobs = get_executed_jobs()
-    print('Executed jobs :', len(executed_jobs))
-    for result in executed_jobs:
-        header_id, job_id = result
-        try:
-             get_metrics(header_id, job_id)
-        except Exception as e:
-             print("Error metric:", str(e))
+# if __name__ == "__main__":
+#     conn = mysql.connector.connect(**conf.mysql_config)
+#     cursor = conn.cursor()
+
+#     pending_jobs = database_wrapper.get_pending_jobs()
+        
+#     tmp_qiskit_token = ""
+#     header_id, job_id, qiskit_token = None, None, None
+#     provider, backend, service = None, None, None
+    
+#     print('Pending jobs: ', len(pending_jobs))
+#     for result in pending_jobs:
+#         header_id, job_id, qiskit_token, hw_name = result
+
+#         if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
+#             # QiskitRuntimeService.save_account(channel="ibm_cloud", token=qiskit_token, instance="Qiskit Runtime-ucm", overwrite=True)
+#             # service = QiskitRuntimeService(channel="ibm_cloud", token=qiskit_token, instance="Qiskit Runtime-ucm")
+
+#             QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
+#             service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
+        
+#         if job_id == "simulator":
+#             status = process_simulator(service, header_id, job_id, hw_name)
+#         else:
+#             job = service.job(job_id)
+#             print("Checking results for: ", job_id, "with header id :", header_id)
+
+#             if check_result_availability(job, header_id):
+#                 get_result(job)
+
+
+#         tmp_qiskit_token = qiskit_token
+
+#     cursor.close()
+#     conn.close()
+
+#     executed_jobs = database_wrapper.get_executed_jobs()
+#     print('Executed jobs :', len(executed_jobs))
+#     for result in executed_jobs:
+#         header_id, job_id = result
+#         try:
+#              get_metrics(header_id, job_id)
+#         except Exception as e:
+#              print("Error metric:", str(e))

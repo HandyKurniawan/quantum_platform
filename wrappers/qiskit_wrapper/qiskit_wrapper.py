@@ -932,3 +932,7 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
     return noise_model, sim_noisy, coupling_map
 
 #endregion
+
+#region Scheduler
+
+#endregion

@@ -181,9 +181,26 @@ def is_mitigated(job):
         return True
     except (IndexError, KeyError):
         return False
+
+def pad_fractional_seconds(datetime_str):
+    # Split the string into date-time and timezone parts
+    if '.' in datetime_str:
+        date_part, frac_part = datetime_str.split('.')
+        frac_seconds, tz = frac_part.split('Z')
+        # Pad the fractional seconds to 6 digits
+        padded_frac_seconds = frac_seconds.ljust(6, '0')
+        # Reconstruct the datetime string
+        padded_datetime_str = f"{date_part}.{padded_frac_seconds}Z"
+    else:
+        # If there are no fractional seconds, add them
+        date_part, tz = datetime_str.split('Z')
+        padded_datetime_str = f"{date_part}.000000Z"
     
+    return padded_datetime_str
 
 def convert_utc_to_local(datetime_utc):
+    datetime_utc = pad_fractional_seconds(datetime_utc)
+
     to_zone = tz.tzlocal()
 
     datetime_local = datetime.fromisoformat(datetime_utc.replace('Z', '+00:00')).astimezone(to_zone)
@@ -192,6 +209,9 @@ def convert_utc_to_local(datetime_utc):
     return datetime_local
 
 def calculate_time_diff(time_start, time_end):
+    time_start = pad_fractional_seconds(time_start)
+    time_end = pad_fractional_seconds(time_end)
+
     start_datetime = datetime.fromisoformat(time_start.replace('Z', '+00:00'))
     end_datetime = datetime.fromisoformat(time_end.replace('Z', '+00:00'))
     time_difference = end_datetime - start_datetime

@@ -37,6 +37,7 @@ import pandas as pd
 from qiskit.circuit.library import XGate, YGate
 from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
 from qiskit.transpiler import PassManager
+from scheduler import check_result_availability, get_result, process_simulator, get_metrics
 
 conf = Config()
 debug = conf.activate_debugging_time
@@ -509,3 +510,46 @@ class QEM:
             
                 
 #endregion
+
+    def get_qiskit_result(self):
+        conn = mysql.connector.connect(**conf.mysql_config)
+        cursor = conn.cursor()
+
+        pending_jobs = database_wrapper.get_pending_jobs()
+            
+        tmp_qiskit_token = ""
+        header_id, job_id, qiskit_token = None, None, None
+        service = None
+        
+        print('Pending jobs: ', len(pending_jobs))
+        for result in pending_jobs:
+            header_id, job_id, qiskit_token, hw_name = result
+
+            if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
+                QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
+                service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
+            
+            if job_id == "simulator":
+                process_simulator(service, header_id, job_id, hw_name)
+            else:
+                job = service.job(job_id)
+                print("Checking results for: ", job_id, "with header id :", header_id)
+
+                if check_result_availability(job, header_id):
+                    get_result(job)
+
+
+            tmp_qiskit_token = qiskit_token
+
+        cursor.close()
+        conn.close()
+
+        executed_jobs = database_wrapper.get_executed_jobs()
+        print('Executed jobs :', len(executed_jobs))
+        for result in executed_jobs:
+            header_id, job_id = result
+            try:
+                get_metrics(header_id, job_id)
+            except Exception as e:
+                print("Error metric:", str(e))
+
