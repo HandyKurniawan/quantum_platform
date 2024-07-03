@@ -83,7 +83,7 @@ Note: If you have an older version (or if you don't have it) of Python please up
 ``` terminal
 sudo add-apt-repository ppa:deadsnakes/ppa    
 sudo apt update  
-sudo apt install python.3.12
+sudo apt install python3.12
 ```
 
 Install dependencies and set up the Python environment:
@@ -168,9 +168,11 @@ First, we need to set the object
 ```python
 # Setup the object
 from qEmQUIP import QEM, conf
-token = "74076e69ed0d571c8e0ff8c0b2c912c28681d47426cf16a5d817825de16f7dbd95bf6ff7c604b706803b78b2e21d1dd5cacf9f1b0aa81d672d938bded8049a17"
+token = "<qiskit_token>"
 q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
 ```
+
+Note: `<qiskit_token>` needs to be changed with the real one.
 
 1. To run the circuit directly to the real backend with the selected compilation
 
