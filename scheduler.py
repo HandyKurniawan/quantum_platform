@@ -25,11 +25,11 @@ from qiskit.qasm2 import dumps
 conf = Config()
 
 def check_result_availability(job: (RuntimeJob | RuntimeJobV2), header_id):
-
+    
     print("Job status :", job.status())
 
     if(job.errored() or job.cancelled()):
-        database_wrapper.update_result_header_status_by_header_id(cursor, header_id, "error")
+        database_wrapper.update_result_header_status_by_header_id(header_id, "error")
         return False
 
     if(not job.done()):
@@ -40,6 +40,9 @@ def check_result_availability(job: (RuntimeJob | RuntimeJobV2), header_id):
 
 def get_result(job: (RuntimeJob | RuntimeJobV2)):        
     try:
+        conn = mysql.connector.connect(**conf.mysql_config)
+        cursor = conn.cursor()
+
         job_id = job.job_id()
 
         # get list of detail_id here

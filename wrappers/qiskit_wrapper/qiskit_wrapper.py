@@ -203,29 +203,21 @@ def get_fake_backend(calibration_type, backend, recent_n, generate_props):
     return tmp_backend
 
 # Function to import and optimize a QASM circuit
-def optimize_qasm(input_qasm, backend, optimization, enable_noise_adaptive = False, enable_mirage = False, enable_mapomatic = False,
+def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enable_mapomatic = False,
                   calibration_type = calibration_type_enum.lcd, recent_n = None, initial_layout = None, generate_props = False):
     # Load the input QASM circuit
     circuit = QuantumCircuit.from_qasm_str(input_qasm)
 
     # Set the routing_method + layout_method
+    layout_method = None
     routing_method = None
-    layout_method = 'sabre'
-    routing_method = 'sabre'
     basis_gates = None
+
     tmp_backend = backend
-    if enable_noise_adaptive:
-        layout_method = 'noise_adaptive'
-        routing_method = 'sabre'
-        tmp_backend = get_fake_backend(calibration_type, backend, recent_n, generate_props)
-        # print(tmp_backend.name)
-        
-    elif enable_mirage:
+    if enable_mirage:
         layout_method = 'sabre'
         routing_method = 'mirage'
         basis_gates=backend.basis_gates
-
-    # print(layout_method, initial_layout)
 
     tmp_start_time  = time.perf_counter()
     initial_mapping = ""
@@ -238,24 +230,38 @@ def optimize_qasm(input_qasm, backend, optimization, enable_noise_adaptive = Fal
         initial_mapping = get_initial_layout_from_circuit(transpiled_circuit)
 
     elif enable_mapomatic:
-        routing_method = 'sabre'
         tmp_backend = get_fake_backend(calibration_type, backend, recent_n, generate_props)
 
         initial_layout, new_circuit = get_best_mapomatic_layout(circuit, tmp_backend)
         
-        transpiled_circuit = transpile(new_circuit, tmp_backend, initial_layout = initial_layout)
+        # transpiled_circuit = transpile(new_circuit, tmp_backend, initial_layout = initial_layout)
+        pm = generate_preset_pass_manager(optimization_level=optimization,
+                                          backend=tmp_backend,
+                                          initial_layout=initial_layout
+                                          )
+        transpiled_circuit = pm.run(new_circuit)
+
         initial_mapping = get_initial_layout_from_circuit(transpiled_circuit)
 
         # print("Mapomatic Map: ", initial_layout)
     else:
-        transpiled_circuit = transpile(circuit, 
-                                tmp_backend,
-                                optimization_level=optimization,
-                                routing_method=routing_method,
-                                layout_method=layout_method,
-                                basis_gates=basis_gates,
-                                initial_layout=initial_layout
-                                )
+        # transpiled_circuit = transpile(circuit, 
+        #                         tmp_backend,
+        #                         optimization_level=optimization,
+        #                         routing_method=routing_method,
+        #                         layout_method=layout_method,
+        #                         basis_gates=basis_gates,
+        #                         initial_layout=initial_layout
+        #                         )
+        pm = generate_preset_pass_manager(optimization_level=optimization,
+                                          backend=tmp_backend,
+                                          routing_method=routing_method,
+                                          layout_method=layout_method,
+                                          basis_gates=basis_gates,
+                                          initial_layout=initial_layout
+                                          )
+        transpiled_circuit = pm.run(circuit)
+        
         initial_mapping = get_initial_layout_from_circuit(transpiled_circuit)
         
     tmp_end_time = time.perf_counter()
@@ -314,18 +320,6 @@ def get_initial_mapping_sabre(input_qasm, backend, calibration_type = calibratio
     circuit = QuantumCircuit.from_qasm_str(input_qasm)
     sabre_qc = transpile(circuit, backend, optimization_level = 3)
     initial_layout = get_initial_layout_from_circuit(sabre_qc)
-
-    return initial_layout
-
-def get_initial_mapping_na(input_qasm, backend, calibration_type = calibration_type_enum.lcd, 
-                                  recent_n = None, generate_props = False):
-    
-    circuit = QuantumCircuit.from_qasm_str(input_qasm)
-    tmp_backend = get_fake_backend(calibration_type, backend, recent_n, generate_props)
-    
-    na_qc = transpile(circuit, tmp_backend, layout_method = "noise_adaptive", routing_method = "sabre", optimization_level = 3)
-    initial_layout = get_initial_layout_from_circuit(na_qc)
-    # print("get_initial_mapping_na :", initial_layout)
 
     return initial_layout
 
@@ -697,8 +691,7 @@ def generate_brisbane_32_noisy_simulator(backend, scale_error):
 
 
 def get_compilation_setup(compilation_name, recent_n):
-    qiskit_optimization_level = 0
-    enable_noise_adaptive = False
+    qiskit_optimization_level = 3
     enable_mapomatic = False
     calibration_type = None
 
@@ -706,40 +699,6 @@ def get_compilation_setup(compilation_name, recent_n):
         qiskit_optimization_level = 3
     elif compilation_name == qiskit_compilation_enum.qiskit_0.value:    
         qiskit_optimization_level = 0            
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_avg.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.average.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_lcd.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.lcd.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_mix.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.mix.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_w15.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.recent_15.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_avg_adj.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.average_adjust.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_lcd_adj.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.lcd_adjust.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_mix_adj.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.mix_adjust.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_w15_adj.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.recent_15_adjust.value
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_wn.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.recent_n.value
-
-        compilation_name = compilation_name.replace("_wn", "_w{}".format(recent_n))
-    elif compilation_name == qiskit_compilation_enum.qiskit_NA_wn_adj.value:    
-        enable_noise_adaptive = True
-        calibration_type = calibration_type_enum.recent_n_adjust.value
-
-        compilation_name = compilation_name.replace("_wn", "_w{}".format(recent_n))
     elif compilation_name == qiskit_compilation_enum.mapomatic_lcd.value:    
         enable_mapomatic = True
         calibration_type = calibration_type_enum.lcd.value
@@ -756,7 +715,7 @@ def get_compilation_setup(compilation_name, recent_n):
         enable_mapomatic = True
         calibration_type = calibration_type_enum.recent_15_adjust.value
 
-    return compilation_name, calibration_type, enable_noise_adaptive, enable_mapomatic
+    return compilation_name, calibration_type, enable_mapomatic, qiskit_optimization_level
 
 #region REST API
 

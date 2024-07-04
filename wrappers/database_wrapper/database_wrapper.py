@@ -40,8 +40,8 @@ def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = 
 
     return header_id
     
-def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulator, noise_level, compilation_name, compilation_time, updated_qasm, 
-                                observable=None, initial_mapping = "", final_mapping = ""):
+def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulator, noise_level, compilation_name, compilation_time, 
+                            apply_dd, updated_qasm, observable=None, initial_mapping = "", final_mapping = ""):
         now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
         noisy_simulator_flag = None
@@ -54,10 +54,10 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulat
             
         sql = """
         INSERT INTO result_detail
-        (header_id, circuit_name, observable, compilation_name, compilation_time, 
+        (header_id, circuit_name, observable, compilation_name, compilation_time, apply_dd,
         initial_mapping, final_mapping, noisy_simulator, noise_level, 
         created_datetime)
-        VALUES (%s, %s, %s, %s, %s, 
+        VALUES (%s, %s, %s, %s, %s, %s,
         %s, %s, %s, %s,
         %s);
         """
@@ -73,7 +73,7 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulat
             json_final_mapping = json.dumps(final_mapping, default=str)
 
 
-        params = (header_id, circuit_name, str_observable, compilation_name, compilation_time, 
+        params = (header_id, circuit_name, str_observable, compilation_name, compilation_time, apply_dd,
                   str_initial_mapping, json_final_mapping, noisy_simulator_flag, noise_level, 
                   now_time)
 

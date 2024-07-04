@@ -67,6 +67,7 @@ class QEM:
         self.header_id = None
         self.user_id = user_id
         self.token = token
+        self.enable_dd = 0
 
         if not skip_db:
             self.open_database_connection()
@@ -167,8 +168,6 @@ class QEM:
         """
         hmmm
         """
-        qiskit_optimization_level = 3
-        enable_noise_adaptive = False
         enable_mirage = False
         enable_mapomatic = False
         calibration_type = None
@@ -176,16 +175,16 @@ class QEM:
         if qasm is None:
             qasm = self.qasm
 
-        compilation_name, calibration_type, enable_noise_adaptive, enable_mapomatic = qiskit_wrapper.get_compilation_setup(compilation_name, recent_n)
+        compilation_name, calibration_type, enable_mapomatic, qiskit_optimization_level = qiskit_wrapper.get_compilation_setup(compilation_name, recent_n)
         
         updated_qasm, compilation_time, initial_mapping = qiskit_wrapper.optimize_qasm(
             qasm, self.real_backend, qiskit_optimization_level,
-            enable_noise_adaptive=enable_noise_adaptive, enable_mirage=enable_mirage, enable_mapomatic=enable_mapomatic,
+            enable_mirage=enable_mirage, enable_mapomatic=enable_mapomatic,
             calibration_type=calibration_type, generate_props=generate_props, recent_n=recent_n)
 
         if conf.send_to_backend: 
             database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
-                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping)
+                                                     compilation_name, compilation_time, self.enable_dd, updated_qasm, observable, initial_mapping)
             
         return updated_qasm, initial_mapping
 
@@ -202,10 +201,6 @@ class QEM:
         if layout == "mapo":
             # Generate Initial Mapping from Mapomatic to a File
             initial_mapping = qiskit_wrapper.get_initial_mapping_mapomatic(
-                    qasm, self.real_backend, calibration_type=calibration_type, 
-                    generate_props=generate_props, recent_n=0)
-        elif layout == "na":
-            initial_mapping = qiskit_wrapper.get_initial_mapping_na(
                     qasm, self.real_backend, calibration_type=calibration_type, 
                     generate_props=generate_props, recent_n=0)
         elif layout == "sabre":
@@ -228,7 +223,7 @@ class QEM:
         compilation_name = layout + "_" + compilation_name
         if conf.send_to_backend: 
             database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
-                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping, final_mapping)
+                                                     compilation_name, compilation_time, self.enable_dd, updated_qasm, observable, initial_mapping, final_mapping)
 
         return updated_qasm, initial_mapping
     
@@ -486,10 +481,13 @@ class QEM:
         return df
     
     def send_to_real_backend(self, program_type, qasm_files, compilations, hardware_name = conf.hardware_name,
-                             dd_options: DynamicalDecouplingOptions = {}, twirling_options: TwirlingOptions = {}):
+                             dd_options: DynamicalDecouplingOptions = {"enable":False}, twirling_options: TwirlingOptions = {}):
         # Update the
         conf.send_to_db = True
         conf.hardware_name = hardware_name
+
+        if dd_options["enable"]:
+                self.enable_dd = 1
 
         # init header
         self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token)
@@ -512,9 +510,6 @@ class QEM:
 #endregion
 
     def get_qiskit_result(self):
-        conn = mysql.connector.connect(**conf.mysql_config)
-        cursor = conn.cursor()
-
         pending_jobs = database_wrapper.get_pending_jobs()
             
         tmp_qiskit_token = ""
@@ -538,11 +533,7 @@ class QEM:
                 if check_result_availability(job, header_id):
                     get_result(job)
 
-
             tmp_qiskit_token = qiskit_token
-
-        cursor.close()
-        conn.close()
 
         executed_jobs = database_wrapper.get_executed_jobs()
         print('Executed jobs :', len(executed_jobs))
@@ -552,4 +543,3 @@ class QEM:
                 get_metrics(header_id, job_id)
             except Exception as e:
                 print("Error metric:", str(e))
-
