@@ -67,7 +67,6 @@ class QEM:
         self.header_id = None
         self.user_id = user_id
         self.token = token
-        self.enable_dd = 0
 
         if not skip_db:
             self.open_database_connection()
@@ -184,7 +183,7 @@ class QEM:
 
         if conf.send_to_backend: 
             database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
-                                                     compilation_name, compilation_time, self.enable_dd, updated_qasm, observable, initial_mapping)
+                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping)
             
         return updated_qasm, initial_mapping
 
@@ -223,7 +222,7 @@ class QEM:
         compilation_name = layout + "_" + compilation_name
         if conf.send_to_backend: 
             database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
-                                                     compilation_name, compilation_time, self.enable_dd, updated_qasm, observable, initial_mapping, final_mapping)
+                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping, final_mapping)
 
         return updated_qasm, initial_mapping
     
@@ -486,11 +485,9 @@ class QEM:
         conf.send_to_db = True
         conf.hardware_name = hardware_name
 
-        if dd_options["enable"]:
-                self.enable_dd = 1
-
         # init header
-        self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token)
+        self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token, 
+                                                             dd_options=dd_options)
 
         for qasm in qasm_files:
             qc = self.get_circuit_properties(qasm_source=qasm)

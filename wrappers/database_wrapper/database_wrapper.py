@@ -23,15 +23,30 @@ from ..qiskit_wrapper import QiskitCircuit
 conf = Config()
 debug = conf.activate_debugging_time
 
-def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = "sampler"):
+def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = "sampler",
+                       dd_options = {"enable":False}):
     if debug: tmp_start_time  = time.perf_counter()
 
+    dd_enable = None
+    dd_sequence_type = None
+    dd_scheduling_method = None
+
+    if dd_options["enable"]:
+        dd_enable = 1
+        dd_sequence_type = dd_options["sequence_type"]
+        dd_scheduling_method = dd_options["scheduling_method"]
+
+
     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, program_type, 
+    cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, program_type,
+                   dd_enable, dd_sequence_type, dd_scheduling_method, 
                    shots, runs, created_datetime) 
     VALUES (%s, %s, %s, %s, 
+            %s, %s, %s,
             %s, %s, %s)""",
-    (user_id, conf.hardware_name, token, program_type, conf.shots, conf.runs, now_time))
+    (user_id, conf.hardware_name, token, program_type, 
+     dd_enable, dd_sequence_type, dd_scheduling_method,
+     conf.shots, conf.runs, now_time))
 
     header_id = cursor.lastrowid
 
@@ -41,7 +56,7 @@ def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = 
     return header_id
     
 def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulator, noise_level, compilation_name, compilation_time, 
-                            apply_dd, updated_qasm, observable=None, initial_mapping = "", final_mapping = ""):
+                            updated_qasm, observable=None, initial_mapping = "", final_mapping = ""):
         now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
         noisy_simulator_flag = None
@@ -54,10 +69,10 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulat
             
         sql = """
         INSERT INTO result_detail
-        (header_id, circuit_name, observable, compilation_name, compilation_time, apply_dd,
+        (header_id, circuit_name, observable, compilation_name, compilation_time, 
         initial_mapping, final_mapping, noisy_simulator, noise_level, 
         created_datetime)
-        VALUES (%s, %s, %s, %s, %s, %s,
+        VALUES (%s, %s, %s, %s, %s, 
         %s, %s, %s, %s,
         %s);
         """
@@ -73,7 +88,7 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulat
             json_final_mapping = json.dumps(final_mapping, default=str)
 
 
-        params = (header_id, circuit_name, str_observable, compilation_name, compilation_time, apply_dd,
+        params = (header_id, circuit_name, str_observable, compilation_name, compilation_time, 
                   str_initial_mapping, json_final_mapping, noisy_simulator_flag, noise_level, 
                   now_time)
 
