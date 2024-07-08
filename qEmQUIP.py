@@ -55,6 +55,7 @@ class QEM:
         self.real_backend = None
         self.backend = None
         self.program: (Sampler | Estimator) = None
+        self.program_normal: (Sampler | Estimator) = None
 
         self.conn = None
         self.cursor = None    
@@ -132,6 +133,11 @@ class QEM:
                 twirling= twirling_options
             )
             self.program = Sampler(mode=self.backend, options=options) 
+
+            options_normal = SamplerOptions(
+                default_shots=shots,
+            )
+            self.program_normal = Sampler(mode=self.backend, options=options_normal) 
         elif program_type == "estimator":
             options = EstimatorOptions(
                 default_shots=shots,
@@ -310,6 +316,9 @@ class QEM:
                         job = self.program.run(list_circuits)
                         job_id = job.job_id()
 
+                        # run the same circuit without any options
+                        self.program_normal.run(list_circuits)
+
                     elif isinstance(self.program, Estimator):
                         pass
 
@@ -407,6 +416,8 @@ class QEM:
             # init header
             self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, 
                                                                  token=self.token, program_type=program_type)
+        else:
+            conf.send_to_db = False
 
         for idx, qasm in enumerate(qasm_files):
             qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=skip_simulation)
@@ -433,6 +444,10 @@ class QEM:
                     if isinstance(self.program, Sampler):
 
                         job = self.program.run(pubs=[circuit])
+
+                        # run the same circuit without any options
+                        self.program_normal.run(pubs=[circuit])
+
                         result = job.result()[0]  
                         output = result.data.c.get_counts()
                         output_normalize = normalize_counts(output, shots=shots)
