@@ -1,15 +1,14 @@
-CREATE DATABASE  IF NOT EXISTS `framework` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
-USE `framework`;
--- MySQL dump 10.13  Distrib 8.0.34, for Linux (x86_64)
+/*!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.6.18-MariaDB, for debian-linux-gnu (x86_64)
 --
--- Host: ec2-13-60-50-75.eu-north-1.compute.amazonaws.com    Database: framework
+-- Host: 127.0.0.1    Database: framework
 -- ------------------------------------------------------
--- Server version	5.5.5-10.5.20-MariaDB
+-- Server version	10.6.18-MariaDB-0ubuntu0.22.04.1
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
+/*!40101 SET NAMES utf8 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -23,7 +22,7 @@ USE `framework`;
 
 DROP TABLE IF EXISTS `calibration`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `calibration` (
   `type` varchar(10) NOT NULL,
   `display_name` varchar(45) DEFAULT NULL,
@@ -40,7 +39,7 @@ CREATE TABLE `calibration` (
 
 DROP TABLE IF EXISTS `circuit`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `circuit` (
   `name` varchar(45) NOT NULL,
   `qasm` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
@@ -59,7 +58,7 @@ CREATE TABLE `circuit` (
 
 DROP TABLE IF EXISTS `compilation_technique`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `compilation_technique` (
   `compilation_name` varchar(45) NOT NULL,
   `display_name` varchar(70) DEFAULT NULL,
@@ -80,7 +79,7 @@ CREATE TABLE `compilation_technique` (
 
 DROP TABLE IF EXISTS `hardware`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `hardware` (
   `hw_name` varchar(25) NOT NULL,
   `hw_provider` varchar(45) NOT NULL,
@@ -93,12 +92,140 @@ CREATE TABLE `hardware` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `ibm`
+--
+
+DROP TABLE IF EXISTS `ibm`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ibm` (
+  `calibration_id` int(11) NOT NULL AUTO_INCREMENT,
+  `calibration_datetime` datetime NOT NULL,
+  `hw_name` varchar(25) NOT NULL,
+  `data_source` varchar(45) DEFAULT NULL,
+  PRIMARY KEY (`calibration_id`),
+  KEY `fk_ibm_1_idx` (`hw_name`),
+  KEY `idx_hw_name` (`hw_name`),
+  KEY `idx_ibm_hw_calibration` (`calibration_id`,`hw_name`),
+  KEY `idx_ibm_calibration_hw` (`calibration_id`,`hw_name`,`calibration_datetime`),
+  CONSTRAINT `fk_ibm_1` FOREIGN KEY (`hw_name`) REFERENCES `hardware` (`hw_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=36535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ibm_gate_spec`
+--
+
+DROP TABLE IF EXISTS `ibm_gate_spec`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ibm_gate_spec` (
+  `calibration_id` int(11) NOT NULL,
+  `qubit_control` int(11) NOT NULL,
+  `qubit_target` int(11) NOT NULL,
+  `gate_name` varchar(45) NOT NULL,
+  `date` datetime DEFAULT NULL,
+  `gate_error` decimal(35,28) DEFAULT NULL,
+  `gate_length` decimal(35,28) DEFAULT NULL,
+  PRIMARY KEY (`calibration_id`,`qubit_control`,`qubit_target`,`gate_name`),
+  KEY `idx_cal_id_qubit` (`calibration_id`,`qubit_control`),
+  KEY `idx_calibration_id` (`calibration_id`),
+  KEY `idx_qubit_control_target` (`qubit_control`,`qubit_target`),
+  KEY `idx_ibm_hw_calibration_qubit` (`calibration_id`,`qubit_control`),
+  KEY `idx_ibm_hw_calibration_qubits` (`calibration_id`,`qubit_control`,`qubit_target`,`gate_name`,`date`,`gate_error`,`gate_length`),
+  CONSTRAINT `ibm_gate_spec_calibration_id` FOREIGN KEY (`calibration_id`) REFERENCES `ibm` (`calibration_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Temporary table structure for view `ibm_one_qubit_gate_spec`
+--
+
+DROP TABLE IF EXISTS `ibm_one_qubit_gate_spec`;
+/*!50001 DROP VIEW IF EXISTS `ibm_one_qubit_gate_spec`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8;
+/*!50001 CREATE VIEW `ibm_one_qubit_gate_spec` AS SELECT
+ 1 AS `hw_name`,
+  1 AS `calibration_id`,
+  1 AS `qubit`,
+  1 AS `id_date`,
+  1 AS `reset_date`,
+  1 AS `sx_date`,
+  1 AS `x_date`,
+  1 AS `id_error`,
+  1 AS `reset_error`,
+  1 AS `sx_error`,
+  1 AS `x_error`,
+  1 AS `id_length`,
+  1 AS `reset_length`,
+  1 AS `sx_length`,
+  1 AS `x_length` */;
+SET character_set_client = @saved_cs_client;
+
+--
+-- Table structure for table `ibm_qubit_spec`
+--
+
+DROP TABLE IF EXISTS `ibm_qubit_spec`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ibm_qubit_spec` (
+  `calibration_id` int(11) NOT NULL,
+  `qubit` int(11) NOT NULL,
+  `T1` decimal(35,28) DEFAULT NULL,
+  `T2` decimal(35,28) DEFAULT NULL,
+  `frequency` decimal(35,28) DEFAULT NULL,
+  `anharmonicity` decimal(35,28) DEFAULT NULL,
+  `readout_error` decimal(35,28) DEFAULT NULL,
+  `prob_meas0_prep1` decimal(35,28) DEFAULT NULL,
+  `prob_meas1_prep0` decimal(35,28) DEFAULT NULL,
+  `readout_length` decimal(35,28) DEFAULT NULL,
+  `T1_date` datetime DEFAULT NULL,
+  `T2_date` datetime DEFAULT NULL,
+  `frequency_date` datetime DEFAULT NULL,
+  `anharmonicity_date` datetime DEFAULT NULL,
+  `readout_error_date` datetime DEFAULT NULL,
+  `prob_meas0_prep1_date` datetime DEFAULT NULL,
+  `prob_meas1_prep0_date` datetime DEFAULT NULL,
+  `readout_length_date` datetime DEFAULT NULL,
+  PRIMARY KEY (`calibration_id`,`qubit`),
+  CONSTRAINT `ibm_qubit_spec_calibration_id` FOREIGN KEY (`calibration_id`) REFERENCES `ibm` (`calibration_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Temporary table structure for view `ibm_two_qubit_gate_spec`
+--
+
+DROP TABLE IF EXISTS `ibm_two_qubit_gate_spec`;
+/*!50001 DROP VIEW IF EXISTS `ibm_two_qubit_gate_spec`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8;
+/*!50001 CREATE VIEW `ibm_two_qubit_gate_spec` AS SELECT
+ 1 AS `hw_name`,
+  1 AS `calibration_datetime`,
+  1 AS `calibration_id`,
+  1 AS `qubit_control`,
+  1 AS `qubit_target`,
+  1 AS `cx_date`,
+  1 AS `cz_date`,
+  1 AS `ecr_date`,
+  1 AS `cx_error`,
+  1 AS `cz_error`,
+  1 AS `ecr_error`,
+  1 AS `cx_length`,
+  1 AS `cz_length`,
+  1 AS `ecr_length` */;
+SET character_set_client = @saved_cs_client;
+
+--
 -- Table structure for table `metric`
 --
 
 DROP TABLE IF EXISTS `metric`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `metric` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `detail_id` int(11) NOT NULL,
@@ -116,7 +243,7 @@ CREATE TABLE `metric` (
   PRIMARY KEY (`id`),
   KEY `fk_metric_1_idx` (`detail_id`),
   CONSTRAINT `fk_metric_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1300 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -125,7 +252,7 @@ CREATE TABLE `metric` (
 
 DROP TABLE IF EXISTS `qiskit_token`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `qiskit_token` (
   `token` varchar(200) NOT NULL,
   `str_instance` varchar(100) DEFAULT NULL,
@@ -142,43 +269,43 @@ CREATE TABLE `qiskit_token` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Temporary view structure for view `result`
+-- Temporary table structure for view `result`
 --
 
 DROP TABLE IF EXISTS `result`;
 /*!50001 DROP VIEW IF EXISTS `result`*/;
 SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `result` AS SELECT 
+SET character_set_client = utf8;
+/*!50001 CREATE VIEW `result` AS SELECT
  1 AS `header_id`,
- 1 AS `user_id`,
- 1 AS `hw_name`,
- 1 AS `qiskit_token`,
- 1 AS `job_id`,
- 1 AS `status`,
- 1 AS `circuit_name`,
- 1 AS `detail_id`,
- 1 AS `compilation_name`,
- 1 AS `noisy_simulator`,
- 1 AS `noise_level`,
- 1 AS `updated_qasm`,
- 1 AS `original_qasm`,
- 1 AS `qubit`,
- 1 AS `circuit_depth`,
- 1 AS `total_two_qubit_gate`,
- 1 AS `success_rate_nassc`,
- 1 AS `success_rate_tvd`,
- 1 AS `success_rate_tvd_new`,
- 1 AS `success_rate_quasi`,
- 1 AS `success_rate_polar`,
- 1 AS `correct_output`,
- 1 AS `quasi_dists`,
- 1 AS `shots`,
- 1 AS `mapping_json`,
- 1 AS `initial_mapping`,
- 1 AS `final_mapping`,
- 1 AS `str_email`,
- 1 AS `int_remaining`*/;
+  1 AS `user_id`,
+  1 AS `hw_name`,
+  1 AS `qiskit_token`,
+  1 AS `job_id`,
+  1 AS `status`,
+  1 AS `circuit_name`,
+  1 AS `detail_id`,
+  1 AS `compilation_name`,
+  1 AS `noisy_simulator`,
+  1 AS `noise_level`,
+  1 AS `updated_qasm`,
+  1 AS `original_qasm`,
+  1 AS `qubit`,
+  1 AS `circuit_depth`,
+  1 AS `total_two_qubit_gate`,
+  1 AS `success_rate_nassc`,
+  1 AS `success_rate_tvd`,
+  1 AS `success_rate_tvd_new`,
+  1 AS `success_rate_quasi`,
+  1 AS `success_rate_polar`,
+  1 AS `correct_output`,
+  1 AS `quasi_dists`,
+  1 AS `shots`,
+  1 AS `mapping_json`,
+  1 AS `initial_mapping`,
+  1 AS `final_mapping`,
+  1 AS `str_email`,
+  1 AS `int_remaining` */;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -187,7 +314,7 @@ SET character_set_client = @saved_cs_client;
 
 DROP TABLE IF EXISTS `result_backend_json`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `result_backend_json` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `detail_id` int(11) NOT NULL,
@@ -201,7 +328,7 @@ CREATE TABLE `result_backend_json` (
   PRIMARY KEY (`id`),
   KEY `fk_result_backend_json_1_idx` (`detail_id`),
   CONSTRAINT `fk_result_backend_json_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1306 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -210,11 +337,12 @@ CREATE TABLE `result_backend_json` (
 
 DROP TABLE IF EXISTS `result_detail`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `result_detail` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `header_id` int(11) DEFAULT NULL,
   `circuit_name` varchar(45) DEFAULT NULL,
+  `observable` varchar(1500) DEFAULT NULL,
   `compilation_name` varchar(45) DEFAULT NULL,
   `compilation_time` float DEFAULT NULL,
   `initial_mapping` varchar(1500) DEFAULT NULL,
@@ -229,7 +357,7 @@ CREATE TABLE `result_detail` (
   KEY `fk_result_detail_3_idx` (`compilation_name`),
   CONSTRAINT `fk_result_detail_1` FOREIGN KEY (`header_id`) REFERENCES `result_header` (`id`),
   CONSTRAINT `fk_result_detail_2` FOREIGN KEY (`circuit_name`) REFERENCES `circuit` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -238,15 +366,19 @@ CREATE TABLE `result_detail` (
 
 DROP TABLE IF EXISTS `result_header`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `result_header` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
   `hw_name` varchar(50) DEFAULT NULL,
   `qiskit_token` varchar(150) DEFAULT NULL,
+  `program_type` varchar(45) DEFAULT 'sampler',
   `job_id` varchar(150) DEFAULT NULL,
   `shots` int(11) DEFAULT NULL,
   `runs` int(11) DEFAULT NULL,
+  `dd_enable` tinyint(1) DEFAULT NULL,
+  `dd_sequence_type` varchar(10) DEFAULT NULL,
+  `dd_scheduling_method` varchar(10) DEFAULT NULL,
   `status` varchar(45) DEFAULT NULL,
   `execution_time` float DEFAULT NULL,
   `job_created_datetime` datetime DEFAULT NULL,
@@ -260,7 +392,7 @@ CREATE TABLE `result_header` (
   KEY `fk_result_header_2_idx` (`hw_name`),
   CONSTRAINT `fk_result_header_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_result_header_2` FOREIGN KEY (`hw_name`) REFERENCES `hardware` (`hw_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=98 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -269,7 +401,7 @@ CREATE TABLE `result_header` (
 
 DROP TABLE IF EXISTS `result_updated_qasm`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `result_updated_qasm` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `detail_id` int(11) DEFAULT NULL,
@@ -277,7 +409,69 @@ CREATE TABLE `result_updated_qasm` (
   PRIMARY KEY (`id`),
   KEY `fk_result_updated_qasm_1_idx` (`detail_id`),
   CONSTRAINT `fk_result_updated_qasm_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `rigetti`
+--
+
+DROP TABLE IF EXISTS `rigetti`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `rigetti` (
+  `calibration_id` int(11) NOT NULL AUTO_INCREMENT,
+  `calibration_datetime` datetime NOT NULL,
+  `hw_name` varchar(25) NOT NULL,
+  PRIMARY KEY (`calibration_id`),
+  KEY `hw_name_idx` (`hw_name`),
+  CONSTRAINT `hw_name` FOREIGN KEY (`hw_name`) REFERENCES `hardware` (`hw_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=2887 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `rigetti_edge_spec`
+--
+
+DROP TABLE IF EXISTS `rigetti_edge_spec`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `rigetti_edge_spec` (
+  `calibration_id` int(11) NOT NULL,
+  `qubit_from` int(11) NOT NULL,
+  `qubit_to` int(11) NOT NULL,
+  `fCZ` decimal(35,28) DEFAULT NULL,
+  `fCZ_std_err` decimal(35,28) DEFAULT NULL,
+  `fCPHASE` decimal(35,28) DEFAULT NULL,
+  `fCPHASE_std_err` decimal(35,28) DEFAULT NULL,
+  `fXY` decimal(35,28) DEFAULT NULL,
+  `fXY_std_err` decimal(35,28) DEFAULT NULL,
+  PRIMARY KEY (`calibration_id`,`qubit_from`,`qubit_to`),
+  CONSTRAINT `calibration_two_qubit_id` FOREIGN KEY (`calibration_id`) REFERENCES `rigetti` (`calibration_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `rigetti_qubit_spec`
+--
+
+DROP TABLE IF EXISTS `rigetti_qubit_spec`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `rigetti_qubit_spec` (
+  `calibration_id` int(11) NOT NULL,
+  `qubit` int(11) NOT NULL,
+  `T1` decimal(35,28) DEFAULT NULL,
+  `T2` decimal(35,28) DEFAULT NULL,
+  `fActiveReset` decimal(35,28) DEFAULT NULL,
+  `fRO` decimal(35,28) DEFAULT NULL,
+  `f1QRB` decimal(35,28) DEFAULT NULL,
+  `f1QRB_std_err` decimal(35,28) DEFAULT NULL,
+  `f1Q_Simultaneous_RB` decimal(35,28) DEFAULT NULL,
+  `f1Q_Simultaneous_RB_std_err` decimal(35,28) DEFAULT NULL,
+  PRIMARY KEY (`calibration_id`,`qubit`),
+  CONSTRAINT `calibration_single_qubit_id` FOREIGN KEY (`calibration_id`) REFERENCES `rigetti` (`calibration_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -286,7 +480,7 @@ CREATE TABLE `result_updated_qasm` (
 
 DROP TABLE IF EXISTS `user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `user` (
   `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(45) DEFAULT NULL,
@@ -295,7 +489,7 @@ CREATE TABLE `user` (
   `active` tinyint(1) DEFAULT 1,
   PRIMARY KEY (`user_id`),
   KEY `idx_user_user_id` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -305,6 +499,42 @@ CREATE TABLE `user` (
 --
 -- Dumping routines for database 'framework'
 --
+
+--
+-- Final view structure for view `ibm_one_qubit_gate_spec`
+--
+
+/*!50001 DROP VIEW IF EXISTS `ibm_one_qubit_gate_spec`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`handy`@`%` SQL SECURITY DEFINER */
+/*!50001 VIEW `ibm_one_qubit_gate_spec` AS select `i`.`hw_name` AS `hw_name`,`g`.`calibration_id` AS `calibration_id`,`g`.`qubit_control` AS `qubit`,max(case when `g`.`gate_name` = 'id' then `g`.`date` else 0 end) AS `id_date`,max(case when `g`.`gate_name` = 'reset' then `g`.`date` else 0 end) AS `reset_date`,max(case when `g`.`gate_name` = 'sx' then `g`.`date` else 0 end) AS `sx_date`,max(case when `g`.`gate_name` = 'x' then `g`.`date` else 0 end) AS `x_date`,sum(case when `g`.`gate_name` = 'id' then `g`.`gate_error` else 0 end) AS `id_error`,sum(case when `g`.`gate_name` = 'reset' then `g`.`gate_error` else 0 end) AS `reset_error`,sum(case when `g`.`gate_name` = 'sx' then `g`.`gate_error` else 0 end) AS `sx_error`,sum(case when `g`.`gate_name` = 'x' then `g`.`gate_error` else 0 end) AS `x_error`,sum(case when `g`.`gate_name` = 'id' then `g`.`gate_length` else 0 end) AS `id_length`,sum(case when `g`.`gate_name` = 'reset' then `g`.`gate_length` else 0 end) AS `reset_length`,sum(case when `g`.`gate_name` = 'sx' then `g`.`gate_length` else 0 end) AS `sx_length`,sum(case when `g`.`gate_name` = 'x' then `g`.`gate_length` else 0 end) AS `x_length` from (`ibm_gate_spec` `g` join `ibm` `i` on(`g`.`calibration_id` = `i`.`calibration_id`)) group by `i`.`hw_name`,`g`.`calibration_id`,`g`.`qubit_control` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `ibm_two_qubit_gate_spec`
+--
+
+/*!50001 DROP VIEW IF EXISTS `ibm_two_qubit_gate_spec`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`handy`@`%` SQL SECURITY DEFINER */
+/*!50001 VIEW `ibm_two_qubit_gate_spec` AS select `i`.`hw_name` AS `hw_name`,`i`.`calibration_datetime` AS `calibration_datetime`,`g`.`calibration_id` AS `calibration_id`,`g`.`qubit_control` AS `qubit_control`,`g`.`qubit_target` AS `qubit_target`,max(case when `g`.`gate_name` = 'cx' then `g`.`date` else 0 end) AS `cx_date`,max(case when `g`.`gate_name` = 'cz' then `g`.`date` else 0 end) AS `cz_date`,max(case when `g`.`gate_name` = 'ecr' then `g`.`date` else 0 end) AS `ecr_date`,sum(case when `g`.`gate_name` = 'cx' then `g`.`gate_error` else 0 end) AS `cx_error`,sum(case when `g`.`gate_name` = 'cz' then `g`.`gate_error` else 0 end) AS `cz_error`,sum(case when `g`.`gate_name` = 'ecr' then `g`.`gate_error` else 0 end) AS `ecr_error`,sum(case when `g`.`gate_name` = 'cx' then `g`.`gate_length` else 0 end) AS `cx_length`,sum(case when `g`.`gate_name` = 'cz' then `g`.`gate_length` else 0 end) AS `cz_length`,sum(case when `g`.`gate_name` = 'ecr' then `g`.`gate_length` else 0 end) AS `ecr_length` from (`ibm_gate_spec` `g` join `ibm` `i` on(`g`.`calibration_id` = `i`.`calibration_id`)) where `g`.`qubit_control` <> `g`.`qubit_target` group by `i`.`hw_name`,`g`.`calibration_id`,`g`.`qubit_control`,`g`.`qubit_target` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
 
 --
 -- Final view structure for view `result`
@@ -333,4 +563,4 @@ CREATE TABLE `user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-06-11 11:19:49
+-- Dump completed on 2024-07-08 10:29:56
