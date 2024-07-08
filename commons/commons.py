@@ -27,7 +27,7 @@ class Config:
 
         quantum_config_name = "QuantumConfig"
         
-        self.send_to_db = True
+        self.send_to_db = True if self.config_parser[quantum_config_name]['send_to_db'] == "1" else False
 
         self.hardware_name = self.config_parser[quantum_config_name]['hardware_name']
         self.base_folder = self.config_parser[quantum_config_name]['base_folder']
