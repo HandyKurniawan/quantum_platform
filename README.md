@@ -67,7 +67,6 @@ exit;
 
 ``` terminal
 mysql -u user_1 -p framework < mariadb/framework_structure.sql
-mysql -u user_1 -p framework < mariadb/calibration_data_structure.sql
 mysql -u user_1 -p framework < mariadb/data.sql
 ```
 Note: These commands need to be run one by one, and the password for user_1 is 1234
