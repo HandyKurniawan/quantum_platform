@@ -316,8 +316,8 @@ class QEM:
                         job = self.program.run(list_circuits)
                         job_id = job.job_id()
 
-                        # run the same circuit without any options
-                        self.program_normal.run(list_circuits)
+                        # # run the same circuit without any options
+                        # self.program_normal.run(list_circuits)
 
                     elif isinstance(self.program, Estimator):
                         pass
@@ -444,9 +444,6 @@ class QEM:
                     if isinstance(self.program, Sampler):
 
                         job = self.program.run(pubs=[circuit])
-
-                        # run the same circuit without any options
-                        self.program_normal.run(pubs=[circuit])
 
                         result = job.result()[0]  
                         output = result.data.c.get_counts()

@@ -21,6 +21,7 @@ import wrappers.database_wrapper as database_wrapper
 from wrappers.qiskit_wrapper import QiskitCircuit
 
 from qiskit.qasm2 import dumps
+# import traceback
 
 conf = Config()
 
@@ -242,6 +243,7 @@ def get_metrics(header_id, job_id):
                 if len(tmp) == 3:
                     lstate = tmp[2].upper()
             
+            # print(circuit_name)
             quasi_dists_dict = json.loads(quasi_dists) 
             # quasi_dists_std_dict = json.loads(quasi_dists_std) 
             
@@ -325,6 +327,14 @@ def get_metrics(header_id, job_id):
 
     except Exception as e:
         print("Error in getting the metrics : ", e)
+
+        # # Extract the last traceback entry
+        # tb = traceback.extract_tb(e.__traceback__)
+        # last_entry = tb[-1]
+        # line_number = last_entry.lineno
+
+        # # Print the line number
+        # print(f"Exception occurred on line: {line_number}")
 
     
     conn.commit()
