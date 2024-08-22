@@ -23,7 +23,7 @@ from ..qiskit_wrapper import QiskitCircuit
 conf = Config()
 debug = conf.activate_debugging_time
 
-def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = "sampler",
+def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = "sampler", shots = conf.shots,
                        dd_options = {"enable":False}):
     if debug: tmp_start_time  = time.perf_counter()
 
@@ -46,7 +46,7 @@ def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = 
             %s, %s, %s)""",
     (user_id, conf.hardware_name, token, program_type, 
      dd_enable, dd_sequence_type, dd_scheduling_method,
-     conf.shots, conf.runs, now_time))
+     shots, conf.runs, now_time))
 
     header_id = cursor.lastrowid
 

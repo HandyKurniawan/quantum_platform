@@ -151,29 +151,32 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
 
 def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name):
     print("Checking results for: ", job_id, "with header id :", header_id)
-    try:
+    
 
-        conn = mysql.connector.connect(**conf.mysql_config)
-        cursor = conn.cursor()
+    conn = mysql.connector.connect(**conf.mysql_config)
+    cursor = conn.cursor()
 
-        backend = service.backend(hw_name)
+    backend = service.backend(hw_name)
 
-        cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
+    cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
 FROM result_detail d
 INNER JOIN result_header h ON d.header_id = h.id
 INNER JOIN result_updated_qasm q ON d.id = q.detail_id 
 LEFT JOIN framework.result_backend_json j ON d.id = j.detail_id
 WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS NULL  ''', ('pending', job_id, header_id,))
-        results_details = cursor.fetchall()
+    results_details = cursor.fetchall()
 
-        # print(len(results_details))
-        for idx, res in enumerate(results_details):
+    # print(len(results_details))
+    for idx, res in enumerate(results_details):
+
+        try:
+
             detail_id, updated_qasm, compilation_name, noise_level, shots = res
 
             qc = QiskitCircuit(updated_qasm, skip_simulation=True)
             circuit = qc.transpile_to_target_backend(backend)
 
-            # print("Preparing the noisy simulator", compilation_name, noise_level)
+            print("Preparing the noisy simulator", compilation_name, noise_level)
             noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level)
             # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
             job = sim_noisy.run(circuit, shots=shots)
@@ -208,14 +211,15 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
             conn.commit()
 
-        cursor.execute('UPDATE result_header SET status = "executed", updated_datetime = NOW() WHERE id = %s', (header_id,))
-        conn.commit()
+        except Exception as e:
+            print("Error happened: ", str(e))
 
-        cursor.close()
-        conn.close()
+    cursor.execute('UPDATE result_header SET status = "executed", updated_datetime = NOW() WHERE id = %s', (header_id,))
+    conn.commit()
 
-    except Exception as e:
-        print("Result not available yet", str(e))
+    cursor.close()
+    conn.close()
+    
 
 def get_metrics(header_id, job_id):
     # print("")

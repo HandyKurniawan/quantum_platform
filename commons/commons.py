@@ -21,6 +21,13 @@ class Config:
             'database': self.config_parser['MySQLConfig']['database']
         }
 
+        self.mysql_calibration_config = {
+            'user': self.config_parser['MySQLCalibrationConfig']['user'],
+            'password': self.config_parser['MySQLCalibrationConfig']['password'],
+            'host': self.config_parser['MySQLCalibrationConfig']['host'],
+            'database': self.config_parser['MySQLCalibrationConfig']['database']
+        }
+
         self.bit_format = self.config_parser['MathConfig']['bit_format']
 
         self.activate_debugging_time = True if self.config_parser['GeneralConfig']['activate_debugging_time'] == "1" else False
@@ -93,12 +100,12 @@ def read_file(file_path):
 def convert_to_json(dictiontary):
     return json.dumps(dictiontary, indent = 0) 
 
-def sql_query(sql, params):
+def sql_query(sql, params, conn_config = conf.mysql_config):
     success = False
 
     while not success:
         try:
-            with mysql.connector.connect(**conf.mysql_config) as conn:
+            with mysql.connector.connect(**conn_config) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(sql, params)
                     results = cursor.fetchall()

@@ -100,10 +100,11 @@ class QEM:
         if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))
 
     def set_service(self, hardware_name=conf.hardware_name, token=None):
-        
+        print("Connecting to quantum service...")
         if debug: tmp_start_time  = time.perf_counter()
 
         if token == None: token = self.token
+        print("Saving IBM Account...")
         QiskitRuntimeService.save_account(channel="ibm_quantum", token=token, overwrite=True)
 
         if hardware_name == "ibm_algiers":
@@ -111,6 +112,7 @@ class QEM:
         else:
             self.service = QiskitRuntimeService(channel="ibm_quantum", token=token)
         
+        print("Retrieving the real backend information...")
         self.real_backend = self.service.get_backend(hardware_name)
         
         if debug: tmp_end_time = time.perf_counter()
@@ -152,7 +154,7 @@ class QEM:
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for setup the backends: {} seconds".format(tmp_end_time - tmp_start_time))
 
-    def get_circuit_properties(self, qasm_source, skip_simulation=False):
+    def get_circuit_properties(self, qasm_source, skip_simulation=conf.skip_update_simulator):
         self.circuit_name = qasm_source.split("/")[-1].split(".")[0]
 
         qc = QiskitCircuit(qasm_source, name=self.circuit_name, skip_simulation=skip_simulation)
@@ -160,7 +162,7 @@ class QEM:
         self.qasm_original = qc.qasm_original
             
         if conf.send_to_db:
-            database_wrapper.update_circuit_data(self.conn, self.cursor, qc, conf.skip_update_simulator)
+            database_wrapper.update_circuit_data(self.conn, self.cursor, qc, skip_simulation)
 
         return qc
 
@@ -398,7 +400,9 @@ class QEM:
         """
         
         """
-        skip_simulation = False
+        print("Start running the simulator...")
+        # skip_simulation = False
+        skip_simulation = True
         # validation
         if program_type == "estimator":
             skip_simulation = True
@@ -415,7 +419,7 @@ class QEM:
             conf.send_to_db = True
             # init header
             self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, 
-                                                                 token=self.token, program_type=program_type)
+                                                                 token=self.token, shots=shots, program_type=program_type)
         else:
             conf.send_to_db = False
 
@@ -425,6 +429,7 @@ class QEM:
             for comp in compilations:
 
                 for noise_level in noise_levels:
+                    print(comp, noise_level)
                     noise_model, noisy_simulator, coupling_map = qiskit_wrapper.get_noisy_simulator(self.real_backend, noise_level)
 
                     # set the backend and the program
@@ -435,61 +440,60 @@ class QEM:
                         observable = observables[idx]
 
                     updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, observable=observable, compilation_name=comp, generate_props=False, noise_level=noise_level)
-                    compiled_qc = QiskitCircuit(updated_qasm, skip_simulation=skip_simulation)
-                    circuit = compiled_qc.transpile_to_target_backend(self.real_backend)
-
-                    if apply_dd:
-                        circuit = self.apply_dd(circuit, noisy_simulator, sequence_type=sequence_type, scheduling_method=scheduling_method)
-
-                    if isinstance(self.program, Sampler):
-
-                        job = self.program.run(pubs=[circuit])
-
-                        result = job.result()[0]  
-                        output = result.data.c.get_counts()
-                        output_normalize = normalize_counts(output, shots=shots)
-
-                        tvd = calculate_success_rate_tvd(qc.correct_output,output_normalize)
-
-                    elif isinstance(self.program, Estimator):
-
-                        p_obs = []
-                        for obs in observable:
-                            print(obs)
-                            tmp = SparsePauliOp(obs)
-                            p_obs.append(tmp)
-
-                        print(p_obs)
-                        pub = (circuit, p_obs)
-                        job = self.program.run(pubs=[pub])
-
-                        tvd = job.result()[0].data.evs
-
                     
+                    # compiled_qc = QiskitCircuit(updated_qasm, skip_simulation=skip_simulation)
+                    # circuit = compiled_qc.transpile_to_target_backend(self.real_backend)
 
-                    res_circuit_name.append(self.circuit_name)
-                    res_compilations.append(comp)
-                    res_noise_levels.append(noise_level)
-                    res_success_rate.append(tvd)
+                    # if apply_dd:
+                    #     circuit = self.apply_dd(circuit, noisy_simulator, sequence_type=sequence_type, scheduling_method=scheduling_method)
 
-                    if mitigation == "m3":
-                        probs_m3 = self.apply_mthree(noisy_simulator, initial_mapping, output, shots)
-                        tvd_m3 = calculate_success_rate_tvd(qc.correct_output, probs_m3)
-                        res_success_rate_m3.append(tvd_m3)
+                    # if isinstance(self.program, Sampler):
 
-        df = pd.DataFrame({
-            'circuit_name': res_circuit_name,
-            'compilation': res_compilations,
-            'noise_level': res_noise_levels,
-            'success_rate': res_success_rate,
-        })
+                    #     job = self.program.run(pubs=[circuit])
+
+                    #     result = job.result()[0]  
+                    #     output = result.data.c.get_counts()
+                    #     output_normalize = normalize_counts(output, shots=shots)
+
+                    #     tvd = calculate_success_rate_tvd(qc.correct_output,output_normalize)
+
+                    # elif isinstance(self.program, Estimator):
+
+                    #     p_obs = []
+                    #     for obs in observable:
+                    #         print(obs)
+                    #         tmp = SparsePauliOp(obs)
+                    #         p_obs.append(tmp)
+
+                    #     print(p_obs)
+                    #     pub = (circuit, p_obs)
+                    #     job = self.program.run(pubs=[pub])
+
+                    #     tvd = job.result()[0].data.evs
+
+                    # res_circuit_name.append(self.circuit_name)
+                    # res_compilations.append(comp)
+                    # res_noise_levels.append(noise_level)
+                    # res_success_rate.append(tvd)
+
+                    # if mitigation == "m3":
+                    #     probs_m3 = self.apply_mthree(noisy_simulator, initial_mapping, output, shots)
+                    #     tvd_m3 = calculate_success_rate_tvd(qc.correct_output, probs_m3)
+                    #     res_success_rate_m3.append(tvd_m3)
+
+        # df = pd.DataFrame({
+        #     'circuit_name': res_circuit_name,
+        #     'compilation': res_compilations,
+        #     'noise_level': res_noise_levels,
+        #     'success_rate': res_success_rate,
+        # })
 
         if send_to_db:  
             # Send to local simulator
             self.run_on_noisy_simulator_local()
                   
 
-        return df
+        # return df
     
     def send_to_real_backend(self, program_type, qasm_files, compilations, hardware_name = conf.hardware_name,
                              dd_options: DynamicalDecouplingOptions = {"enable":False}, twirling_options: TwirlingOptions = {}):
