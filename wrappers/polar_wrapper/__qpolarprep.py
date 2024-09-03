@@ -26,6 +26,8 @@ from . import __polarcodec as codec
 # ###################################################################
 def q1prep(n, zpos, meas):
 	
+	# print(f"n = {n}, zpos = {zpos}, meas = {meas}")
+
 	N = 2**n          # polar code length
   
 	xorz = bin(zpos)  # it tells Pauli XX (xorz=0) or ZZ measurement (xorz=1)
@@ -75,11 +77,13 @@ def q1prep(n, zpos, meas):
 	# qstate_UV__ and qstate_Ulen are updated at each level of reccursion
 	# initialization: U1 = ... = UN = [0] and V1 = ... = VN = [], corresponding to all qubits initialized in Z basis
 	qstate_UV__ = np.zeros(N, dtype=int)  
+	# print("qstate_UV__ = ", qstate_UV__)
 	
 	t = 0  # time index: indicates which recursion level we are at, and tells when to stop 
 	qstate_Ulen = 1  # length of vector U -- of the qstates at the reccursion level t=0 
 	meas_indx   = 0  # current index in 'meas' array 
 	
+	# print("==============")
 	while 0 <= t < n :
 		
 		# at time t, there are 2**(n-t) qpolar states already prepared, each one of length 2**t
@@ -89,6 +93,10 @@ def q1prep(n, zpos, meas):
 		
 		# measurement outcomes
 		m__ = np.zeros((T,), dtype=int)
+
+		# print(" ")
+		# print(f"T = {T}, xorz[t] = {xorz[t]}", 2**(n-t-1)  )
+		
 	
 		if xorz[t] == "1": # we do ZZ measurements
 		
@@ -96,6 +104,8 @@ def q1prep(n, zpos, meas):
 				# qstate_freeze indexes corresponding to starting positions of the two qpolar states 
 				indx1 = 2*i*T       # starting index of the first qstate
 				indx2 = (2*i+1)*T   # starting index of the second qstate
+
+				# print("indx1 = ", indx1, ", indx2 = ", indx2, ", qstate_UV__ =", qstate_UV__, ", qstate_Ulen =", qstate_Ulen, ", T =", T)
 				
 				# U and V vectors or the two qpolar states that are grouped together 
 				U1 = qstate_UV__[indx1:indx1+qstate_Ulen]    # U vector of the first block
@@ -108,8 +118,11 @@ def q1prep(n, zpos, meas):
 				
 				# compute the syndrome of the corresponding measurement outcomes
 				m__[:] = meas[meas_indx:meas_indx+T]  # measurement results
+				# print("old m__[:] = ", m__, ", meas_indx = ", meas_indx, ", U1 =", U1, ", V1 =", V1, ", U2 =", U2, ", V2 =", V2)
 				meas_indx = meas_indx+T            # update meas_index value
 				codec.polarenc(m__)      # apply the polar encoder (m__ is modified in place!)
+				# print("new m__[:] = ", m__[:], ", meas_indx = ", meas_indx, ", Uprime =", Uprime, ", Vprime =", Vprime)
+				# print(m__[0:qstate_Ulen], " - ", (m__[0:qstate_Ulen] == Uprime).all())
 				
 				if (m__[0:qstate_Ulen] == Uprime).all():  # syndrome is all-zero
 					# update [U, V] vectors of the prepared state
@@ -121,6 +134,9 @@ def q1prep(n, zpos, meas):
 					
 					# qstate_Ulen will be updated after the for loop is completed
 					# i.e., after preparing all the 2**(n-t-1) qpolar states of length 2**(t+1) 
+
+					# print("indx1 = ", indx1, ", indx2 = ", indx2, ", qstate_UV__ =", qstate_UV__, ", qstate_Ulen =", qstate_Ulen, ", T =", T)
+					# print("--")
 		  
 				else: # non-zero syndrome => discard
 					success = 0
@@ -140,6 +156,8 @@ def q1prep(n, zpos, meas):
 				# qstate_freeze indexes corresponding to starting positions of the two qpolar states 
 				indx1 = 2*i*T       # starting index of the first qstate
 				indx2 = (2*i+1)*T   # starting index of the second qstate
+
+				# print("indx1 = ", indx1, ", indx2 = ", indx2, ", qstate_UV__ =", qstate_UV__, ", qstate_Ulen =", qstate_Ulen, ", T =", T)
 				
 				# U and V vectors or the two qpolar states that are grouped together 
 				U1 = qstate_UV__[indx1:indx1+qstate_Ulen]    # U vector of the first block
@@ -152,8 +170,11 @@ def q1prep(n, zpos, meas):
         
 				# compute the syndrome of the corresponding measurement outcomes
 				m__[:] = meas[meas_indx:meas_indx+T]  # measurement results
+				# print("old m__[:] = ", m__, ", meas_indx = ", meas_indx, ", U1 =", U1, ", V1 =", V1, ", U2 =", U2, ", V2 =", V2)
 				meas_indx = meas_indx+T            # update meas_index value
 				codec.revpolarenc(m__)   # reverse polar encoder (m__ is modified in place!)
+				# print("new m__[:] = ", m__[:], ", meas_indx = ", meas_indx, ", Uprime =", Uprime, ", Vprime =", Vprime)
+				# print(m__[qstate_Ulen:T], " - ", (m__[qstate_Ulen:T] == Vprime).all())
 				
 				if (m__[qstate_Ulen:T] == Vprime).all():  # syndrome is all-zero
 					# update [U, V] vectors of the prepared state
@@ -164,6 +185,8 @@ def q1prep(n, zpos, meas):
 					qstate_UV__[indx2+qstate_Ulen:indx2+T] = Vprime[:]           # Vprime
 					
 					# qstate_Ulen needs not be updated (remains unchanged)
+					# print("indx1 = ", indx1, ", indx2 = ", indx2, ", qstate_UV__ =", qstate_UV__, ", qstate_Ulen =", qstate_Ulen, ", T =", T)
+					# print("--")
 	
 				else: # non-zero syndrome => discard
 					success = 0
@@ -174,6 +197,6 @@ def q1prep(n, zpos, meas):
 			else:
 				# qstate_Ulen needs not be updated (remains unchanged)
 				t = t + 1
-
-	return success 
+		
+	return success, qstate_UV__
 

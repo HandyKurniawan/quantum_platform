@@ -186,7 +186,7 @@ def get_executed_jobs():
         conn = mysql.connector.connect(**conf.mysql_config)
         cursor = conn.cursor()
 
-        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s ;''', ("executed", ))
+        cursor.execute('''SELECT id, job_id FROM result_header WHERE status = %s;''', ("executed", ))
 
         results = cursor.fetchall()
         cursor.close()
