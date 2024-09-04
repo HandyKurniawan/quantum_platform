@@ -75,6 +75,7 @@ class QEM:
         else:
             conf.send_to_backend = False
 
+        # OPEN NANTI
         self.set_service(hardware_name=conf.hardware_name, token=token)
         
         if conf.initialized_triq == 1:

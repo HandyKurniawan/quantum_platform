@@ -282,6 +282,9 @@ def get_metrics(header_id, job_id):
             circuit_depth = qc.depth()
             circuit_cost = calculate_circuit_cost(qc)
 
+            count_accept = 0
+            count_logerror = 0
+
             if "polar_all_meas" in circuit_name:
                 print("get metrics: n =", n, ", lstate =", lstate)
                 # total_qubit = (2**n) * (n)
@@ -306,8 +309,8 @@ def get_metrics(header_id, job_id):
                 # print(count_dict_bin)
                 # print("----")
                 # print(tmp)
-                success_rate_polar = polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp)
-                print(circuit_name, noise_level, compilation_name, success_rate_polar)
+                count_accept, count_logerror, success_rate_polar = polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp)
+                print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, success_rate_polar)
 
                 success_rate_quasi = 0
                 success_rate_nassc = 0
@@ -363,21 +366,22 @@ def get_metrics(header_id, job_id):
             if existing_row:
                 cursor.execute("""UPDATE metric SET total_gate = %s, total_one_qubit_gate = %s, total_two_qubit_gate = %s, circuit_depth = %s, 
                 circuit_cost = %s, success_rate_tvd = %s, success_rate_nassc = %s, success_rate_quasi = %s, 
-                success_rate_polar = %s, hellinger_distance = %s, success_rate_tvd_new = %s
+                success_rate_polar = %s, hellinger_distance = %s, success_rate_tvd_new = %s, polar_count_accept = %s, polar_count_logerror = %s
                 WHERE detail_id = %s; """, 
                 (total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new, detail_id))
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, detail_id))
+                
             else:
                 cursor.execute("""INSERT INTO metric(detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new)
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, polar_count_accept, polar_count_logerror)
                 VALUES (%s, %s, %s, %s, %s,
                 %s, %s, %s, %s, 
-                %s, %s, %s); """, 
+                %s, %s, %s, %s, %s); """, 
                 (detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new))
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror))
                 
             # update_result_header_status_by_header_id(cursor, header_id, 'done')
 

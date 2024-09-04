@@ -198,5 +198,9 @@ def get_logical_error_on_accepted_states(n, lstate, results):
     print(" number of accepted states   (valid measurement results) = ", count_accept)
     print("        number of logical errors on the accepted states  = ", round(count_logerror))
 
-    return (count_accept - count_logerror) / total_shots
+    fidelity = 0
+    if count_accept > 0:
+        fidelity = ((count_accept - round(count_logerror)) / count_accept)
+
+    return count_accept, round(count_logerror), fidelity
 
