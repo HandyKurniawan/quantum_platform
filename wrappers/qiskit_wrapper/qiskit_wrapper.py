@@ -65,6 +65,7 @@ class QiskitCircuit:
             raise ValueError("Input must be a string or a QuantumCircuit object")
 
         self.qasm_original = dumps(qc)
+        self.circuit_original = qc
 
         qc = transpile_to_basis_gate(qc)
         self.circuit: QuantumCircuit = qc

@@ -108,6 +108,7 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulat
 def update_circuit_data(conn, cursor, qc: QiskitCircuit, skip):
     gates_json = convert_to_json(qc.gates)
     circuit_name = qc.name
+    correct_output = ""
 
     # check if the metric is already there, just update
     sql = 'SELECT name FROM circuit WHERE name = %s'
@@ -115,8 +116,15 @@ def update_circuit_data(conn, cursor, qc: QiskitCircuit, skip):
     cursor.execute(sql, param)
     existing_row = cursor.fetchone()
 
+    if existing_row:
+        sql = 'SELECT name, correct_output FROM circuit WHERE name = %s'
+        param = (circuit_name,)
+        cursor.execute(sql, param)
+        results = cursor.fetchall()
+        name, correct_output = results[0]
+
     if skip:
-        correct_output_json = ""
+        correct_output_json = convert_to_json(correct_output)
     else:
         correct_output_json = convert_to_json(qc.correct_output)
 

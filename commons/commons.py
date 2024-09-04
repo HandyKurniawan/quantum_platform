@@ -283,7 +283,6 @@ def get_correct_output_dict(cursor, detail_id):
     result_correct = cursor.fetchall()
 
     correct_output = json.loads(result_correct[0][0])
-
     return correct_output
 
 def calculate_success_rate_nassc(correct_output, dists):
