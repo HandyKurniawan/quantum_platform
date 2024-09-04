@@ -338,7 +338,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
 '''
     parms = (hw_name, )
     
-    results = sql_query(sql, parms)
+    results = sql_query(sql, parms, conf.mysql_calibration_config)
     
     return results[0][0], results[0][1] 
 
@@ -350,7 +350,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
 '''
     parms = (hw_name, )
     
-    results = sql_query(sql, parms)
+    results = sql_query(sql, parms, conf.mysql_calibration_config)
     
     return results[0][0]
 
@@ -366,7 +366,7 @@ def _get_std_readout_error(prop_dict, hw_name):
     ) X GROUP BY qubit;
     """
     parms = (hw_name, )
-    readout_results = sql_query(sql, parms)
+    readout_results = sql_query(sql, parms, conf.mysql_calibration_config)
 
     for res in readout_results:
         qubit, stddev_value = res
@@ -448,7 +448,7 @@ def _get_readout_error_sql(hw_name, calibration_type, recent_n = None):
 def _update_readout_error(prop_dict, hw_name, calibration_type, recent_n = None):
 
     sql, parms = _get_readout_error_sql(hw_name, calibration_type, recent_n)
-    readout_results = sql_query(sql, parms)
+    readout_results = sql_query(sql, parms, conf.mysql_calibration_config)
 
     # update readout error
     for res in readout_results:
@@ -475,7 +475,7 @@ def _get_std_two_qubit_error(prop_dict, hw_name, native_gates_2q):
         ) X GROUP BY qubit_control, qubit_target;
         '''
     parms = (hw_name, )
-    two_q_results = sql_query(sql, parms)
+    two_q_results = sql_query(sql, parms, conf.mysql_calibration_config)
 
     for res in two_q_results:
         q_control, q_target, stddev_value = res
@@ -568,7 +568,7 @@ def _update_two_qubit_error(prop_dict, hw_name, calibration_type, recent_n = Non
     native_gates_2q = _get_native_gates_2q(hw_name)
 
     sql, parms = _get_two_qubit_error_sql(hw_name, calibration_type, native_gates_2q, recent_n)
-    two_q_results = sql_query(sql, parms)
+    two_q_results = sql_query(sql, parms, conf.mysql_calibration_config)
 
     for res in two_q_results:
         q_control, q_target, avg_value = res
@@ -600,7 +600,7 @@ def _update_one_qubit_error(prop_dict, hw_name, calibration_type):
 
     parms = (hw_name, )
 
-    one_q_results = sql_query(sql, parms)
+    one_q_results = sql_query(sql, parms, conf.mysql_calibration_config)
 
     for res in one_q_results:
         qubit, avg_value, stddev_value, max_value, min_value = res
@@ -876,8 +876,8 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
     
     noise_model = NoiseModel.from_backend_properties(new_properties, dt = 0.1)
     
-    if noiseless or error_percentage == 0:
-        sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties)
+    if noiseless or error_percentage == 0.0:
+        sim_noisy = AerSimulator()
     else:
         sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties,
                                 noise_model=noise_model, 

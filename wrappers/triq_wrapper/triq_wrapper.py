@@ -156,7 +156,7 @@ def get_compilation_config(compilation_name):
 
 def generate_realtime_calibration_data(qem):
     # Connect to the MySQL database
-    conn = mysql.connector.connect(**conf.mysql_config)
+    conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
 
     # get last calibration id
@@ -225,7 +225,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
 
 def generate_average_calibration_data(qem):
     # Connect to the MySQL database
-    conn = mysql.connector.connect(**conf.mysql_config)
+    conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
 
     # get last calibration id
@@ -303,7 +303,7 @@ WHERE i.hw_name = %s
 
 def generate_recent_average_calibration_data(qem, days, adjust = False):
     # Connect to the MySQL database
-    conn = mysql.connector.connect(**conf.mysql_config)
+    conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
 
     # get last calibration id
@@ -501,7 +501,7 @@ WHERE i.hw_name = %s AND readout_error_date BETWEEN date_add(now(), INTERVAL %s 
 
 def generate_mix_calibration_data(qem):
     # Connect to the MySQL database
-    conn = mysql.connector.connect(**conf.mysql_config)
+    conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
 
     # get last calibration id

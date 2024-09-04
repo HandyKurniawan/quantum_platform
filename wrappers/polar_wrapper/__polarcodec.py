@@ -74,14 +74,17 @@ def polardec(llr_list, ipos):
 	N  = len(llr_list)   # code length
 	ip = ipos  # copy of ipos (information position)
 	
+	# print(llr_list)
 	while N > 1:
 		h = N//2
-		
+		# print(llr_list)
+
 		llr_list1 = llr_list[0:h]
 		llr_list2 = llr_list[h:N]
 		
 		if ip < h: # decoding bad channel
-			llr_list = np.sign(llr_list1)*np.sign(llr_list2)*np.minimum(abs(llr_list1), abs(llr_list2))
+			llr_list = np.sign(llr_list1)*np.sign(llr_list2)*np.minimum(abs(llr_list1), abs(llr_list2)) # min-sum decoding rule
+			# + np.log(np.divide(1.0+np.exp(-abs(llr_list1+llr_list2)),  1.0+np.exp(-abs(llr_list1-llr_list2))))  # sum-product
 		
 		else: # ip >= h: decoding good channel
 			llr_list = llr_list1 + llr_list2
@@ -90,14 +93,21 @@ def polardec(llr_list, ipos):
 		# update N
 		N = h
 	
+	# print("===================")
+	# print(llr_list)
+	# print("===================")
 	llr_ipos = llr_list[0]
 	if llr_ipos > 0:
 		u_ipos = 0
 	elif llr_ipos < 0:
 		u_ipos = 1
 	else:
-		u_ipos = np.random.randint(2)
+		# undecided value
+		# return -1, such that undecided values can be tracked in the calling function
+		u_ipos = -1 # np.random.randint(2)
 	
+	# print(llr_list[0])
+
 	return u_ipos
 
 
@@ -108,7 +118,10 @@ def revpolardec(llr_list, ipos):
 	N  = len(llr_list)   # code length
 	ip = ipos  # copy of ipos (information position)
 	
+	# print(llr_list)
 	while N > 1:
+		# print(llr_list)
+
 		h = N//2
 		
 		llr_list1 = llr_list[0:h]
@@ -116,22 +129,29 @@ def revpolardec(llr_list, ipos):
 		
 		if ip < h: # decoding good channel
 			llr_list = llr_list1 + llr_list2
-		
+			
 		else: # ip >= h: decoding bad channel
-			llr_list = np.sign(llr_list1)*np.sign(llr_list2)*np.minimum(abs(llr_list1), abs(llr_list2))
+			llr_list = np.sign(llr_list1)*np.sign(llr_list2)*np.minimum(abs(llr_list1), abs(llr_list2)) # min-sum decoding rule
+			# + np.log(np.divide(1.0+np.exp(-abs(llr_list1+llr_list2)),  1.0+np.exp(-abs(llr_list1-llr_list2))))  # sum-product			
 			ip = ip - h
 		
 		# update N
 		N = h
 	
+	# print("===================")
+	# print(llr_list)
+	# print("===================")
 	llr_ipos = llr_list[0]
 	if llr_ipos > 0:
 		u_ipos = 0
 	elif llr_ipos < 0:
 		u_ipos = 1
 	else:
-		u_ipos = np.random.randint(2)
-	
+		# undecided value
+		# return -1, such that undecided values can be tracked in the calling function
+		u_ipos = -1 # np.random.randint(2)
+	# print(llr_list, ipos, u_ipos)
+
 	return u_ipos
 
 

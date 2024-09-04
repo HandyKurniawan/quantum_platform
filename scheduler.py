@@ -21,6 +21,8 @@ import wrappers.database_wrapper as database_wrapper
 from wrappers.qiskit_wrapper import QiskitCircuit
 
 from qiskit.qasm2 import dumps
+from qiskit_aer import AerSimulator
+# import traceback
 
 conf = Config()
 
@@ -150,32 +152,43 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
 
 def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name):
     print("Checking results for: ", job_id, "with header id :", header_id)
-    try:
+    
 
-        conn = mysql.connector.connect(**conf.mysql_config)
-        cursor = conn.cursor()
+    conn = mysql.connector.connect(**conf.mysql_config)
+    cursor = conn.cursor()
 
-        backend = service.backend(hw_name)
+    backend = service.backend(hw_name)
 
-        cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
+    cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
 FROM result_detail d
 INNER JOIN result_header h ON d.header_id = h.id
 INNER JOIN result_updated_qasm q ON d.id = q.detail_id 
 LEFT JOIN framework.result_backend_json j ON d.id = j.detail_id
 WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS NULL  ''', ('pending', job_id, header_id,))
-        results_details = cursor.fetchall()
+    results_details = cursor.fetchall()
 
-        # print(len(results_details))
-        for idx, res in enumerate(results_details):
+    # print(len(results_details))
+    for idx, res in enumerate(results_details):
+
+        try:
+
             detail_id, updated_qasm, compilation_name, noise_level, shots = res
 
             qc = QiskitCircuit(updated_qasm, skip_simulation=True)
             circuit = qc.transpile_to_target_backend(backend)
 
-            # print("Preparing the noisy simulator", compilation_name, noise_level)
-            noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level)
-            # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
-            job = sim_noisy.run(circuit, shots=shots)
+            noiseless = False
+            if noise_level == 0.0:
+                noiseless = True
+                print("Preparing the noiseless simulator", compilation_name, noise_level, noiseless)
+                sim_ideal = AerSimulator()
+                job = sim_ideal.run(circuit, shots=shots)
+            else:
+                print("Preparing the noisy simulator", compilation_name, noise_level, noiseless)
+                noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless)
+                # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
+                job = sim_noisy.run(circuit, shots=shots)
+
             # print("run the job")
             result = job.result()  
             # print("get result")
@@ -207,14 +220,15 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
             conn.commit()
 
-        cursor.execute('UPDATE result_header SET status = "executed", updated_datetime = NOW() WHERE id = %s', (header_id,))
-        conn.commit()
+        except Exception as e:
+            print("Error happened: ", str(e))
 
-        cursor.close()
-        conn.close()
+    cursor.execute('UPDATE result_header SET status = "executed", updated_datetime = NOW() WHERE id = %s', (header_id,))
+    conn.commit()
 
-    except Exception as e:
-        print("Result not available yet", str(e))
+    cursor.close()
+    conn.close()
+    
 
 def get_metrics(header_id, job_id):
     # print("")
@@ -223,7 +237,8 @@ def get_metrics(header_id, job_id):
     cursor = conn.cursor()
 
     try:
-        cursor.execute('''SELECT j.detail_id, j.qasm, j.quasi_dists, j.quasi_dists_std, d.circuit_name, d.compilation_name, d.noise_level 
+        cursor.execute('''SELECT j.detail_id, j.qasm, j.quasi_dists, j.quasi_dists_std, d.circuit_name, 
+                       d.compilation_name, d.noise_level, j.shots 
                        FROM framework.result_backend_json j
         INNER JOIN framework.result_detail d ON j.detail_id = d.id
         INNER JOIN framework.result_header h ON d.header_id = h.id
@@ -232,17 +247,31 @@ def get_metrics(header_id, job_id):
 
         # print(len(results_details_json))
         for idx, res in enumerate(results_details_json):
-            detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level = res
+            detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level, shots = res
 
             n = 2
             lstate = "Z"
-            if "polar" in circuit_name:
+            if "polar_all_meas" in circuit_name:
+                tmp = circuit_name.split("_")
+                n = int(tmp[3][1])
+                if len(tmp) == 5:
+                    lstate = tmp[4].upper()
+            elif "polar" in circuit_name:
                 tmp = circuit_name.split("_")
                 n = int(tmp[1][1])
                 if len(tmp) == 3:
                     lstate = tmp[2].upper()
             
+            # print(n, lstate, circuit_name)
+            
             quasi_dists_dict = json.loads(quasi_dists) 
+            count_dict = {}
+            if (sum(quasi_dists_dict.values()) <= 1):
+                for key, value in quasi_dists_dict.items():
+                    count_dict[key] = value * shots
+            else:
+                count_dict = quasi_dists_dict
+
             # quasi_dists_std_dict = json.loads(quasi_dists_std) 
             
             qc = QuantumCircuit.from_qasm_str(qasm)
@@ -253,7 +282,43 @@ def get_metrics(header_id, job_id):
             circuit_depth = qc.depth()
             circuit_cost = calculate_circuit_cost(qc)
 
-            if "polar" in circuit_name:
+            count_accept = 0
+            count_logerror = 0
+
+            if "polar_all_meas" in circuit_name:
+                print("get metrics: n =", n, ", lstate =", lstate)
+                # total_qubit = (2**n) * (n)
+                if lstate == "X":
+                    if n == 2:
+                        total_qubit = (2**n)
+                    elif n == 3:
+                        total_qubit = 20
+                    elif n == 4:
+                        total_qubit = 40
+                else:
+                    if n == 2:
+                        total_qubit = 0
+                    elif n == 3:
+                        total_qubit = 12
+                    elif n == 4:
+                        total_qubit = 48
+                    
+                count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit)
+                # tmp = reverse_string_keys(count_dict_bin)
+                tmp = count_dict_bin
+                # print(count_dict_bin)
+                # print("----")
+                # print(tmp)
+                count_accept, count_logerror, success_rate_polar = polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp)
+                print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, success_rate_polar)
+
+                success_rate_quasi = 0
+                success_rate_nassc = 0
+                success_rate_tvd = 0
+                success_rate_tvd_new = 0
+                hellinger_distance = 0
+
+            elif "polar" in circuit_name:
                 print("get metrics: n =", n, ", lstate =", lstate)
                 # total_qubit = (2**n) * (n)
                 if lstate == "X":
@@ -301,21 +366,22 @@ def get_metrics(header_id, job_id):
             if existing_row:
                 cursor.execute("""UPDATE metric SET total_gate = %s, total_one_qubit_gate = %s, total_two_qubit_gate = %s, circuit_depth = %s, 
                 circuit_cost = %s, success_rate_tvd = %s, success_rate_nassc = %s, success_rate_quasi = %s, 
-                success_rate_polar = %s, hellinger_distance = %s, success_rate_tvd_new = %s
+                success_rate_polar = %s, hellinger_distance = %s, success_rate_tvd_new = %s, polar_count_accept = %s, polar_count_logerror = %s
                 WHERE detail_id = %s; """, 
                 (total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new, detail_id))
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, detail_id))
+                
             else:
                 cursor.execute("""INSERT INTO metric(detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new)
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, polar_count_accept, polar_count_logerror)
                 VALUES (%s, %s, %s, %s, %s,
                 %s, %s, %s, %s, 
-                %s, %s, %s); """, 
+                %s, %s, %s, %s, %s); """, 
                 (detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new))
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror))
                 
             # update_result_header_status_by_header_id(cursor, header_id, 'done')
 
@@ -325,6 +391,14 @@ def get_metrics(header_id, job_id):
 
     except Exception as e:
         print("Error in getting the metrics : ", e)
+
+        # # Extract the last traceback entry
+        # tb = traceback.extract_tb(e.__traceback__)
+        # last_entry = tb[-1]
+        # line_number = last_entry.lineno
+
+        # # Print the line number
+        # print(f"Exception occurred on line: {line_number}")
 
     
     conn.commit()
