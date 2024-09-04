@@ -156,7 +156,10 @@ class QEM:
         if debug: print("Time for setup the backends: {} seconds".format(tmp_end_time - tmp_start_time))
 
     def get_circuit_properties(self, qasm_source, skip_simulation=conf.skip_update_simulator):
-        self.circuit_name = qasm_source.split("/")[-1].split(".")[0]
+        if "OPENQASM" in qasm_source:
+            self.circuit_name = "Circuit_" + datetime.now().strftime("%Y%m%d%H%M%S")
+        else:
+            self.circuit_name = qasm_source.split("/")[-1].split(".")[0]
 
         qc = QiskitCircuit(qasm_source, name=self.circuit_name, skip_simulation=skip_simulation)
         self.qasm = qc.qasm
@@ -302,7 +305,10 @@ class QEM:
 
                 qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
-                circuit = qc.transpile_to_target_backend(self.real_backend)
+                if compilation_name not in ("no_compilation", "qiskit_3", "qiskit_0"):
+                    circuit = qc.transpile_to_target_backend(self.real_backend)
+                else:
+                    circuit = qc.circuit_original
 
                 for i in range(runs):
                     list_circuits.append(circuit)
@@ -383,7 +389,12 @@ class QEM:
 
         updated_qasm = ""
         initial_mapping = ""
-        if "qiskit" in compilation_name or "mapomatic" in compilation_name:
+        if compilation_name == "no_compilation":
+            updated_qasm = self.qasm_original
+            if conf.send_to_backend: 
+                database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
+                                                        compilation_name, 0, updated_qasm, observable, initial_mapping) 
+        elif "qiskit" in compilation_name or "mapomatic" in compilation_name:
             updated_qasm, initial_mapping = self.apply_qiskit(qasm=qasm, observable=observable, compilation_name=compilation_name, generate_props=generate_props, noise_level=noise_level)
         elif "triq" in compilation_name:
             tmp = compilation_name.split("_")
@@ -496,14 +507,14 @@ class QEM:
 
         # return df
     
-    def send_to_real_backend(self, program_type, qasm_files, compilations, hardware_name = conf.hardware_name,
+    def send_to_real_backend(self, program_type, qasm_files, compilations, shots=conf.shots, hardware_name = conf.hardware_name,
                              dd_options: DynamicalDecouplingOptions = {"enable":False}, twirling_options: TwirlingOptions = {}):
         # Update the
         conf.send_to_db = True
         conf.hardware_name = hardware_name
 
         # init header
-        self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token, 
+        self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token, shots=shots, 
                                                              dd_options=dd_options)
 
         for qasm in qasm_files:
