@@ -175,7 +175,12 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
             detail_id, updated_qasm, compilation_name, noise_level, shots = res
 
             qc = QiskitCircuit(updated_qasm, skip_simulation=True)
-            circuit = qc.transpile_to_target_backend(backend)
+
+            if "nc" not in compilation_name:
+                circuit = qc.transpile_to_target_backend(backend)
+            else:
+                circuit = qc.circuit_original
+                # print(dumps(circuit))
 
             noiseless = False
             if noise_level == 0.0:
@@ -271,6 +276,7 @@ def get_metrics(header_id, job_id):
                     count_dict[key] = value * shots
             else:
                 count_dict = quasi_dists_dict
+
 
             # quasi_dists_std_dict = json.loads(quasi_dists_std) 
             

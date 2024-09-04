@@ -305,7 +305,7 @@ class QEM:
 
                 qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
-                if compilation_name not in ("no_compilation", "qiskit_3", "qiskit_0"):
+                if compilation_name not in ("qiskit_3", "qiskit_0") or "nc" not in compilation_name:
                     circuit = qc.transpile_to_target_backend(self.real_backend)
                 else:
                     circuit = qc.circuit_original
@@ -389,7 +389,7 @@ class QEM:
 
         updated_qasm = ""
         initial_mapping = ""
-        if compilation_name == "no_compilation":
+        if "nc" in compilation_name:
             updated_qasm = self.qasm_original
             if conf.send_to_backend: 
                 database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
@@ -413,8 +413,8 @@ class QEM:
         
         """
         print("Start running the simulator...")
-        # skip_simulation = False
-        skip_simulation = True
+        skip_simulation = False
+        # skip_simulation = True
         # validation
         if program_type == "estimator":
             skip_simulation = True
