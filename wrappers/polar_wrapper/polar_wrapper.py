@@ -15,7 +15,7 @@ def get_q1prep_sr(n, lstate, results):
     # zpos: last position frozen in zero, counting from zero! (0 <= zpos < N-1)
     # list of zpos values, assuming that logical |0> is prepared (lstate = "Z")
     #       n =   0   1   2  3  4  5   6   7   8   9   10 
-    zpos_list = [-1, -1, -1, 3, 6, 7, 22, 15, 90, 31, 362]
+    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
 
     if lstate == "Z":
         # |0> is prepared: take zpos value from the list above
@@ -76,7 +76,7 @@ def get_logical_error_on_accepted_states(n, lstate, results):
     # zpos: last position frozen in zero, counting from zero! (0 <= zpos < N-1)
     # list of zpos values, assuming that logical |0> is prepared (lstate = "Z")
     #       n =   0   1   2  3  4  5   6   7   8   9   10 
-    zpos_list = [-1, -1, -1, 3, 6, 7, 22, 15, 90, 31, 362]
+    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
 
     if lstate == "Z":
         # |0> is prepared: take zpos value from the list above

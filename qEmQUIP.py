@@ -93,10 +93,10 @@ class QEM:
 
     def update_hardware_configs(self): 
         if debug: tmp_start_time  = time.perf_counter()
-        triq_wrapper.generate_recent_average_calibration_data(self, 15, True)
+        # triq_wrapper.generate_recent_average_calibration_data(self, 15, True)
         triq_wrapper.generate_realtime_calibration_data(self)
-        triq_wrapper.generate_average_calibration_data(self)
-        triq_wrapper.generate_mix_calibration_data(self)
+        # triq_wrapper.generate_average_calibration_data(self)
+        # triq_wrapper.generate_mix_calibration_data(self)
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))
 
@@ -383,6 +383,7 @@ class QEM:
         if debug: print("Time for sending to local simulator: {} seconds".format(tmp_end_time - tmp_start_time)) 
 
     def get_qasm_files_from_path(self, file_path = conf.base_folder):
+        print(file_path)
         return glob.glob(os.path.expanduser(os.path.join(file_path, "*.qasm")))
 
     def compile(self, qasm, compilation_name, observable=None, generate_props=False, noise_level=None):
@@ -413,8 +414,8 @@ class QEM:
         
         """
         print("Start running the simulator...")
-        skip_simulation = False
-        # skip_simulation = True
+        # skip_simulation = False
+        skip_simulation = True
         # validation
         if program_type == "estimator":
             skip_simulation = True

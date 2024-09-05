@@ -271,7 +271,7 @@ def get_metrics(header_id, job_id):
             
             quasi_dists_dict = json.loads(quasi_dists) 
             count_dict = {}
-            if (sum(quasi_dists_dict.values()) <= 1):
+            if (round(sum(quasi_dists_dict.values())) <= 1):
                 for key, value in quasi_dists_dict.items():
                     count_dict[key] = value * shots
             else:
@@ -296,14 +296,14 @@ def get_metrics(header_id, job_id):
                 # total_qubit = (2**n) * (n)
                 if lstate == "X":
                     if n == 2:
-                        total_qubit = (2**n)
+                        total_qubit = 8
                     elif n == 3:
                         total_qubit = 20
                     elif n == 4:
                         total_qubit = 40
                 else:
                     if n == 2:
-                        total_qubit = 0
+                        total_qubit = 6
                     elif n == 3:
                         total_qubit = 12
                     elif n == 4:
@@ -312,6 +312,7 @@ def get_metrics(header_id, job_id):
                 count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit)
                 # tmp = reverse_string_keys(count_dict_bin)
                 tmp = count_dict_bin
+                          
                 # print(count_dict_bin)
                 # print("----")
                 # print(tmp)
