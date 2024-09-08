@@ -1,3 +1,5 @@
+CREATE DATABASE  IF NOT EXISTS `framework` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
+USE `framework`;
 /*!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.6.18-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -237,13 +239,15 @@ CREATE TABLE `metric` (
   `success_rate_tvd` float DEFAULT NULL,
   `success_rate_nassc` float DEFAULT NULL,
   `success_rate_quasi` float DEFAULT NULL,
+  `polar_count_accept` int(11) DEFAULT NULL,
+  `polar_count_logerror` int(11) DEFAULT NULL,
   `success_rate_polar` float DEFAULT NULL,
   `hellinger_distance` float DEFAULT NULL,
   `success_rate_tvd_new` float DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_metric_1_idx` (`detail_id`),
   CONSTRAINT `fk_metric_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1300 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9097 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -283,6 +287,9 @@ SET character_set_client = utf8;
   1 AS `qiskit_token`,
   1 AS `job_id`,
   1 AS `status`,
+  1 AS `dd_enable`,
+  1 AS `dd_sequence_type`,
+  1 AS `dd_scheduling_method`,
   1 AS `circuit_name`,
   1 AS `detail_id`,
   1 AS `compilation_name`,
@@ -297,6 +304,8 @@ SET character_set_client = utf8;
   1 AS `success_rate_tvd`,
   1 AS `success_rate_tvd_new`,
   1 AS `success_rate_quasi`,
+  1 AS `polar_count_accept`,
+  1 AS `polar_count_logerror`,
   1 AS `success_rate_polar`,
   1 AS `correct_output`,
   1 AS `quasi_dists`,
@@ -328,7 +337,7 @@ CREATE TABLE `result_backend_json` (
   PRIMARY KEY (`id`),
   KEY `fk_result_backend_json_1_idx` (`detail_id`),
   CONSTRAINT `fk_result_backend_json_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1306 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9503 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -357,7 +366,7 @@ CREATE TABLE `result_detail` (
   KEY `fk_result_detail_3_idx` (`compilation_name`),
   CONSTRAINT `fk_result_detail_1` FOREIGN KEY (`header_id`) REFERENCES `result_header` (`id`),
   CONSTRAINT `fk_result_detail_2` FOREIGN KEY (`circuit_name`) REFERENCES `circuit` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=1647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10340 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -392,7 +401,7 @@ CREATE TABLE `result_header` (
   KEY `fk_result_header_2_idx` (`hw_name`),
   CONSTRAINT `fk_result_header_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_result_header_2` FOREIGN KEY (`hw_name`) REFERENCES `hardware` (`hw_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=98 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=508 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -409,7 +418,7 @@ CREATE TABLE `result_updated_qasm` (
   PRIMARY KEY (`id`),
   KEY `fk_result_updated_qasm_1_idx` (`detail_id`),
   CONSTRAINT `fk_result_updated_qasm_1` FOREIGN KEY (`detail_id`) REFERENCES `result_detail` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10339 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -489,7 +498,7 @@ CREATE TABLE `user` (
   `active` tinyint(1) DEFAULT 1,
   PRIMARY KEY (`user_id`),
   KEY `idx_user_user_id` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -549,7 +558,7 @@ CREATE TABLE `user` (
 /*!50001 SET collation_connection      = utf8mb4_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`handy`@`%` SQL SECURITY DEFINER */
-/*!50001 VIEW `result` AS select `h`.`id` AS `header_id`,`h`.`user_id` AS `user_id`,`h`.`hw_name` AS `hw_name`,`h`.`qiskit_token` AS `qiskit_token`,`h`.`job_id` AS `job_id`,`h`.`status` AS `status`,`d`.`circuit_name` AS `circuit_name`,`d`.`id` AS `detail_id`,`d`.`compilation_name` AS `compilation_name`,`d`.`noisy_simulator` AS `noisy_simulator`,`d`.`noise_level` AS `noise_level`,`q`.`updated_qasm` AS `updated_qasm`,`c`.`qasm` AS `original_qasm`,`c`.`qubit` AS `qubit`,`m`.`circuit_depth` AS `circuit_depth`,`m`.`total_two_qubit_gate` AS `total_two_qubit_gate`,`m`.`success_rate_nassc` AS `success_rate_nassc`,`m`.`success_rate_tvd` AS `success_rate_tvd`,`m`.`success_rate_tvd_new` AS `success_rate_tvd_new`,`m`.`success_rate_quasi` AS `success_rate_quasi`,`m`.`success_rate_polar` AS `success_rate_polar`,`c`.`correct_output` AS `correct_output`,`j`.`quasi_dists` AS `quasi_dists`,`j`.`shots` AS `shots`,`j`.`mapping_json` AS `mapping_json`,`d`.`initial_mapping` AS `initial_mapping`,`d`.`final_mapping` AS `final_mapping`,`t`.`str_email` AS `str_email`,`t`.`int_remaining` AS `int_remaining` from ((((((`result_header` `h` join `result_detail` `d` on(`h`.`id` = `d`.`header_id`)) left join `result_backend_json` `j` on(`j`.`detail_id` = `d`.`id`)) left join `result_updated_qasm` `q` on(`q`.`detail_id` = `d`.`id`)) join `circuit` `c` on(`d`.`circuit_name` = `c`.`name`)) left join `metric` `m` on(`d`.`id` = `m`.`detail_id`)) left join `qiskit_token` `t` on(`h`.`qiskit_token` = `t`.`token`)) */;
+/*!50001 VIEW `result` AS select `h`.`id` AS `header_id`,`h`.`user_id` AS `user_id`,`h`.`hw_name` AS `hw_name`,`h`.`qiskit_token` AS `qiskit_token`,`h`.`job_id` AS `job_id`,`h`.`status` AS `status`,`h`.`dd_enable` AS `dd_enable`,`h`.`dd_sequence_type` AS `dd_sequence_type`,`h`.`dd_scheduling_method` AS `dd_scheduling_method`,`d`.`circuit_name` AS `circuit_name`,`d`.`id` AS `detail_id`,`d`.`compilation_name` AS `compilation_name`,`d`.`noisy_simulator` AS `noisy_simulator`,`d`.`noise_level` AS `noise_level`,`q`.`updated_qasm` AS `updated_qasm`,`c`.`qasm` AS `original_qasm`,`c`.`qubit` AS `qubit`,`m`.`circuit_depth` AS `circuit_depth`,`m`.`total_two_qubit_gate` AS `total_two_qubit_gate`,`m`.`success_rate_nassc` AS `success_rate_nassc`,`m`.`success_rate_tvd` AS `success_rate_tvd`,`m`.`success_rate_tvd_new` AS `success_rate_tvd_new`,`m`.`success_rate_quasi` AS `success_rate_quasi`,`m`.`polar_count_accept` AS `polar_count_accept`,`m`.`polar_count_logerror` AS `polar_count_logerror`,`m`.`success_rate_polar` AS `success_rate_polar`,`c`.`correct_output` AS `correct_output`,`j`.`quasi_dists` AS `quasi_dists`,`j`.`shots` AS `shots`,`j`.`mapping_json` AS `mapping_json`,`d`.`initial_mapping` AS `initial_mapping`,`d`.`final_mapping` AS `final_mapping`,`t`.`str_email` AS `str_email`,`t`.`int_remaining` AS `int_remaining` from ((((((`result_header` `h` join `result_detail` `d` on(`h`.`id` = `d`.`header_id`)) left join `result_backend_json` `j` on(`j`.`detail_id` = `d`.`id`)) left join `result_updated_qasm` `q` on(`q`.`detail_id` = `d`.`id`)) join `circuit` `c` on(`d`.`circuit_name` = `c`.`name`)) left join `metric` `m` on(`d`.`id` = `m`.`detail_id`)) left join `qiskit_token` `t` on(`h`.`qiskit_token` = `t`.`token`)) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -563,4 +572,4 @@ CREATE TABLE `user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-07-08 10:29:56
+-- Dump completed on 2024-09-09  0:21:33
