@@ -47,7 +47,8 @@ class QEM:
     def __init__(self, runs=1, 
                  user_id = 99,
                  token=conf.qiskit_token,
-                 skip_db=False
+                 skip_db=False,
+                 hw_name = conf.hardware_name
                  ):
 
         self.session: Session = None
@@ -76,10 +77,11 @@ class QEM:
             conf.send_to_backend = False
 
         # OPEN NANTI
-        self.set_service(hardware_name=conf.hardware_name, token=token)
+        print(hw_name)
+        self.set_service(hardware_name=hw_name, token=token)
         
         if conf.initialized_triq == 1:
-            self.update_hardware_configs()
+            self.update_hardware_configs(hw_name)
 
 
     def open_database_connection(self):
@@ -91,12 +93,12 @@ class QEM:
         self.cursor.close()
         self.conn.close()
 
-    def update_hardware_configs(self): 
+    def update_hardware_configs(self, hw_name = conf.hardware_name): 
         if debug: tmp_start_time  = time.perf_counter()
-        # triq_wrapper.generate_recent_average_calibration_data(self, 15, True)
-        triq_wrapper.generate_realtime_calibration_data(self)
-        # triq_wrapper.generate_average_calibration_data(self)
-        # triq_wrapper.generate_mix_calibration_data(self)
+        # triq_wrapper.generate_recent_average_calibration_data(self, 15, True, hw_name=hw_name)
+        triq_wrapper.generate_realtime_calibration_data(self, hw_name=hw_name)
+        triq_wrapper.generate_average_calibration_data(self, hw_name=hw_name)
+        # triq_wrapper.generate_mix_calibration_data(self, hw_name=hw_name)
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))
 
@@ -113,7 +115,7 @@ class QEM:
         else:
             self.service = QiskitRuntimeService(channel="ibm_quantum", token=token)
         
-        print("Retrieving the real backend information...")
+        print(f"Retrieving the real backend information of {hardware_name}...")
         self.real_backend = self.service.get_backend(hardware_name)
         
         if debug: tmp_end_time = time.perf_counter()
@@ -206,7 +208,7 @@ class QEM:
             qasm = self.qasm
 
 
-        calibration_type, hardware_name = triq_wrapper.get_compilation_config(compilation_name)
+        calibration_type, hardware_name = triq_wrapper.get_compilation_config(compilation_name, hw_name=conf.hardware_name)
 
         initial_mapping = ""
         if layout == "mapo":
@@ -407,7 +409,7 @@ class QEM:
 
 #region Run
     def run_simulator(self, program_type, qasm_files, compilations, noise_levels, shots, 
-                      observables = None,
+                      hardware_name = conf.hardware_name, observables = None,
                       mitigation = None, send_to_db = False,
                       apply_dd = False, sequence_type = "XX", scheduling_method = "alap"):
         """
@@ -431,7 +433,7 @@ class QEM:
         if send_to_db:
             conf.send_to_db = True
             # init header
-            self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, 
+            self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, hardware_name = hardware_name,
                                                                  token=self.token, shots=shots, program_type=program_type)
         else:
             conf.send_to_db = False
@@ -515,11 +517,15 @@ class QEM:
         conf.hardware_name = hardware_name
 
         # init header
-        self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, token=self.token, shots=shots, 
+        self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, hardware_name=hardware_name, token=self.token, shots=shots, 
                                                              dd_options=dd_options)
 
         for qasm in qasm_files:
-            qc = self.get_circuit_properties(qasm_source=qasm)
+            skip = False
+            if "polar" in qasm:
+                skip = True
+
+            qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=skip)
             
             for comp in compilations:
                 print("Compiling circuit: {} for compilation: {}".format(self.circuit_name, comp))
@@ -535,7 +541,7 @@ class QEM:
                 
 #endregion
 
-    def get_qiskit_result(self):
+    def get_qiskit_result(self, type=None):
         pending_jobs = database_wrapper.get_pending_jobs()
             
         tmp_qiskit_token = ""
@@ -546,15 +552,23 @@ class QEM:
         for result in pending_jobs:
             header_id, job_id, qiskit_token, hw_name = result
 
+            print("processing...", header_id, job_id, qiskit_token)
+
+            if type == "simulator" and job_id != "simulator":
+                continue
+
+            if type == "real" and job_id == "simulator":
+                continue
+
             if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
                 QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
                 service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
-            
+
             if job_id == "simulator":
                 process_simulator(service, header_id, job_id, hw_name)
             else:
                 job = service.job(job_id)
-                print("Checking results for: ", job_id, "with header id :", header_id)
+                print("Checking results for: ", job_id, "with header id :", header_id, qiskit_token)
 
                 if check_result_availability(job, header_id):
                     get_result(job)

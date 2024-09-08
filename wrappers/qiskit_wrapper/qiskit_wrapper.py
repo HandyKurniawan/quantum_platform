@@ -765,7 +765,7 @@ def update_qiskit_usage_info(token):
 
     email, plan = get_qiskit_user_info(token)
 
-    conn = mysql.connector.connect(**conf.mysql_config)
+    conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
     
     # check if the metric is already there, just update
@@ -801,7 +801,7 @@ def update_qiskit_usage_info(token):
 def get_active_token(remaining, repetition, token_number):
 
     sql = """SELECT token, int_remaining, int_pending_jobs, int_max_pending_jobs FROM qiskit_token 
-    WHERE int_remaining > 0 """
+    WHERE int_remaining > 0 and int_pending_jobs < 3 AND description = "updated" """
 
     if remaining > 200:
         sql = sql + """ and int_pending_jobs = 0 """
@@ -809,7 +809,7 @@ def get_active_token(remaining, repetition, token_number):
     sql = sql + """ AND int_remaining > {} AND (int_max_pending_jobs - int_pending_jobs) > {} ORDER BY int_remaining ASC LIMIT {}
     """.format(remaining, repetition, token_number)
 
-    results = sql_query(sql, ())
+    results = sql_query(sql, (),  conf.mysql_calibration_config)
 
     return results
 

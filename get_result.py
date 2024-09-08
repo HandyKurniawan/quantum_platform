@@ -28,5 +28,8 @@ token = "476ea8c61cc54f36e4a21d70a8442f94203c9d87096eaad0886a3e8154d8c2e79bcad6f
 
 q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
 
+print("Get Result Simulator...")
+q.get_qiskit_result("simulator")
+
 print("Get Result...")
-q.get_qiskit_result()
+q.get_qiskit_result("real")

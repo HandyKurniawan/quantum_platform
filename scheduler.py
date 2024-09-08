@@ -189,7 +189,7 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
                 sim_ideal = AerSimulator()
                 job = sim_ideal.run(circuit, shots=shots)
             else:
-                print("Preparing the noisy simulator", compilation_name, noise_level, noiseless)
+                print("Preparing the noisy simulator", backend.name, compilation_name, noise_level, noiseless)
                 noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless)
                 # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
                 job = sim_noisy.run(circuit, shots=shots)

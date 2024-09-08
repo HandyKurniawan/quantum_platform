@@ -23,7 +23,7 @@ from ..qiskit_wrapper import QiskitCircuit
 conf = Config()
 debug = conf.activate_debugging_time
 
-def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = "sampler", shots = conf.shots,
+def init_result_header(cursor, user_id, hardware_name=conf.hardware_name, token=conf.qiskit_token, program_type = "sampler", shots = conf.shots,
                        dd_options = {"enable":False}):
     if debug: tmp_start_time  = time.perf_counter()
 
@@ -36,7 +36,6 @@ def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = 
         dd_sequence_type = dd_options["sequence_type"]
         dd_scheduling_method = dd_options["scheduling_method"]
 
-
     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
     cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, program_type,
                    dd_enable, dd_sequence_type, dd_scheduling_method, 
@@ -44,7 +43,7 @@ def init_result_header(cursor, user_id, token=conf.qiskit_token, program_type = 
     VALUES (%s, %s, %s, %s, 
             %s, %s, %s,
             %s, %s, %s)""",
-    (user_id, conf.hardware_name, token, program_type, 
+    (user_id, hardware_name, token, program_type, 
      dd_enable, dd_sequence_type, dd_scheduling_method,
      shots, conf.runs, now_time))
 
@@ -115,7 +114,7 @@ def update_circuit_data(conn, cursor, qc: QiskitCircuit, skip):
     param = (circuit_name,)
     cursor.execute(sql, param)
     existing_row = cursor.fetchone()
-
+    
     if existing_row:
         sql = 'SELECT name, correct_output FROM circuit WHERE name = %s'
         param = (circuit_name,)
@@ -124,7 +123,7 @@ def update_circuit_data(conn, cursor, qc: QiskitCircuit, skip):
         name, correct_output = results[0]
 
     if skip:
-        correct_output_json = convert_to_json(correct_output)
+        correct_output_json = ""
     else:
         correct_output_json = convert_to_json(qc.correct_output)
 
