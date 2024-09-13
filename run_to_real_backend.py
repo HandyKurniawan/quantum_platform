@@ -31,9 +31,9 @@ def update_hardware_configs(hw_name):
     print(token)
 
     conf.hardware_name = hw_name
-    conf.user_id=5
-    q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
-    conf.user_id=5
+    conf.user_id=6
+    q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, hw_name=hw_name)
+    conf.user_id=6
     conf.hardware_name = hw_name
     conf.triq_measurement_type = "polar_meas"
     
@@ -54,9 +54,9 @@ def run_simulation_one(hw_name, noise_levels, file_path, compilations, triq_meas
 
     conf.hardware_name = hw_name
     conf.triq_measurement_type = triq_measurement_type
-    conf.user_id=5
-    q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
-    conf.user_id=5
+    conf.user_id=6
+    q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, hw_name=hw_name)
+    conf.user_id=6
     conf.triq_measurement_type = triq_measurement_type
     conf.hardware_name = hw_name
     qasm_files = q.get_qasm_files_from_path(file_path)
@@ -71,7 +71,7 @@ def run_simulation_one(hw_name, noise_levels, file_path, compilations, triq_meas
 
 
 
-def run_simulation_all(hw_name):
+def run_simulation_all(hw_name, shots = 200):
     
 
     update_hardware_configs(hw_name=hw_name)
@@ -79,7 +79,7 @@ def run_simulation_all(hw_name):
 
     noise_levels = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
 
-    # #region n2
+    # # #region n2
     # Setup the object for n2_x
     run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/x", 
                        compilations=["qiskit_3", "triq_avg_sabre", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
@@ -113,34 +113,34 @@ def run_simulation_all(hw_name):
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
                        repeat=1, shots=10000 )
 
-    #endregion n3
+    # #endregion n3
 
     # #region n4
 
     # # Setup the object for n4
     run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=1, shots=200 )
+                       repeat=1, shots=shots )
     
     run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
                        compilations=["triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-                       repeat=1, shots=200 )
+                       repeat=1, shots=shots )
     
     run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
                        compilations=["triq_avg_sabre"], triq_measurement_type="polar_meas", 
-                       repeat=1, shots=200 )
+                       repeat=1, shots=shots )
     
     run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=1, shots=100 )
+                       repeat=1, shots=shots )
     
     run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
                        compilations=["triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-                       repeat=1, shots=100 )
+                       repeat=1, shots=shots )
     
     run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
                        compilations=["triq_avg_sabre"], triq_measurement_type="polar_meas", 
-                       repeat=1, shots=100 )
+                       repeat=1, shots=shots )
 
     # #endregion n4
 
@@ -148,14 +148,14 @@ def run_simulation_all(hw_name):
     # q.get_qiskit_result()
 
 try:
-    run_simulation_all("ibm_brisbane")
+    # run_simulation_all("ibm_brisbane")
     pass
 
 except Exception as e:
     print(f"An error occurred: {str(e)}. Will try again in 30 seconds...")
 
 try:
-    # run_simulation_all("ibm_sherbrooke")
+    run_simulation_all("ibm_sherbrooke", 4000)
     pass
 
 except Exception as e:

@@ -174,8 +174,8 @@ def get_logical_error_on_accepted_states(n, lstate, results):
                 
                 # add measurement resuts (data qubits, measured after state preparation)
                 # print(meas[N-1::-1], (meas[N-1::-1])[::-1])
-                # logical_bit = meas[N-1::-1]
-                logical_bit = (meas[N-1::-1])[::-1]
+                logical_bit = meas[N-1::-1]
+                # logical_bit = (meas[N-1::-1])[::-1]
                 qstate_V = np.mod(qstate_V + logical_bit, 2)
                 
                 # run polar decoder (logical information encoded at position zpos+1)
@@ -186,6 +186,7 @@ def get_logical_error_on_accepted_states(n, lstate, results):
                     # undecided value (llr = 0): we count half an error, since a 
                     # random choice would give an error with probability 1/2
                     count_logerror = count_logerror+0.5; # count 1/2 logical error
+                    # print(" undecided ... ")
                 elif v_ipos != qstate_UV[zpos+1]:
                     # logical error (the decoded value is not the correct one)
                     count_logerror = count_logerror+1;   # count a logical error

@@ -552,7 +552,7 @@ class QEM:
         for result in pending_jobs:
             header_id, job_id, qiskit_token, hw_name = result
 
-            print("processing...", header_id, job_id, qiskit_token)
+            # print("processing...", header_id, job_id, qiskit_token)
 
             if type == "simulator" and job_id != "simulator":
                 continue
