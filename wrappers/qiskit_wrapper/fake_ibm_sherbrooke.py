@@ -45,3 +45,8 @@ class NewFakeSherbrookeRecentNAdjust(NewFakeSherbrooke):
 class NewFakeSherbrookeRecent15(NewFakeSherbrooke):
     props_filename = "props_{}_recent_{}.json".format(hw_name, 15)
     backend_name = "new_fake_{}_recent_{}".format(hw_name, 15)
+
+class NewFakeSherbrookeAvgCustom(NewFakeSherbrooke):
+    props_filename = "props_{}_avg_custom.json".format(hw_name)
+    backend_name = "new_fake_{}_avg_custom".format(hw_name)
+    name = "new_fake_{}_avg_custom".format(hw_name)

@@ -406,6 +406,18 @@ class QEM:
             updated_qasm, initial_mapping = self.apply_triq(qasm=qasm, observable=observable, compilation_name=compilation, layout=layout, noise_level=noise_level)
 
         return updated_qasm, initial_mapping
+    
+    def get_custom_backend(self, calibration_type, hw_name, 
+                         recent_n = None, start_date = None, end_date = None, 
+                         generate_props = False):
+        
+        backend = self.service.backend(hw_name)
+
+        custom_backend = qiskit_wrapper.get_fake_backend(calibration_type, backend, recent_n = None,
+                                                         start_date=start_date, end_date=end_date,
+                                                         generate_props=generate_props)
+
+        return custom_backend
 
 #region Run
     def run_simulator(self, program_type, qasm_files, compilations, noise_levels, shots, 
@@ -416,8 +428,8 @@ class QEM:
         
         """
         print("Start running the simulator...")
-        # skip_simulation = False
-        skip_simulation = True
+        skip_simulation = False
+        # skip_simulation = True
         # validation
         if program_type == "estimator":
             skip_simulation = True
@@ -541,7 +553,7 @@ class QEM:
                 
 #endregion
 
-    def get_qiskit_result(self, type=None):
+    def get_qiskit_result(self, type=None, noisy_simulator=None):
         pending_jobs = database_wrapper.get_pending_jobs()
             
         tmp_qiskit_token = ""
@@ -565,7 +577,7 @@ class QEM:
                 service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
 
             if job_id == "simulator":
-                process_simulator(service, header_id, job_id, hw_name)
+                process_simulator(service, header_id, job_id, hw_name, noisy_simulator=noisy_simulator)
             else:
                 job = service.job(job_id)
                 print("Checking results for: ", job_id, "with header id :", header_id, qiskit_token)

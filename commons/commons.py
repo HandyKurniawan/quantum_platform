@@ -79,11 +79,11 @@ class calibration_type_enum(Enum):
     lcd, average, recent_15, recent_45, mix, \
         decay_r, decay_15, decay_mix, \
     lcd_adjust, average_adjust, recent_15_adjust, mix_adjust, \
-    recent_n, recent_n_adjust \
+    recent_n, recent_n_adjust, average_custom \
      = "real", "avg", "recent_15", "recent_45", "mix", \
         "decay_r", "decay_15", "decay_mix", \
         "real_adjust", "avg_adjust", "recent_15_adjust", "mix_adjust", \
-        "recent_n", "recent_n_adjust" 
+        "recent_n", "recent_n_adjust", "avg_custom" 
 
 # class calibration_type_enum(Enum):
 #     average, mix, realtime = "avg", "mix", "real"

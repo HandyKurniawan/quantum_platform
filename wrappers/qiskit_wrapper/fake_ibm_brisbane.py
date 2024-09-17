@@ -32,6 +32,7 @@ class NewFakeBrisbaneMixAdjust(NewFakeBrisbane):
 class NewFakeBrisbaneAverage(NewFakeBrisbane):
     props_filename = "props_{}_avg.json".format(hw_name)
     backend_name = "new_fake_{}_avg".format(hw_name)
+    name = "new_fake_{}_avg".format(hw_name)
 
 class NewFakeBrisbaneAverageAdjust(NewFakeBrisbane):
     props_filename = "props_{}_avg_adjust.json".format(hw_name)
@@ -221,3 +222,8 @@ class NewFakeBrisbaneRecentNAdjust(NewFakeBrisbane):
     def __init__(self, n):
         self.props_filename = "props_{}_recent_{}_adjust.json".format(hw_name, n)
         self.backend_name = "new_fake_{}_recent_{}_adjust".format(hw_name, n)
+
+class NewFakeBrisbaneAvgCustom(NewFakeBrisbane):
+    props_filename = "props_{}_avg_custom.json".format(hw_name)
+    backend_name = "new_fake_{}_avg_custom".format(hw_name)
+    name = "new_fake_{}_avg_custom".format(hw_name)

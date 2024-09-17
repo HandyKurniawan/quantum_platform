@@ -27,10 +27,10 @@ from .fake_ibm_perth import NewFakePerthRealAdjust, NewFakePerthRecent15, NewFak
                         NewFakePerthMix, NewFakePerthMixAdjust, NewFakePerthAverage, NewFakePerthAverageAdjust
 from .fake_ibm_brisbane import NewFakeBrisbaneRealAdjust, NewFakeBrisbaneRecent15, NewFakeBrisbaneRecent15Adjust, \
                         NewFakeBrisbaneMix, NewFakeBrisbaneMixAdjust, NewFakeBrisbaneAverage, NewFakeBrisbaneAverageAdjust, \
-                        NewFakeBrisbaneRecentNAdjust
+                        NewFakeBrisbaneRecentNAdjust, NewFakeBrisbaneAvgCustom
 from .fake_ibm_sherbrooke import NewFakeSherbrookeRealAdjust, NewFakeSherbrookeRecent15, NewFakeSherbrookeRecent15Adjust, \
                         NewFakeSherbrookeMix, NewFakeSherbrookeMixAdjust, NewFakeSherbrookeAverage, NewFakeSherbrookeAverageAdjust, \
-                        NewFakeSherbrookeRecentNAdjust
+                        NewFakeSherbrookeRecentNAdjust, NewFakeSherbrookeAvgCustom
 from .fake_ibm_brisbane import NewFakeBrisbaneRecent1, NewFakeBrisbaneRecent2, NewFakeBrisbaneRecent3, NewFakeBrisbaneRecent4, \
                         NewFakeBrisbaneRecent5, NewFakeBrisbaneRecent6, NewFakeBrisbaneRecent7, NewFakeBrisbaneRecent8, \
                         NewFakeBrisbaneRecent9, NewFakeBrisbaneRecent10, NewFakeBrisbaneRecent11, NewFakeBrisbaneRecent12, \
@@ -42,7 +42,7 @@ from .fake_ibm_brisbane import NewFakeBrisbaneRecent1, NewFakeBrisbaneRecent2, N
                         NewFakeBrisbaneRecent33, NewFakeBrisbaneRecent34, NewFakeBrisbaneRecent35, NewFakeBrisbaneRecent36, \
                         NewFakeBrisbaneRecent37, NewFakeBrisbaneRecent38, NewFakeBrisbaneRecent39, NewFakeBrisbaneRecent40, \
                         NewFakeBrisbaneRecent41, NewFakeBrisbaneRecent42, NewFakeBrisbaneRecent43, NewFakeBrisbaneRecent44, \
-                        NewFakeBrisbaneRecent45 
+                        NewFakeBrisbaneRecent45
 import time
 import numpy as np
 import mapomatic as mm
@@ -97,8 +97,10 @@ class QiskitCircuit:
     def get_qasm(self):
         return self.qasm
 
-def get_fake_backend(calibration_type, backend, recent_n, generate_props):
+def get_fake_backend(calibration_type, backend, recent_n, generate_props, 
+                     start_date = None, end_date = None):
     tmp_backend = backend
+
     if calibration_type == calibration_type_enum.lcd_adjust.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
@@ -144,7 +146,7 @@ def get_fake_backend(calibration_type, backend, recent_n, generate_props):
     elif calibration_type == calibration_type_enum.average_adjust.value:
         if generate_props: generate_new_props(backend, calibration_type)
 
-        if backend.name == "ibm_brisbane":
+        if backend.name == "ibm_brisbane":            
             tmp_backend = NewFakeBrisbaneAverageAdjust(num_qubits=127)
         elif backend.name == "ibm_sherbrooke":
             tmp_backend = NewFakeSherbrookeAverageAdjust(num_qubits=127)
@@ -200,6 +202,14 @@ def get_fake_backend(calibration_type, backend, recent_n, generate_props):
     elif calibration_type == calibration_type_enum.recent_n_adjust.value:
         if generate_props: generate_new_props(backend, calibration_type, recent_n)
         tmp_backend = NewFakeBrisbaneRecentNAdjust(num_qubits=127, n=recent_n)
+
+    elif calibration_type == calibration_type_enum.average_custom.value:
+        if generate_props: generate_new_props(backend, calibration_type, start_date=start_date, end_date=end_date)
+
+        if backend.name == "ibm_brisbane":
+            tmp_backend = NewFakeBrisbaneAvgCustom(num_qubits=127)
+        elif backend.name == "ibm_sherbrooke":
+            tmp_backend = NewFakeSherbrookeAvgCustom(num_qubits=127)
 
     return tmp_backend
 
@@ -372,14 +382,16 @@ def _get_std_readout_error(prop_dict, hw_name):
     for res in readout_results:
         qubit, stddev_value = res
 
-        for i in prop_dict["qubits"][qubit]:
-            if (i["name"] == "readout_error"):
-                val = float(stddev_value)
-                i["value"] = i["value"] + val
-                if i["value"] >= 1:
-                    i["value"] = 1
+        for idx, i in enumerate(prop_dict["qubits"][qubit]):
+            for j in i:
+                if (j["name"] == "readout_error" and idx == qubit):
+                    val = float(stddev_value)
+                    j["value"] = j["value"] + val
+                    if j["value"] >= 1:
+                        j["value"] = 1
+                
 
-def _get_readout_error_sql(hw_name, calibration_type, recent_n = None):
+def _get_readout_error_sql(hw_name, calibration_type, recent_n = None, start_date = None, end_date = None):
     sql = ""
     parms = ()
 
@@ -427,6 +439,17 @@ def _get_readout_error_sql(hw_name, calibration_type, recent_n = None):
 
         parms = (hw_name, )
 
+    elif calibration_type == calibration_type_enum.average_custom.value:
+        sql = """
+        SELECT qubit, AVG(readout_error) FROM (
+        SELECT DISTINCT qubit, readout_error, readout_error_date FROM calibration_data.ibm_qubit_spec q
+        INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
+        WHERE i.hw_name = %s AND readout_error_date BETWEEN STR_TO_DATE(%s, '%Y%m%d') AND STR_TO_DATE(%s, '%Y%m%d')
+        ) X GROUP BY qubit;
+        """
+
+        parms = (hw_name, start_date, end_date, )
+
     elif calibration_type == calibration_type_enum.mix.value or calibration_type == calibration_type_enum.mix_adjust.value:
         last_cal_id, last_cal_date = _get_last_calibration_id(hw_name)
 
@@ -446,19 +469,20 @@ def _get_readout_error_sql(hw_name, calibration_type, recent_n = None):
 
     return sql, parms
 
-def _update_readout_error(prop_dict, hw_name, calibration_type, recent_n = None):
+def _update_readout_error(prop_dict, hw_name, calibration_type, recent_n = None, start_date = None, end_date = None):
 
-    sql, parms = _get_readout_error_sql(hw_name, calibration_type, recent_n)
+    sql, parms = _get_readout_error_sql(hw_name, calibration_type, recent_n = recent_n, start_date = start_date, end_date = end_date)
     readout_results = sql_query(sql, parms, conf.mysql_calibration_config)
 
     # update readout error
     for res in readout_results:
         qubit, avg_value = res
 
-        for i in prop_dict["qubits"][qubit]:
-            if (i["name"] == "readout_error"):
-                val = float(avg_value)
-                i["value"] = val
+        for idx, i in enumerate(prop_dict["qubits"]):
+            for j in i:
+                if (j["name"] == "readout_error" and idx == qubit):
+                    val = float(avg_value)
+                    j["value"] = val
 
     if "adjust" in calibration_type:
         # print("Adding the deviation readout : ", calibration_type)
@@ -495,7 +519,7 @@ def _get_std_two_qubit_error(prop_dict, hw_name, native_gates_2q):
                             if par["value"] >= 1:
                                 par["value"] = 1
 
-def _get_two_qubit_error_sql(hw_name, calibration_type, native_gates_2q, recent_n = None):
+def _get_two_qubit_error_sql(hw_name, calibration_type, native_gates_2q, recent_n = None, start_date = None, end_date = None):
     sql = ""
     parms = ()
 
@@ -547,6 +571,18 @@ def _get_two_qubit_error_sql(hw_name, calibration_type, native_gates_2q, recent_
 
         parms = (hw_name, )
 
+    elif calibration_type == calibration_type_enum.average_custom.value:
+        sql = '''
+        SELECT qubit_control, qubit_target, AVG(''' + native_gates_2q + '''_error) FROM (
+        SELECT DISTINCT qubit_control, qubit_target, ''' + native_gates_2q + '''_error, ''' + native_gates_2q + '''_date
+        FROM calibration_data.ibm_two_qubit_gate_spec q
+        WHERE q.hw_name = %s AND ''' + native_gates_2q + '''_error != 1
+        AND ''' + native_gates_2q + '''_date BETWEEN STR_TO_DATE(%s, '%Y%m%d') AND STR_TO_DATE(%s, '%Y%m%d')
+        ) X GROUP BY qubit_control, qubit_target;
+        '''
+
+        parms = (hw_name, start_date, end_date, )
+
     elif calibration_type == calibration_type_enum.mix.value or calibration_type == calibration_type_enum.mix_adjust.value:
         last_cal_id, last_cal_date = _get_last_calibration_id(hw_name)
 
@@ -565,10 +601,10 @@ def _get_two_qubit_error_sql(hw_name, calibration_type, native_gates_2q, recent_
 
     return sql, parms
 
-def _update_two_qubit_error(prop_dict, hw_name, calibration_type, recent_n = None):
+def _update_two_qubit_error(prop_dict, hw_name, calibration_type, recent_n = None, start_date = None, end_date = None):
     native_gates_2q = _get_native_gates_2q(hw_name)
 
-    sql, parms = _get_two_qubit_error_sql(hw_name, calibration_type, native_gates_2q, recent_n)
+    sql, parms = _get_two_qubit_error_sql(hw_name, calibration_type, native_gates_2q, recent_n = recent_n, start_date = start_date, end_date = end_date)
     two_q_results = sql_query(sql, parms, conf.mysql_calibration_config)
 
     for res in two_q_results:
@@ -583,6 +619,7 @@ def _update_two_qubit_error(prop_dict, hw_name, calibration_type, recent_n = Non
 
                     for par in pars:
                         if (par["name"] == "gate_error"):
+                            # print(qubits, par["value"], avg_value)
                             par["value"] = float(avg_value) 
 
     if "adjust" in calibration_type:
@@ -619,16 +656,16 @@ def _update_one_qubit_error(prop_dict, hw_name, calibration_type):
                             if par["value"] >= 1:
                                 par["value"] = 1
 
-def generate_new_props(backend, calibration_type, recent_n = None):
+def generate_new_props(backend, calibration_type, recent_n = None, start_date = None, end_date = None):
     hw_name = backend.name
     properties = backend.properties()
     prop_dict = properties.to_dict()
 
     # print(hw_name, calibration_type)
     
-    _update_readout_error(prop_dict, hw_name, calibration_type, recent_n)
+    _update_readout_error(prop_dict, hw_name, calibration_type, recent_n = recent_n, start_date = start_date, end_date = end_date)
     _update_one_qubit_error(prop_dict, hw_name, calibration_type)
-    _update_two_qubit_error(prop_dict, hw_name, calibration_type, recent_n)
+    _update_two_qubit_error(prop_dict, hw_name, calibration_type, recent_n = recent_n, start_date = start_date, end_date = end_date)
 
     if calibration_type == "recent_n" or calibration_type == "recent_n_adjust":
         calibration_type = calibration_type.replace("_n", "_{}".format(recent_n))

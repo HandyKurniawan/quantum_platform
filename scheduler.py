@@ -150,14 +150,20 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
     except Exception as e:
         print("Error for check result availability :", str(e))
 
-def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name):
+def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name, noisy_simulator = None):
     print("Checking results for: ", job_id, "with header id :", header_id)
     
 
     conn = mysql.connector.connect(**conf.mysql_config)
     cursor = conn.cursor()
 
-    backend = service.backend(hw_name)
+    backend = None
+    
+    if noisy_simulator == None:
+        backend = service.backend(hw_name)
+    else:
+        backend = noisy_simulator
+        print(backend.backend_name)
 
     cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
 FROM result_detail d
@@ -188,6 +194,10 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
                 print("Preparing the noiseless simulator", compilation_name, noise_level, noiseless)
                 sim_ideal = AerSimulator()
                 job = sim_ideal.run(circuit, shots=shots)
+            elif noisy_simulator != None:
+                print("Preparing the noisy simulator", backend.backend_name, compilation_name, noise_level, noiseless)
+                job = backend.run(circuit, shots=shots)
+
             else:
                 print("Preparing the noisy simulator", backend.name, compilation_name, noise_level, noiseless)
                 noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless)

@@ -123,23 +123,34 @@ def update_circuit_data(conn, cursor, qc: QiskitCircuit, skip):
         name, correct_output = results[0]
 
     if skip:
-        correct_output_json = ""
+        correct_output_json = correct_output
     else:
         correct_output_json = convert_to_json(qc.correct_output)
 
     # insert to the table
     if not existing_row:
-        cursor.execute("""INSERT INTO circuit (name, qasm, depth, total_gates, gates, correct_output)
-        VALUES (%s, %s, %s, %s, %s, %s)""",
-        (circuit_name, qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json))
+
+        if skip:
+            cursor.execute("""INSERT INTO circuit (name, qasm, depth, total_gates, gates)
+            VALUES (%s, %s, %s, %s, %s)""",
+            (circuit_name, qc.qasm, qc.depth, qc.total_gate, gates_json))
+        else:
+            cursor.execute("""INSERT INTO circuit (name, qasm, depth, total_gates, gates, correct_output)
+            VALUES (%s, %s, %s, %s, %s, %s)""",
+            (circuit_name, qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json))
 
         conn.commit()
 
         # print(circuit_name, "has been registered to the database.")
     else:
-        cursor.execute("""UPDATE circuit SET qasm = %s, depth  = %s, total_gates  = %s, gates = %s, correct_output = %s 
-                            WHERE name = %s""",
-        (qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json, circuit_name))
+        if skip:
+            cursor.execute("""UPDATE circuit SET qasm = %s, depth  = %s, total_gates  = %s, gates = %s 
+                                WHERE name = %s""",
+            (qc.qasm, qc.depth, qc.total_gate, gates_json, circuit_name))
+        else:
+            cursor.execute("""UPDATE circuit SET qasm = %s, depth  = %s, total_gates  = %s, gates = %s, correct_output = %s 
+                                WHERE name = %s""",
+            (qc.qasm, qc.depth, qc.total_gate, gates_json, correct_output_json, circuit_name))
 
         conn.commit()
         # print(circuit_name, "already exist.")
