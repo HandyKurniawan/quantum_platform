@@ -830,6 +830,7 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
                 if new_val > 1:
                     new_val = 1
                 j["value"] = new_val
+                #j["value"] = 0
                 # print(j["name"], j["value"])
             elif (j["name"] in ("T1", "T2")):
                 if error_percentage == 0:
@@ -852,6 +853,7 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
                     if new_val > 1:
                         new_val = 1
                     par["value"] = new_val
+                    #par["value"] = 0
                     # print(i["qubits"], par["value"])
     
     # Update Two Qubit Error

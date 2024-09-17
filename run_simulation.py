@@ -68,9 +68,9 @@ def run_simulation_all(hw_name):
 
     # #region n2
     # # Setup the object for n2_x
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/x", 
-    #                    compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=20000 )
+    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/x", 
+                        compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+                        repeat=1, shots=20000 )
 
     # # Setup the object for n2_z
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z", 
@@ -78,7 +78,7 @@ def run_simulation_all(hw_name):
     #                    repeat=1, shots=20000 )
     
     # # Setup the object for n2_z_qiskit
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z_qiskit", 
+    #run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z_qiskit", 
     #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
     #                    repeat=1, shots=20000 )
 
@@ -86,9 +86,9 @@ def run_simulation_all(hw_name):
 
     # # #region n3
     # # Setup the object for n3_x
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
-    #                    compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=2000 )
+    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
+                        compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+                        repeat=1, shots=5000 )
 
     # Setup the object for n3_z
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/z", 
@@ -129,8 +129,8 @@ except Exception as e:
     print(f"An error occurred: {str(e)}. Will try again in 30 seconds...")
 
 try:
-    run_simulation_all("ibm_brisbane")
-    run_simulation_all("ibm_sherbrooke")
+    #run_simulation_all("ibm_brisbane")
+    #run_simulation_all("ibm_sherbrooke")
     pass
 
 except Exception as e:

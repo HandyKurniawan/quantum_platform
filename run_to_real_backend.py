@@ -65,6 +65,16 @@ def run_simulation_one(hw_name, noise_levels, file_path, compilations, triq_meas
     
     q.set_backend(program_type="sampler", shots=shots)
     # q.run_simulator("sampler", qasm_files, compilations, noise_levels, shots, hardware_name=hw_name, send_to_db=True)
+    
+    dd_options: DynamicalDecouplingOptions = {
+    'enable':True, 
+#    'sequence_type':'XpXm',
+    'sequence_type':'XY4',
+    'scheduling_method': 'alap'
+} 
+
+    # q.send_to_real_backend("sampler", qasm_files, compilations, hardware_name=hw_name, shots=shots, dd_options = dd_options)
+
     q.send_to_real_backend("sampler", qasm_files, compilations, hardware_name=hw_name, shots=shots)
 
     qiskit_wrapper.update_qiskit_usage_info(token)
