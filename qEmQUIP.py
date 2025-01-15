@@ -207,9 +207,11 @@ class QEM:
         if qasm is None:
             qasm = self.qasm
 
-
+        
+        
         calibration_type, hardware_name = triq_wrapper.get_compilation_config(compilation_name, hw_name=conf.hardware_name)
 
+        tmp_start_time  = time.perf_counter()
         initial_mapping = ""
         if layout == "mapo":
             # Generate Initial Mapping from Mapomatic to a File
@@ -225,7 +227,6 @@ class QEM:
 
            
         # print("TriQ hardware name :", hardware_name)
-        tmp_start_time  = time.perf_counter()
         updated_qasm = triq_wrapper.run(qasm, hardware_name, 0, measurement_type=conf.triq_measurement_type)
         tmp_end_time = time.perf_counter()
 
@@ -428,8 +429,8 @@ class QEM:
         
         """
         print("Start running the simulator...")
-        skip_simulation = False
-        # skip_simulation = True
+        # skip_simulation = False
+        skip_simulation = True
         # validation
         if program_type == "estimator":
             skip_simulation = True

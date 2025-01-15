@@ -158,7 +158,7 @@ def run_simulation_all(hw_name, shots = 200):
     # q.get_qiskit_result()
 
 try:
-    # run_simulation_all("ibm_brisbane")
+    run_simulation_all("ibm_brisbane", 200)
     pass
 
 except Exception as e:

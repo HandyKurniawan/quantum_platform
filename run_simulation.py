@@ -66,63 +66,84 @@ def run_simulation_all(hw_name):
     # noise_levels = [0.1, 0.8, 1.0]
     # noise_levels = [0.0]
 
-    # #region n2
-    # # Setup the object for n2_x
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/x", 
-                        compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-                        repeat=1, shots=20000 )
+    # # #region n2
+    # # # Setup the object for n2_x
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/x", 
+    #                     compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+    #                     repeat=1, shots=20000 )
 
-    # # Setup the object for n2_z
+    # # # Setup the object for n2_z
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z", 
     #                    compilations=["triq_lcd_sabre"], triq_measurement_type="polar_mix", 
     #                    repeat=1, shots=20000 )
     
     # # Setup the object for n2_z_qiskit
-    #run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z_qiskit", 
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z_qiskit", 
     #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
     #                    repeat=1, shots=20000 )
 
-    # # #end region n2
+    # # # #end region n2
 
-    # # #region n3
-    # # Setup the object for n3_x
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
-                        compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-                        repeat=1, shots=5000 )
+    # # # #region n3
+    # # # Setup the object for n3_x
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
+    #                     compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+    #                     repeat=1, shots=2000 )
 
-    # Setup the object for n3_z
+    # # Setup the object for n3_z
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/z", 
     #                    compilations=["triq_lcd_sabre"], triq_measurement_type="polar_mix", 
-    #                    repeat=5, shots=5000 )
+    #                    repeat=1, shots=2000 )
     
     # # Setup the object for n3_z_qiskit
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/z_qiskit", 
     #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-    #                    repeat=5, shots=5000 )
+    #                    repeat=1, shots=2000 )
 
-    #endregion n3
+    # #endregion n3
 
-    #region n4
+    # #region n4
 
-    # Setup the object for n4
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
-                      compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-                      repeat=1, shots=10 )
+    # # # Setup the object for n4
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
+    #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+    #                   repeat=1, shots=10 )
     
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
+    #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+    #                   repeat=1, shots=10 )
+
+    # #endregion n4
+
+    # #region n5
+    # # # Setup the object for n5
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n5", 
+    #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+    #                   repeat=1, shots=10 )
+    # #endregion n5
+
+    #region n6
+    # # Setup the object for n6
+    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n6", 
                       compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
                       repeat=1, shots=10 )
-
-    #endregion n4
+    #endregion n6
 
     q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
+
+    
     print("Get Result...")
-    q.get_qiskit_result("simulator")
+    if conf.user_id == 8:
+        q.get_qiskit_result("simulator")
+    else:
+        q.get_qiskit_result("simulator")
 
 try:
-    run_simulation_all("ibm_brisbane")
+    # run_simulation_all("ibm_brisbane")
     run_simulation_all("ibm_sherbrooke")
-# run_simulation_all("ibm_brisbane")
+    # run_simulation_all("ibm_sherbrooke")
+    # run_simulation_all("ibm_sherbrooke")
+    # run_simulation_all("ibm_sherbrooke")
     pass
 
 except Exception as e:
@@ -137,7 +158,7 @@ except Exception as e:
     print(f"An error occurred: {str(e)}. Will try again in 30 seconds...")
 
 
-q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
+# q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
 
 # print("Get Result...")
 # q.get_qiskit_result("simulator")

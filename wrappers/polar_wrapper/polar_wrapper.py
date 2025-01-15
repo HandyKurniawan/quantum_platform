@@ -3,6 +3,7 @@ from pathlib import Path
 from . import __tools as tls
 from . import __polarcodec as codec
 from .__qpolarprep import q1prep as q1prep
+import time
 
 def get_q1prep_sr(n, lstate, results):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
@@ -99,9 +100,39 @@ def get_logical_error_on_accepted_states(n, lstate, results):
     # we check whether the undetected errors that may have survived on the accepted (prepared)  
     # state can be successfully corrected or not. when not, a logical error is counted
     count_logerror = 0 
+    count_undecided = 0
+
+    # This is repeating just for calculating the detection time
+    tmp_start_time  = time.perf_counter()
+    for line, meas_counts in results.items():
+        # print(line)
+        # remove spaces at beginning and end of line
+        mstr = line.strip()
+
+        # init the measurement results array -- of length len(mstr)
+        meas = np.zeros((len(mstr),), dtype=int) 
+
+        # convert from string to np array
+        for i in range(0, len(mstr)):
+            meas[i] = ord(mstr[i]) - ord('0')	
+            if meas[i] != 0 and meas[i] != 1:
+                raise TypeError("Illegal measurement result: must be 0 or 1")
+
+
+        # check if 'meas' are valid measurement results
+        success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
+        if success == 1:
+            pass
+        else:
+            pass
+
+    tmp_end_time = time.perf_counter()
+    detection_time = tmp_end_time - tmp_start_time
 
     total_shots = sum(results.values())
 
+
+    tmp_start_time  = time.perf_counter()
     # print("Total shots :", total_shots)
     # ##################################################################
     # read measurement results from file, and check which ones are valid
@@ -186,6 +217,7 @@ def get_logical_error_on_accepted_states(n, lstate, results):
                     # undecided value (llr = 0): we count half an error, since a 
                     # random choice would give an error with probability 1/2
                     count_logerror = count_logerror+0.5; # count 1/2 logical error
+                    count_undecided = count_undecided + 1; 
                     # print(" undecided ... ")
                 elif v_ipos != qstate_UV[zpos+1]:
                     # logical error (the decoded value is not the correct one)
@@ -194,6 +226,8 @@ def get_logical_error_on_accepted_states(n, lstate, results):
             else:
                 raise TypeError("Illegal 'lstate' value")
             
+    tmp_end_time = time.perf_counter()
+    decoding_time = tmp_end_time - tmp_start_time - detection_time
 
     print("number of discarded states (invalid measurement results) = ", count_discard)
     print(" number of accepted states   (valid measurement results) = ", count_accept)
@@ -203,5 +237,5 @@ def get_logical_error_on_accepted_states(n, lstate, results):
     if count_accept > 0:
         fidelity = ((count_accept - round(count_logerror)) / count_accept)
 
-    return count_accept, round(count_logerror), fidelity
+    return count_accept, round(count_logerror), count_undecided, fidelity, detection_time, decoding_time
 

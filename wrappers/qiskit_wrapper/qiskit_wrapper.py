@@ -12,7 +12,7 @@ Example:
 from qiskit import QuantumCircuit, transpile
 from qiskit.transpiler import CouplingMap
 from qiskit_ibm_runtime import Sampler
-from qiskit_aer.noise import NoiseModel
+from qiskit_aer.noise import NoiseModel, pauli_error
 from qiskit_aer import AerSimulator
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from commons import calibration_type_enum, sql_query, normalize_counts, Config, qiskit_compilation_enum
@@ -238,6 +238,7 @@ def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enab
                                 tmp_backend,
                                 optimization_level=optimization
                                 )
+        
         initial_mapping = get_initial_layout_from_circuit(transpiled_circuit)
 
     elif enable_mapomatic:
@@ -854,7 +855,7 @@ def get_active_token(remaining, repetition, token_number):
 
 #region Noisy Simulator
 
-def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
+def get_noisy_simulator(backend, error_percentage = 1, noiseless = False, method="automatic"):
     _backend = copy.deepcopy(backend)
     _properties = _backend.properties()
     _prop_dict = _properties.to_dict()
@@ -866,8 +867,8 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
                 new_val = j["value"] * error_percentage
                 if new_val > 1:
                     new_val = 1
-                j["value"] = new_val
-                #j["value"] = 0
+                # j["value"] = new_val
+                j["value"] = 0
                 # print(j["name"], j["value"])
             elif (j["name"] in ("T1", "T2")):
                 if error_percentage == 0:
@@ -889,8 +890,8 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
                     new_val = par["value"] * error_percentage
                     if new_val > 1:
                         new_val = 1
-                    par["value"] = new_val
-                    #par["value"] = 0
+                    # par["value"] = new_val
+                    par["value"] = 0
                     # print(i["qubits"], par["value"])
     
     # Update Two Qubit Error
@@ -920,15 +921,34 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False):
         sim_noisy = AerSimulator()
     else:
         sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties,
-                                noise_model=noise_model, 
+                                noise_model=noise_model, method = method
                                 # max_shot_size=100,method='statevector', max_memory_mb=10000 
                                 )
         sim_noisy.set_options(
             noise_model=noise_model,
+            method = method
             # max_shot_size=100, max_memory_mb=10000, method='statevector'
             )
     
     return noise_model, sim_noisy, coupling_map
+
+def generate_sim_noise_cx(backend, noise_level, method="automatic"):
+    noise_cx = NoiseModel()
+    # p_gate1 = noise_level * 0.00709
+    p_gate1 = noise_level * 0.001
+    error_gate1 = pauli_error([('X',p_gate1), ('I', 1 - p_gate1)])
+    error_gate2 = error_gate1.tensor(error_gate1)
+    # noise_cx.add_all_qubit_quantum_error(error_gate2, ["cx"])
+    noise_cx.add_all_qubit_quantum_error(error_gate2, ["ecr"])
+
+    sim_noise_cx = AerSimulator(method=method, noise_model=noise_cx)
+
+    sim_noise_cx.set_options(
+        noise_model=noise_cx,
+        coupling_map=backend.configuration().coupling_map
+    )
+
+    return sim_noise_cx
 
 #endregion
 
