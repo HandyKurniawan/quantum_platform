@@ -307,6 +307,7 @@ def get_metrics(header_id, job_id):
 
             count_accept = 0
             count_logerror = 0
+            count_undecided = None
             decoding_time = None
             detection_time = None
 
