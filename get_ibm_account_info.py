@@ -6,7 +6,7 @@ import time
 mysql_config = {
     'user': 'handy',
     'password': 'handy',
-    'host': 'ec2-13-51-79-239.eu-north-1.compute.amazonaws.com',
+    'host': 'ec2-13-49-240-207.eu-north-1.compute.amazonaws.com',
     'database': 'framework'
 }
 
@@ -120,7 +120,7 @@ for res in results:
 
     update_qiskit_usage_info(token)
 
-    time.sleep(2)
+    time.sleep(1)
 
 # for new token
 results = get_new_token()
@@ -128,5 +128,5 @@ for res in results:
     token = res[0]
     update_qiskit_usage_info(token)
 
-    time.sleep(2)
+    time.sleep(10)
     

@@ -128,7 +128,7 @@ def generate_initial_mapping_file(init_maps):
     f.write(string_maps)
     f.close()
 
-def get_compilation_config(compilation_name):
+def get_compilation_config(compilation_name, hw_name = conf.hardware_name):
     calibration_type = calibration_type_enum.lcd.value
 
     if compilation_name == "triq_lcd":
@@ -142,19 +142,19 @@ def get_compilation_config(compilation_name):
 
     hardware_name = ""
     if compilation_name == "triq_lcd":
-        hardware_name = conf.hardware_name + "_" + "real"
+        hardware_name = hw_name + "_" + "real"
     elif compilation_name == "triq_avg":
-        hardware_name = conf.hardware_name + "_" + "avg"
+        hardware_name = hw_name + "_" + "avg"
     elif compilation_name == "triq_mix":
-        hardware_name = conf.hardware_name + "_" + "mix"
+        hardware_name = hw_name + "_" + "mix"
     elif compilation_name == "triq_w15_adj":
-        hardware_name = conf.hardware_name + "_" + "recent_15_adj"
+        hardware_name = hw_name + "_" + "recent_15_adj"
 
     return calibration_type, hardware_name
 
 #region Calibration Config
 
-def generate_realtime_calibration_data(qem):
+def generate_realtime_calibration_data(qem, hw_name = conf.hardware_name):
     # Connect to the MySQL database
     conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
@@ -163,7 +163,7 @@ def generate_realtime_calibration_data(qem):
     cursor.execute('''SELECT calibration_id, 2q_native_gates FROM calibration_data.ibm i
 INNER JOIN calibration_data.hardware h ON i.hw_name = h.hw_name
 WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
-                    ''', (conf.hardware_name, ))
+                    ''', (hw_name, ))
     results = cursor.fetchall()
     calibration_id, native_gates_2q = results[0]
 
@@ -176,7 +176,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/" + conf.hardware_name + "_real_S.rlb", "w+")
+        f = open("./config/" + hw_name + "_real_S.rlb", "w+")
         f.write("{}\n".format(count))
         for res in results:
             calibration_id, qubit, fidelity_1q = res
@@ -193,7 +193,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/" + conf.hardware_name + "_real_T.rlb", "w+")
+        f = open("./config/" + hw_name + "_real_T.rlb", "w+")
         f.write("{}\n".format(count))
         for res in results:
             calibration_id, qubit_control, qubit_target, fidelity_2q = res
@@ -213,7 +213,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/" + conf.hardware_name + "_real_M.rlb", "w+")
+        f = open("./config/" + hw_name + "_real_M.rlb", "w+")
         f.write("{}\n".format(count))
         for res in results:
             calibration_id, qubit, readout_fidelity = res
@@ -223,7 +223,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
 
     conn.close()
 
-def generate_average_calibration_data(qem):
+def generate_average_calibration_data(qem, hw_name = conf.hardware_name):
     # Connect to the MySQL database
     conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
@@ -232,7 +232,7 @@ def generate_average_calibration_data(qem):
     cursor.execute('''SELECT calibration_id, 2q_native_gates FROM calibration_data.ibm i
 INNER JOIN calibration_data.hardware h ON i.hw_name = h.hw_name
 WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
-                    ''', (conf.hardware_name, ))
+                    ''', (hw_name, ))
     results = cursor.fetchall()
     calibration_id, native_gates_2q = results[0]
 
@@ -243,11 +243,11 @@ SELECT DISTINCT qubit, 1 - x_error AS x_fidelity, x_date
 FROM calibration_data.ibm_one_qubit_gate_spec q
 WHERE q.hw_name = %s
 ) X GROUP BY qubit;
-                    ''', (conf.hardware_name, ))
+                    ''', (hw_name, ))
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/{}_avg_S.rlb".format(conf.hardware_name), "w+")
+        f = open("./config/{}_avg_S.rlb".format(hw_name), "w+")
         f.write("{}\n".format(count))
         for res in results:
             qubit, fidelity_1q, fidelity_1q_std, fidelity_1q_max, fidelity_1q_min = res
@@ -264,11 +264,11 @@ SELECT DISTINCT qubit_control, qubit_target, 1 - ''' + native_gates_2q + '''_err
 FROM calibration_data.ibm_two_qubit_gate_spec q
 WHERE q.hw_name = %s 
 ) X GROUP BY qubit_control, qubit_target;
-                    ''', (conf.hardware_name, ))
+                    ''', (hw_name, ))
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/{}_avg_T.rlb".format(conf.hardware_name), "w+")
+        f = open("./config/{}_avg_T.rlb".format(hw_name), "w+")
         f.write("{}\n".format(count))
         for res in results:
             qubit_control, qubit_target, fidelity_2q, fidelity_2q_std, fidelity_2q_max, fidelity_2q_min = res
@@ -287,11 +287,11 @@ SELECT DISTINCT qubit, 1 - readout_error AS readout_fidelity, readout_error_date
 INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
 WHERE i.hw_name = %s 
 ) X GROUP BY qubit;
-                    ''', (conf.hardware_name, ))
+                    ''', (hw_name, ))
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/{}_avg_M.rlb".format(conf.hardware_name), "w+")
+        f = open("./config/{}_avg_M.rlb".format(hw_name), "w+")
         f.write("{}\n".format(count))
         for res in results:
             qubit, readout_fidelity, readout_fidelity_std, readout_fidelity_max, readout_fidelity_min = res
@@ -301,7 +301,7 @@ WHERE i.hw_name = %s
 
     conn.close()
 
-def generate_recent_average_calibration_data(qem, days, adjust = False):
+def generate_recent_average_calibration_data(qem, days, adjust = False, hw_name = conf.hardware_name):
     # Connect to the MySQL database
     conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
@@ -310,7 +310,7 @@ def generate_recent_average_calibration_data(qem, days, adjust = False):
     cursor.execute('''SELECT calibration_id, 2q_native_gates, number_of_qubit FROM calibration_data.ibm i
 INNER JOIN calibration_data.hardware h ON i.hw_name = h.hw_name
 WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
-                    ''', (conf.hardware_name, ))
+                    ''', (hw_name, ))
     results = cursor.fetchall()
     calibration_id, native_gates_2q, number_of_qubit = results[0]
 
@@ -323,7 +323,7 @@ WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
         FROM calibration_data.ibm_one_qubit_gate_spec q
         WHERE q.hw_name = %s
         ) X GROUP BY qubit;"""
-        cursor.execute(sql, (conf.hardware_name,))
+        cursor.execute(sql, (hw_name,))
         results = cursor.fetchall()
         count = len(results)
         if count > 0:
@@ -340,13 +340,13 @@ FROM calibration_data.ibm_one_qubit_gate_spec q
 WHERE q.hw_name = %s
 AND x_date BETWEEN date_add(now(), INTERVAL %s DAY) AND now()
 ) X GROUP BY qubit;
-                    ''', (conf.hardware_name, days * -1))
+                    ''', (hw_name, days * -1))
     results = cursor.fetchall()
     count = len(avg_1q_error)
     if count > 0:
-        file_name = "./config/{}_recent_{}_S.rlb".format(conf.hardware_name, days)
+        file_name = "./config/{}_recent_{}_S.rlb".format(hw_name, days)
         if adjust:
-            file_name = "./config/{}_recent_{}_adj_S.rlb".format(conf.hardware_name, days)
+            file_name = "./config/{}_recent_{}_adj_S.rlb".format(hw_name, days)
 
         f = open(file_name, "w+")
         f.write("{}\n".format(count))
@@ -383,7 +383,7 @@ SELECT DISTINCT qubit_control, qubit_target, ''' + native_gates_2q + '''_error,
 FROM calibration_data.ibm_two_qubit_gate_spec q
 WHERE q.hw_name = %s 
 ) X GROUP BY qubit_control, qubit_target;'''
-        cursor.execute(sql, (conf.hardware_name,))
+        cursor.execute(sql, (hw_name,))
         results = cursor.fetchall()
         count = len(results)
         if count > 0:
@@ -403,13 +403,13 @@ FROM calibration_data.ibm_two_qubit_gate_spec q
 WHERE q.hw_name = %s 
 AND ''' + native_gates_2q + '''_date BETWEEN date_add(now(), INTERVAL %s DAY) AND now()
 ) X GROUP BY qubit_control, qubit_target;
-                    ''', (conf.hardware_name, days * -1))
+                    ''', (hw_name, days * -1))
     results = cursor.fetchall()
     count = len(avg_2q_error)
     if count > 0:
-        file_name = "./config/{}_recent_{}_T.rlb".format(conf.hardware_name, days)
+        file_name = "./config/{}_recent_{}_T.rlb".format(hw_name, days)
         if adjust:
-            file_name = "./config/{}_recent_{}_adj_T.rlb".format(conf.hardware_name, days)
+            file_name = "./config/{}_recent_{}_adj_T.rlb".format(hw_name, days)
 
         f = open(file_name, "w+")
         f.write("{}\n".format(count))
@@ -448,7 +448,7 @@ SELECT DISTINCT qubit, readout_error, readout_error_date FROM calibration_data.i
 INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
 WHERE i.hw_name = %s
 ) X GROUP BY qubit;"""
-        cursor.execute(sql, (conf.hardware_name,))
+        cursor.execute(sql, (hw_name,))
         results = cursor.fetchall()
         count = len(results)
         if count > 0:
@@ -464,13 +464,13 @@ SELECT DISTINCT qubit, 1 - readout_error AS readout_fidelity, readout_error_date
 INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
 WHERE i.hw_name = %s AND readout_error_date BETWEEN date_add(now(), INTERVAL %s DAY) AND now()
 ) X GROUP BY qubit;
-                    ''', (conf.hardware_name, days * -1))
+                    ''', (hw_name, days * -1))
     results = cursor.fetchall()
     count = len(avg_readout_error)
     if count > 0:
-        file_name = "./config/{}_recent_{}_M.rlb".format(conf.hardware_name, days)
+        file_name = "./config/{}_recent_{}_M.rlb".format(hw_name, days)
         if adjust:
-            file_name = "./config/{}_recent_{}_adj_M.rlb".format(conf.hardware_name, days)
+            file_name = "./config/{}_recent_{}_adj_M.rlb".format(hw_name, days)
 
         f = open(file_name, "w+")
         f.write("{}\n".format(count))
@@ -499,7 +499,7 @@ WHERE i.hw_name = %s AND readout_error_date BETWEEN date_add(now(), INTERVAL %s 
 
     conn.close()
 
-def generate_mix_calibration_data(qem):
+def generate_mix_calibration_data(qem, hw_name = conf.hardware_name):
     # Connect to the MySQL database
     conn = mysql.connector.connect(**conf.mysql_calibration_config)
     cursor = conn.cursor()
@@ -509,7 +509,7 @@ def generate_mix_calibration_data(qem):
 FROM calibration_data.ibm i
 INNER JOIN calibration_data.hardware h ON i.hw_name = h.hw_name
 WHERE i.hw_name = %s ORDER BY calibration_datetime DESC LIMIT 0, 1;
-''', (conf.hardware_name, ))
+''', (hw_name, ))
     results = cursor.fetchall()
     calibration_id, native_gates_2q, calibration_date = results[0]
 
@@ -526,11 +526,11 @@ SELECT DISTINCT qubit, 1 - readout_error AS readout_fidelity, readout_error_date
 INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
 WHERE i.hw_name = %s) X GROUP BY qubit) a ON q.qubit = a.qubit
 WHERE q.calibration_id = %s;
-''', (calibration_date, conf.hardware_name, calibration_id, ))
+''', (calibration_date, hw_name, calibration_id, ))
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/" + conf.hardware_name + "_mix_M.rlb", "w+")
+        f = open("./config/" + hw_name + "_mix_M.rlb", "w+")
         f.write("{}\n".format(count))
         for res in results:
             calibration_id, qubit, readout_fidelity = res
@@ -551,11 +551,11 @@ SELECT DISTINCT qubit, 1 - x_error AS x_fidelity, x_date FROM calibration_data.i
 INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
 WHERE i.hw_name = %s) X GROUP BY qubit) a ON q.qubit = a.qubit
 WHERE q.calibration_id = %s;
-''', (calibration_date, conf.hardware_name, calibration_id, ))
+''', (calibration_date, hw_name, calibration_id, ))
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/" + conf.hardware_name + "_mix_S.rlb", "w+")
+        f = open("./config/" + hw_name + "_mix_S.rlb", "w+")
         f.write("{}\n".format(count))
         for res in results:
             calibration_id, qubit, fidelity_1q = res
@@ -578,11 +578,11 @@ SELECT DISTINCT qubit_control, qubit_target, 1 - ''' + native_gates_2q + '''_err
 INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
 WHERE i.hw_name = %s) X GROUP BY qubit_control, qubit_target) a ON q.qubit_control = a.qubit_control AND q.qubit_target = a.qubit_target
 WHERE q.calibration_id = %s;
-''', (calibration_date, conf.hardware_name, calibration_id, ))
+''', (calibration_date, hw_name, calibration_id, ))
     results = cursor.fetchall()
     count = len(results)
     if count > 0:
-        f = open("./config/" + conf.hardware_name + "_mix_T.rlb", "w+")
+        f = open("./config/" + hw_name + "_mix_T.rlb", "w+")
         f.write("{}\n".format(count))
         for res in results:
             calibration_id, qubit_control, qubit_target, fidelity_2q = res

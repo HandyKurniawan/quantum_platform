@@ -150,14 +150,20 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
     except Exception as e:
         print("Error for check result availability :", str(e))
 
-def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name):
+def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name, noisy_simulator = None):
     print("Checking results for: ", job_id, "with header id :", header_id)
     
 
     conn = mysql.connector.connect(**conf.mysql_config)
     cursor = conn.cursor()
 
-    backend = service.backend(hw_name)
+    backend = None
+    
+    if noisy_simulator == None:
+        backend = service.backend(hw_name)
+    else:
+        backend = noisy_simulator
+        print(backend.backend_name)
 
     cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
 FROM result_detail d
@@ -188,8 +194,19 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
                 print("Preparing the noiseless simulator", compilation_name, noise_level, noiseless)
                 sim_ideal = AerSimulator()
                 job = sim_ideal.run(circuit, shots=shots)
+            elif noisy_simulator != None:
+                print("Preparing the noisy simulator", backend.backend_name, compilation_name, noise_level, noiseless)
+                job = backend.run(circuit, shots=shots)
+
+            elif conf.user_id == 8:
+                print("Preparing the noisy CX simulator", backend.name, compilation_name, noise_level, noiseless)
+
+                sim_noisy = qiskit_wrapper.generate_sim_noise_cx(backend, noise_level)
+
+                job = sim_noisy.run(circuit, shots=shots)
+
             else:
-                print("Preparing the noisy simulator", compilation_name, noise_level, noiseless)
+                print("Preparing the noisy simulator", backend.name, compilation_name, noise_level, noiseless)
                 noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless)
                 # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
                 job = sim_noisy.run(circuit, shots=shots)
@@ -271,7 +288,7 @@ def get_metrics(header_id, job_id):
             
             quasi_dists_dict = json.loads(quasi_dists) 
             count_dict = {}
-            if (sum(quasi_dists_dict.values()) <= 1):
+            if (round(sum(quasi_dists_dict.values())) <= 1):
                 for key, value in quasi_dists_dict.items():
                     count_dict[key] = value * shots
             else:
@@ -290,20 +307,22 @@ def get_metrics(header_id, job_id):
 
             count_accept = 0
             count_logerror = 0
+            decoding_time = None
+            detection_time = None
 
             if "polar_all_meas" in circuit_name:
                 print("get metrics: n =", n, ", lstate =", lstate)
                 # total_qubit = (2**n) * (n)
                 if lstate == "X":
                     if n == 2:
-                        total_qubit = (2**n)
+                        total_qubit = 8
                     elif n == 3:
                         total_qubit = 20
                     elif n == 4:
                         total_qubit = 40
                 else:
                     if n == 2:
-                        total_qubit = 0
+                        total_qubit = 6
                     elif n == 3:
                         total_qubit = 12
                     elif n == 4:
@@ -312,11 +331,12 @@ def get_metrics(header_id, job_id):
                 count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit)
                 # tmp = reverse_string_keys(count_dict_bin)
                 tmp = count_dict_bin
+                          
                 # print(count_dict_bin)
                 # print("----")
                 # print(tmp)
-                count_accept, count_logerror, success_rate_polar = polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp)
-                print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, success_rate_polar)
+                count_accept, count_logerror, count_undecided, success_rate_polar, detection_time, decoding_time = polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp)
+                print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, count_undecided, success_rate_polar)
 
                 success_rate_quasi = 0
                 success_rate_nassc = 0
@@ -372,22 +392,26 @@ def get_metrics(header_id, job_id):
             if existing_row:
                 cursor.execute("""UPDATE metric SET total_gate = %s, total_one_qubit_gate = %s, total_two_qubit_gate = %s, circuit_depth = %s, 
                 circuit_cost = %s, success_rate_tvd = %s, success_rate_nassc = %s, success_rate_quasi = %s, 
-                success_rate_polar = %s, hellinger_distance = %s, success_rate_tvd_new = %s, polar_count_accept = %s, polar_count_logerror = %s
+                success_rate_polar = %s, hellinger_distance = %s, success_rate_tvd_new = %s, polar_count_accept = %s, polar_count_logerror = %s,
+                polar_count_undecided = %s, detection_time = %s, decoding_time = %s 
                 WHERE detail_id = %s; """, 
                 (total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, detail_id))
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, 
+                count_undecided, detection_time, decoding_time, detail_id))
                 
             else:
                 cursor.execute("""INSERT INTO metric(detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new, polar_count_accept, polar_count_logerror)
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, polar_count_accept, polar_count_logerror, 
+                polar_count_undecided, detection_time, decoding_time)
                 VALUES (%s, %s, %s, %s, %s,
                 %s, %s, %s, %s, 
-                %s, %s, %s, %s, %s); """, 
+                %s, %s, %s, %s, %s, 
+                %s, %s, %s); """, 
                 (detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror))
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, count_undecided, detection_time, decoding_time))
                 
             # update_result_header_status_by_header_id(cursor, header_id, 'done')
 
