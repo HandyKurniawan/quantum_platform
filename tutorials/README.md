@@ -15,8 +15,7 @@ In summary, we have xx parts:
 
 At this moment, we use [IBM Qiskit](https://www.ibm.com/quantum/qiskit) as our quantum software. Please see the documentation [here](https://docs.quantum.ibm.com/guides) for more detail.
 
-For detail tutorial for this part, you can see this jupyter notebook [file](1-quantum_software.ipynb).
-
+For detail tutorial for this part and example how to use the platform, you can see this jupyter notebook [file](../tutorial.ipynb).
 
 ## Classical Software
 
