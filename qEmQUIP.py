@@ -95,7 +95,7 @@ class QEM:
         if debug: tmp_start_time  = time.perf_counter()
         # triq_wrapper.generate_recent_average_calibration_data(self, 15, True, hw_name=hw_name)
         triq_wrapper.generate_realtime_calibration_data(self, hw_name=hw_name)
-        triq_wrapper.generate_average_calibration_data(self, hw_name=hw_name)
+        # triq_wrapper.generate_average_calibration_data(self, hw_name=hw_name)
         # triq_wrapper.generate_mix_calibration_data(self, hw_name=hw_name)
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))

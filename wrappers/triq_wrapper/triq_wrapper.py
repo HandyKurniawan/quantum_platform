@@ -69,6 +69,9 @@ def generate_qasm(qasm_str, hardware_name, triq_optimization, measurement_type):
                 dag_file_path, 
                 out_file_path, tmp_hw_name, str(triq_optimization), map_file_path, measurement_type]
 
+    if not os.path.exists("log/"):
+        os.makedirs("log/")
+
     out_file=open("log/output.log",'w+')
 
     p = sp.Popen(call_triq, stdout=out_file, text=True, shell=False)    
