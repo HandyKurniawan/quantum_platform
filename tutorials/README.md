@@ -17,8 +17,6 @@ In our platform, we use relational database management system (RDBMS). It is one
 
 In our project, we use `MariaDB` as it is compatible with the cloud virtual server (EC2) provided by Amazon Web Services (AWS). Below you can see the structure of our database
 
-![screen](../img/framework_err.png)
-
-For detail tutorial for this part, you can see this jupyter notebook [file](5-database.ipynb).
+For detail tutorial for this part, you can see this jupyter notebook [file](4-database.ipynb).
 
 
