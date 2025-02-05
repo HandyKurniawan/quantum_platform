@@ -182,7 +182,8 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
             qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
-            if "nc" not in compilation_name:
+            if compilation_name not in ("qiskit_3", "qiskit_0") and "nc" not in compilation_name:
+            #if "nc" not in compilation_name:
                 circuit = qc.transpile_to_target_backend(backend)
             else:
                 circuit = qc.circuit_original

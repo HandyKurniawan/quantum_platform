@@ -19,9 +19,6 @@ from qiskit.qasm2 import dumps
 import matplotlib.pyplot as plt
 import numpy as np
 
-import mitiq
-from mitiq import zne, benchmarks
-
 from qEmQUIP import QEM, conf
 
 token = "476ea8c61cc54f36e4a21d70a8442f94203c9d87096eaad0886a3e8154d8c2e79bcad6f927c6050a76335dd68d783f478c1b828504748a4377b441c335c831aa"
@@ -70,35 +67,35 @@ def run_simulation_all(hw_name):
     # # # Setup the object for n2_x
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/x", 
     #                     compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                     repeat=1, shots=20000 )
+    #                     repeat=2, shots=20000 )
 
     # # # Setup the object for n2_z
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z", 
     #                    compilations=["triq_lcd_sabre"], triq_measurement_type="polar_mix", 
-    #                    repeat=1, shots=20000 )
+    #                    repeat=2, shots=20000 )
     
     # # Setup the object for n2_z_qiskit
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n2/z_qiskit", 
     #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=20000 )
+    #                    repeat=2, shots=20000 )
 
-    # # # #end region n2
+    # # # # #end region n2
 
     # # # #region n3
     # # # Setup the object for n3_x
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
     #                     compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                     repeat=1, shots=2000 )
+    #                     repeat=3, shots=3000 )
 
     # # Setup the object for n3_z
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/z", 
     #                    compilations=["triq_lcd_sabre"], triq_measurement_type="polar_mix", 
-    #                    repeat=1, shots=2000 )
+    #                    repeat=3, shots=3000 )
     
     # # Setup the object for n3_z_qiskit
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/z_qiskit", 
     #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=2000 )
+    #                    repeat=3, shots=3000 )
 
     # #endregion n3
 
@@ -107,11 +104,11 @@ def run_simulation_all(hw_name):
     # # # Setup the object for n4
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
     #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                   repeat=1, shots=10 )
+    #                   repeat=3, shots=10 )
     
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
-    #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                   repeat=1, shots=10 )
+    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
+                      compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+                      repeat=3, shots=10 )
 
     # #endregion n4
 
@@ -122,12 +119,12 @@ def run_simulation_all(hw_name):
     #                   repeat=1, shots=10 )
     # #endregion n5
 
-    #region n6
-    # # Setup the object for n6
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n6", 
-                      compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-                      repeat=1, shots=10 )
-    #endregion n6
+    # #region n6
+    # # # Setup the object for n6
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n6", 
+    #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+    #                   repeat=1, shots=10 )
+    # #endregion n6
 
     q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
 

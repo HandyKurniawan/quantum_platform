@@ -306,7 +306,7 @@ class QEM:
 
                 qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
-                if compilation_name not in ("qiskit_3", "qiskit_0") or "nc" not in compilation_name:
+                if compilation_name not in ("qiskit_3", "qiskit_0") and "nc" not in compilation_name:
                     circuit = qc.transpile_to_target_backend(self.real_backend)
                 else:
                     circuit = qc.circuit_original
@@ -391,6 +391,7 @@ class QEM:
 
         updated_qasm = ""
         initial_mapping = ""
+
         if "nc" in compilation_name:
             updated_qasm = self.qasm_original
             if conf.send_to_backend: 

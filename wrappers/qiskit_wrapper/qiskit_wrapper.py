@@ -867,8 +867,8 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False, method
                 new_val = j["value"] * error_percentage
                 if new_val > 1:
                     new_val = 1
-                # j["value"] = new_val
-                j["value"] = 0
+                j["value"] = new_val
+                # j["value"] = 0
                 # print(j["name"], j["value"])
             elif (j["name"] in ("T1", "T2")):
                 if error_percentage == 0:
