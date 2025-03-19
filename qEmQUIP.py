@@ -21,18 +21,20 @@ import inspect
 from qiskit import QuantumCircuit, transpile
 from wrappers.qiskit_wrapper import QiskitCircuit
 from qiskit_ibm_runtime import QiskitRuntimeService, Session, Options
-from qiskit_ibm_runtime import SamplerV2 as Sampler, EstimatorV2 as Estimator
+from qiskit_ibm_runtime import SamplerV2 as Sampler, EstimatorV2 as Estimator, IBMBackend
+from qiskit_aer.primitives import SamplerV2 as SamplerAer
 from qiskit_ibm_runtime.options import SamplerOptions, EstimatorOptions, DynamicalDecouplingOptions, TwirlingOptions
+from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel
 from qiskit.quantum_info import SparsePauliOp
 
 from datetime import datetime
 import mysql.connector
 import time
-import json
-import mapomatic as mm
-import mthree
-import pandas as pd
+# import json
+# import mapomatic as mm
+# import mthree
+# import pandas as pd
 
 from qiskit.circuit.library import XGate, YGate
 from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
@@ -95,7 +97,7 @@ class QEM:
         if debug: tmp_start_time  = time.perf_counter()
         # triq_wrapper.generate_recent_average_calibration_data(self, 15, True, hw_name=hw_name)
         triq_wrapper.generate_realtime_calibration_data(self, hw_name=hw_name)
-        # triq_wrapper.generate_average_calibration_data(self, hw_name=hw_name)
+        triq_wrapper.generate_average_calibration_data(self, hw_name=hw_name)
         # triq_wrapper.generate_mix_calibration_data(self, hw_name=hw_name)
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for update hardware configs: {} seconds".format(tmp_end_time - tmp_start_time))
@@ -114,7 +116,7 @@ class QEM:
             self.service = QiskitRuntimeService(channel="ibm_quantum", token=token)
         
         print(f"Retrieving the real backend information of {hardware_name}...")
-        self.real_backend = self.service.get_backend(hardware_name)
+        self.real_backend = self.service.backend(hardware_name)
         
         if debug: tmp_end_time = time.perf_counter()
         if debug: print("Time for setup the services: {} seconds".format(tmp_end_time - tmp_start_time))
@@ -130,17 +132,22 @@ class QEM:
             self.backend = backend
         
         if program_type == "sampler":
-            options = SamplerOptions(
-                default_shots=shots,
-                dynamical_decoupling=dd_options,
-                twirling= twirling_options
-            )
-            self.program = Sampler(mode=self.backend, options=options) 
+            if isinstance(self.backend, IBMBackend):
+                options = SamplerOptions(
+                    default_shots=shots,
+                    dynamical_decoupling=dd_options,
+                    twirling= twirling_options
+                )
 
-            options_normal = SamplerOptions(
-                default_shots=shots,
-            )
-            self.program_normal = Sampler(mode=self.backend, options=options_normal) 
+                self.program = Sampler(mode=self.backend, options=options) 
+
+                options_normal = SamplerOptions(
+                    default_shots=shots,
+                )
+                self.program_normal = Sampler(mode=self.backend, options=options_normal) 
+            elif isinstance(self.backend, AerSimulator):
+                self.program = SamplerAer.from_backend(self.backend, default_shots=shots)
+                
         elif program_type == "estimator":
             options = EstimatorOptions(
                 default_shots=shots,
@@ -239,17 +246,17 @@ class QEM:
 
         return updated_qasm, initial_mapping
     
-    def apply_mthree(self, backend, initial_mapping, counts, shots):
-        mit = mthree.M3Mitigation(backend)
-        mit.cals_from_system(initial_mapping, shots)
+    # def apply_mthree(self, backend, initial_mapping, counts, shots):
+    #     mit = mthree.M3Mitigation(backend)
+    #     mit.cals_from_system(initial_mapping, shots)
 
-        shortened_counts = sum_last_n_digits_dict(counts, len(initial_mapping))
+    #     shortened_counts = sum_last_n_digits_dict(counts, len(initial_mapping))
 
-        m3_quasi = mit.apply_correction(shortened_counts, initial_mapping)
-        probs = m3_quasi.nearest_probability_distribution()
-        probs_int = convert_dict_binary_to_int(probs)
+    #     m3_quasi = mit.apply_correction(shortened_counts, initial_mapping)
+    #     probs = m3_quasi.nearest_probability_distribution()
+    #     probs_int = convert_dict_binary_to_int(probs)
 
-        return probs_int
+    #     return probs_int
     
     def apply_dd(self, circuit, backend, sequence_type = "XX", scheduling_method = "alap"):
 

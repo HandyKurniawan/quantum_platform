@@ -10,8 +10,9 @@ Functions:
 Example:
 """
 from qiskit import QuantumCircuit, transpile
+
 from qiskit.transpiler import CouplingMap
-from qiskit_ibm_runtime import Sampler
+from qiskit_ibm_runtime import SamplerV2 as Sampler, IBMBackend
 from qiskit_aer.noise import NoiseModel, pauli_error
 from qiskit_aer import AerSimulator
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager

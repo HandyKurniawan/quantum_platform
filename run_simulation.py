@@ -82,10 +82,10 @@ def run_simulation_all(hw_name):
     # # # # #end region n2
 
     # # # #region n3
-    # # # Setup the object for n3_x
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
-    #                     compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                     repeat=3, shots=3000 )
+    # # Setup the object for n3_x
+    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
+                        compilations=["qiskit_3","triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+                        repeat=1, shots=3000 )
 
     # # Setup the object for n3_z
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/z", 
@@ -106,9 +106,9 @@ def run_simulation_all(hw_name):
     #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
     #                   repeat=3, shots=10 )
     
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
-                      compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-                      repeat=3, shots=10 )
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
+    #                   compilations=["qiskit_3", "triq_lcd_sabre"], triq_measurement_type="polar_meas", 
+    #                   repeat=3, shots=10 )
 
     # #endregion n4
 

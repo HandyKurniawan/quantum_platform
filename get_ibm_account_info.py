@@ -6,7 +6,7 @@ import time
 mysql_config = {
     'user': 'handy',
     'password': 'handy',
-    'host': 'ec2-13-49-240-207.eu-north-1.compute.amazonaws.com',
+    'host': 'localhost',
     'database': 'framework'
 }
 
@@ -35,7 +35,7 @@ def get_qiskit_usage_info(token):
 
     response_json = send_rest_api_request("https://api.quantum-computing.ibm.com/runtime/usage", token)
 
-    print(response_json)
+    # print(response_json)
 
     instance = response_json["byInstance"][0]["instance"]
     quota = response_json["byInstance"][0]["quota"]
@@ -47,9 +47,9 @@ def get_qiskit_usage_info(token):
 
 def update_qiskit_usage_info(token):
 
-    print("Start inserting...")
-    print("==================")
-    print(token)
+    # print("Start inserting...")
+    # print("==================")
+    # print(token)
 
     instance, quota, usage, pendingJobs, maxPendingJobs = get_qiskit_usage_info(token)
 
@@ -92,7 +92,8 @@ def get_all_token():
     conn = mysql.connector.connect(**mysql_config)
     cursor = conn.cursor()
     
-    cursor.execute('''SELECT token FROM qiskit_token WHERE description = "updated" ''')
+    cursor.execute('''SELECT str_email, token FROM qiskit_token WHERE description = "updated" ''')
+    # cursor.execute('''SELECT str_email, token FROM qiskit_token WHERE description is NULL ''')
     
     results = cursor.fetchall()
     
@@ -116,7 +117,9 @@ def get_new_token():
 
 results = get_all_token()
 for res in results:
-    token = res[0]
+    email, token = res
+
+    print(email)
 
     update_qiskit_usage_info(token)
 

@@ -367,3 +367,16 @@ def sum_last_n_digits_dict(tmp_dict, n):
             shortened_dict[last_digits] = value
     
     return shortened_dict
+
+def sum_middle_digits_dict(tmp_dict, end_index, start_index):
+
+    shortened_dict = {}
+
+    for key, value in tmp_dict.items():
+        last_digits = key[end_index:start_index]
+        if last_digits in shortened_dict:
+            shortened_dict[last_digits] += value
+        else:
+            shortened_dict[last_digits] = value
+    
+    return shortened_dict
