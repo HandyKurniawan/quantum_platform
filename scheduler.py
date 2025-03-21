@@ -261,7 +261,7 @@ def get_metrics(header_id, job_id):
 
     try:
         cursor.execute('''SELECT j.detail_id, j.qasm, j.quasi_dists, j.quasi_dists_std, d.circuit_name, 
-                       d.compilation_name, d.noise_level, j.shots 
+                       d.compilation_name, d.noise_level, j.shots, d.mp_circuits 
                        FROM framework.result_backend_json j
         INNER JOIN framework.result_detail d ON j.detail_id = d.id
         INNER JOIN framework.result_header h ON d.header_id = h.id
@@ -270,7 +270,7 @@ def get_metrics(header_id, job_id):
 
         # print(len(results_details_json))
         for idx, res in enumerate(results_details_json):
-            detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level, shots = res
+            detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level, shots, mp_circuits = res
 
             n = 2
             lstate = "Z"
@@ -329,16 +329,55 @@ def get_metrics(header_id, job_id):
                         total_qubit = 12
                     elif n == 4:
                         total_qubit = 48
-                    
-                count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit)
+
+                if mp_circuits != None:
+                    count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit*mp_circuits)
+                else:
+                    count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit)
+
                 # tmp = reverse_string_keys(count_dict_bin)
                 tmp = count_dict_bin
                           
                 # print(count_dict_bin)
                 # print("----")
                 # print(tmp)
-                count_accept, count_logerror, count_undecided, success_rate_polar, detection_time, decoding_time = polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp)
-                print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, count_undecided, success_rate_polar)
+
+                if mp_circuits == None:
+                    count_accept, count_logerror, count_undecided, success_rate_polar, detection_time, decoding_time = polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp)
+                    print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, count_undecided, success_rate_polar)
+                else:
+                    count_accept = 0
+                    count_logerror = 0
+                    count_undecided = 0 
+                    success_rate_polar = 0 
+                    detection_time = 0 
+                    decoding_time = 0
+                    
+                    for key, value in tmp.items():
+                        end_index = 0
+                        start_index = None
+                        
+                        total_partition = mp_circuits
+                        # total_partition = 6
+
+                        # print(len(key), total_partition, value)
+                    
+                        total_count_accept = 0
+                        for i in range(total_partition):
+                            end_index = end_index - total_qubit
+                    
+                            tmp_dict = {key[end_index : start_index]:1}
+                            # res = sum_middle_digits_dict(hardware_counts[-1], end_index, start_index)
+                            # print(f"Reps-{i}")
+                            tmp_count_accept, tmp_count_logerror, tmp_count_undecided, tmp_success_rate_polar, tmp_detection_time, tmp_decoding_time =   polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp_dict)
+                            total_count_accept = total_count_accept + tmp_count_accept
+                            
+                            start_index = end_index
+                    
+                        if total_count_accept > 0:
+                            count_accept = count_accept + 1
+
+                    print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, count_undecided, success_rate_polar)
 
                 success_rate_quasi = 0
                 success_rate_nassc = 0

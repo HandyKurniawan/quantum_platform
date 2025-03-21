@@ -54,8 +54,19 @@ def init_result_header(cursor, user_id, hardware_name=conf.hardware_name, token=
 
     return header_id
     
-def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulator, noise_level, compilation_name, compilation_time, 
-                            updated_qasm, observable=None, initial_mapping = "", final_mapping = ""):
+def insert_to_result_detail(conn, 
+                            cursor, 
+                            header_id: int, 
+                            circuit_name: str, 
+                            noisy_simulator, 
+                            noise_level:float, 
+                            compilation_name: str, 
+                            compilation_time, 
+                            updated_qasm, 
+                            observable=None, 
+                            initial_mapping = "", 
+                            final_mapping = "",
+                            mp_circuits=None):
         now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
         noisy_simulator_flag = None
@@ -69,14 +80,16 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulat
         sql = """
         INSERT INTO result_detail
         (header_id, circuit_name, observable, compilation_name, compilation_time, 
-        initial_mapping, final_mapping, noisy_simulator, noise_level, 
+        initial_mapping, final_mapping, noisy_simulator, noise_level, mp_circuits, 
         created_datetime)
         VALUES (%s, %s, %s, %s, %s, 
-        %s, %s, %s, %s,
+        %s, %s, %s, %s, %s,
         %s);
         """
 
-        str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
+        str_initial_mapping = None
+        if initial_mapping != None:
+            str_initial_mapping = ', '.join(str(x) for x in initial_mapping)
 
         str_observable = None
         if observable != None:
@@ -88,7 +101,7 @@ def insert_to_result_detail(conn, cursor, header_id, circuit_name, noisy_simulat
 
 
         params = (header_id, circuit_name, str_observable, compilation_name, compilation_time, 
-                  str_initial_mapping, json_final_mapping, noisy_simulator_flag, noise_level, 
+                  str_initial_mapping, json_final_mapping, noisy_simulator_flag, noise_level, mp_circuits,
                   now_time)
 
         cursor.execute(sql, params)

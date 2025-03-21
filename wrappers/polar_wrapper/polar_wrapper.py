@@ -4,6 +4,9 @@ from . import __tools as tls
 from . import __polarcodec as codec
 from .__qpolarprep import q1prep as q1prep
 import time
+from qiskit import QuantumCircuit
+
+# from here is to calculate the preparation rate and logical error rate
 
 def get_q1prep_sr(n, lstate, results):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
@@ -229,13 +232,272 @@ def get_logical_error_on_accepted_states(n, lstate, results):
     tmp_end_time = time.perf_counter()
     decoding_time = tmp_end_time - tmp_start_time - detection_time
 
-    print("number of discarded states (invalid measurement results) = ", count_discard)
-    print(" number of accepted states   (valid measurement results) = ", count_accept)
-    print("        number of logical errors on the accepted states  = ", round(count_logerror))
+    # print("number of discarded states (invalid measurement results) = ", count_discard)
+    # print(" number of accepted states   (valid measurement results) = ", count_accept)
+    # print("        number of logical errors on the accepted states  = ", round(count_logerror))
 
     fidelity = 0
     if count_accept > 0:
         fidelity = ((count_accept - round(count_logerror)) / count_accept)
 
     return count_accept, round(count_logerror), count_undecided, fidelity, detection_time, decoding_time
+
+
+
+# from here is the function to generate the state preparation of quantum polar code circuit
+def divide_half_list(lst):
+    # print("function:", lst, int(len(lst)//2))
+    idx = int(len(lst)//2)
+    firsthalf = lst[:idx]
+    secondhalf = lst[idx:]
+
+    return firsthalf, secondhalf
+
+def make_polar_qc_based_p1(n):
+    qr = 2**n
+    total_qubit = qr 
+
+    cr = total_qubit 
+    
+    qc = QuantumCircuit(total_qubit, cr)
+
+    return qc
+
+def generate_polar_encoding(qc, n, s, n_bit):
+    # print(n, s)
+    if n == 1:
+        if (n_bit[n-1] == "0"):
+            qc.cx(s[1], s[0])
+        else:
+            qc.cx(s[0], s[1])
+
+        # print(n, n_bit[n-1], n_bit)
+    else:
+        s1, s2 = divide_half_list(s)
+        # print(s1, s2)
+        qc = generate_polar_encoding(qc, n-1, s1, n_bit)         
+        qc = generate_polar_encoding(qc, n-1, s2, n_bit)
+
+        for i in range(len(s1)):
+            if (n_bit[n-1] == "0"):
+                qc.cx(s2[i], s1[i])
+            else:
+                qc.cx(s1[i], s2[i])
+            
+
+        # print(n, n_bit[n-1], n_bit)
+    
+                
+    return qc
+    
+def make_polar_qc_based_p2(n, meas_data=False):
+    qr = 2**n
+    ar = 2**(n-1)
+
+    total_qubit = qr + ar
+
+    if meas_data:
+        cr = total_qubit + (ar * (n-1))
+    else:
+        cr = (ar * (n)) 
+    
+    qc = QuantumCircuit(total_qubit, cr)
+
+    return qc
+
+def check_has_zero(n_bit):
+    has_zero = False
+    # print(n_bit)
+    for i in range(1, len(n_bit)):
+        if n_bit[i - 1] == '0':
+            has_zero = True
+
+    return has_zero
+    
+def generate_polar_encoding_measurement(qc, n, s, a, m, n_bit):
+    if n == 1:
+        if (n_bit[n-1] == "1"):
+            # print("Skip first ZZ measurement")
+            pass
+            # if started with Z measurement, skip it
+        
+            # qc.cx(s[0], a[0])
+            # qc.cx(s[1], a[0])
+            # qc.measure(a[0], m[0])
+            # m.pop(0)
+            # qc.reset(a[0])
+        else:
+            qc.h(a[0])
+            qc.cx(a[0], s[0])
+            qc.cx(a[0], s[1])
+            qc.h(a[0])
+            qc.measure(a[0], m[0])
+            
+            # with qc.if_test((m[0], 1)):
+            #     qc.x(a[0])
+                
+            m.pop(0)
+            
+            qc.reset(a[0])
+            
+        # print(n, n_bit[n-1], n_bit)
+    else:
+        s1, s2 = divide_half_list(s)
+        a1, a2 = divide_half_list(a)
+        
+        # print(s1, s1[-1], s2, s2[-1], n_bit, n, n_bit[n-1])
+        qc = generate_polar_encoding_measurement(qc, n-1, s1, a1, m, n_bit)         
+        qc = generate_polar_encoding_measurement(qc, n-1, s2, a2, m, n_bit)
+        
+        # print(n, s, n_bit[n-1], len(s1))
+        # for i in range(len(s1) - (2**(n-2)) ):
+        # print("--------")
+        for i in range(len(s1)):
+            if (n_bit[n-1] == "1"):
+                # print("--- 1 ---")
+                # print(idx, i, s, s1, s2, " --- ", a, ": ", s1[i], s2[i])
+                if check_has_zero(n_bit[:n]):
+                    idx_meas = a[i]
+                    # print(idx_meas, n, i, m)
+                    qc.cx(s1[i], idx_meas)
+                    qc.cx(s2[i], idx_meas)
+                    qc.measure(idx_meas, m[0])
+                    # with qc.if_test((m[0], 1)):
+                    #         qc.x(idx_meas)
+                    m.pop(0)
+                    qc.reset(idx_meas)
+                    
+                else:
+                    pass
+                    # print("Skip ZZ Measurement", n-1, n_bit[n-1], n_bit[:n])
+            else:      
+                # print(idx, i, s, s1, s2, " --- ", a, ": ", s1[i], s2[i])
+                idx_meas = a[i] 
+                # print(idx_meas, n, i, m)
+                qc.h(idx_meas)
+                qc.cx(idx_meas, s1[i])
+                qc.cx(idx_meas, s2[i])
+                qc.h(idx_meas)
+                qc.measure(idx_meas, m[0])
+                # with qc.if_test((m[0], 1)):
+                #             qc.x(idx_meas)
+                m.pop(0)
+                qc.reset(idx_meas)    
+                
+                
+    return qc
+
+def get_i_position(n):
+    i = 0
+
+    if n == 2:
+        i = 2
+    elif n == 3:
+        i = 4
+    elif n == 4:
+        i = 7
+    elif n == 5:
+        i = 8
+    elif n == 6:
+        i = 23
+    elif n == 7:
+        i = 16
+    
+    return i
+
+def polar_code_p2(n, meas_data=False, base="z"):
+    bit_format = "0:0{}b".format(n)
+    bit_format = "{" + bit_format + "}"
+    # bit_format = "{0:04b}"
+    # print(bit_format)
+
+    if base == "z":
+        i = get_i_position(n)
+    else:
+        i = get_i_position(n) - 1
+    
+    n_bit = bit_format.format(i-1)[::-1]
+    # n_bit = bit_format.format(n-1)
+    print("n =", n, ", b =", "{} ({})".format(n_bit, i-1), ", i =", i)
+    
+    qc=make_polar_qc_based_p2(n, meas_data)
+    # s=range(2**n + 2**(n-1))
+    
+    s=[]
+    a=[]
+    m=[]
+    j = 0
+    for i in range(qc.num_qubits):
+        if j == 2:
+            a.append(i)
+            j = -1
+        else:
+            s.append(i)
+            
+        j = j + 1
+    
+    for k in range(0, qc.num_clbits):
+        m.append(k)
+    
+    # print(s, a, m)
+
+    # NOTE THAT the measurement order for n >= 6 is not fixed yet.
+    
+    if base == "x":
+        if meas_data==False:
+            if n == 3:
+                m = [0,1,4,5,2,3,6,7,8,9,10,11]
+            elif n == 4:
+                m = [0,1,2,3,8,9,10,11,4,5,6,7,12,13,14,15,16,17,18,19,20,21,22,23]
+            elif n == 5:
+                m = [0, 1, 16, 17, 2, 3, 18, 19, 32, 33, 34, 35, 4, 5, 20, 21, 6, 7, 22, 23, 36, 37, 38, 39, 
+                     48, 49, 50, 51, 52, 53, 54, 55, 8, 9, 24, 25, 10, 11, 26, 27, 40, 41, 42, 43, 12, 13, 28, 29, 14, 15, 30, 
+                     31, 44, 45, 46, 47, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 
+                     76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 
+                     101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111]
+        else:
+            if n == 3:
+                m = [0,1,4,5,2,3,6,7,8,9,10,11, 12, 13, 14, 15, 16, 17, 18, 19]
+            elif n == 4:
+                m = [0,1,2,3,8,9,10,11,4,5,6,7,12,13,14,15,16,17,18,19,20,21,22,23,24, 25, 
+                     26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]
+            elif n == 5:
+                m = [0, 1, 16, 17, 2, 3, 18, 19, 32, 33, 34, 35, 4, 5, 20, 21, 6, 7, 22, 23, 36, 37, 38, 39, 
+                     48, 49, 50, 51, 52, 53, 54, 55, 8, 9, 24, 25, 10, 11, 26, 27, 40, 41, 42, 43, 12, 13, 28, 29, 14, 15, 30, 
+                     31, 44, 45, 46, 47, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 
+                     76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 
+                     101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111]
+    else:
+        if meas_data==False:
+            if n == 3:
+                m = [0,1,2,3]
+            elif n == 4:
+                m = [0,1,8,9,2,3,10,11,16,17,18,19,4,5,12,13,6,7,14,15,20,21,22,23,24,25,26,27,28,29,30,31]
+            elif n == 5:
+                m = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 
+                     26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 
+                     51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 
+                     76, 77, 78, 79]    
+        else:
+            if n == 3:
+                m = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+            elif n == 4:
+                m = [0,1,8,9,2,3,10,11,16,17,18,19,4,5,12,13,6,7,14,15,20,21,22,23,24,25,
+                     26,27,28,29,30,31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]
+            elif n == 5:
+                m = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 
+                     26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 
+                     51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 
+                     76, 77, 78, 79]  
+
+    # print(m)
+    
+    qc = generate_polar_encoding_measurement(qc, n, s, a, m, n_bit)
+
+    if meas_data:
+        for i in s:
+            qc.measure(i,m[0])
+            m.pop(0)
+
+    return qc
 

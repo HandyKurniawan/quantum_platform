@@ -68,7 +68,9 @@ class QiskitCircuit:
         self.qasm_original = dumps(qc)
         self.circuit_original = qc
 
+        # 20250320 - Handy, remarked to avoid confusion and reduce complexity because of transpiling from basis 
         qc = transpile_to_basis_gate(qc)
+
         self.circuit: QuantumCircuit = qc
         self.qasm = dumps(qc)
         self.name = name
@@ -216,7 +218,8 @@ def get_fake_backend(calibration_type, backend, recent_n, generate_props,
 
 # Function to import and optimize a QASM circuit
 def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enable_mapomatic = False,
-                  calibration_type = calibration_type_enum.lcd, recent_n = None, initial_layout = None, generate_props = False):
+                  calibration_type = calibration_type_enum.lcd, recent_n = None, initial_layout = None, generate_props = False,
+                  cm: CouplingMap = None):
     # Load the input QASM circuit
     circuit = QuantumCircuit.from_qasm_str(input_qasm)
 
@@ -250,7 +253,8 @@ def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enab
         # transpiled_circuit = transpile(new_circuit, tmp_backend, initial_layout = initial_layout)
         pm = generate_preset_pass_manager(optimization_level=optimization,
                                           backend=tmp_backend,
-                                          initial_layout=initial_layout
+                                          initial_layout=initial_layout,
+                                          coupling_map=cm
                                           )
         transpiled_circuit = pm.run(new_circuit)
 
@@ -258,20 +262,13 @@ def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enab
 
         # print("Mapomatic Map: ", initial_layout)
     else:
-        # transpiled_circuit = transpile(circuit, 
-        #                         tmp_backend,
-        #                         optimization_level=optimization,
-        #                         routing_method=routing_method,
-        #                         layout_method=layout_method,
-        #                         basis_gates=basis_gates,
-        #                         initial_layout=initial_layout
-        #                         )
         pm = generate_preset_pass_manager(optimization_level=optimization,
                                           backend=tmp_backend,
                                           routing_method=routing_method,
                                           layout_method=layout_method,
                                           basis_gates=basis_gates,
-                                          initial_layout=initial_layout
+                                          initial_layout=initial_layout,
+                                          coupling_map=cm
                                           )
         transpiled_circuit = pm.run(circuit)
         

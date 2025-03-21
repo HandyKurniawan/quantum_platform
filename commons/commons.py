@@ -9,6 +9,9 @@ from datetime import datetime
 import numpy as np
 import math
 
+from qiskit import transpile, QuantumCircuit
+
+
 class Config:
     def __init__(self):
         self.config_parser = configparser.ConfigParser()
@@ -380,3 +383,90 @@ def sum_middle_digits_dict(tmp_dict, end_index, start_index):
             shortened_dict[last_digits] = value
     
     return shortened_dict
+
+def used_qubits(qc:QuantumCircuit)-> list[int]:
+    """
+    Args: 
+    qc: circuit (QuantumCircuit)
+        
+    Returns: list: indices of the qubits used in the circuit
+    """
+    L=qc.num_qubits
+    used_qb=[]
+    qct=transpile(qc,optimization_level=0,basis_gates=['cx','rx','rz','x'])
+    for gate in qct:
+        if gate.name == 'rx' or gate.name == 'rz' or gate.name == 'x':
+            if gate.qubits[0]._index not in used_qb:
+                used_qb.append(gate.qubits[0]._index)
+
+        if gate.name == 'cx':
+            if gate.qubits[0]._index not in used_qb:
+                used_qb.append(gate.qubits[0]._index)
+            if gate.qubits[1]._index not in used_qb:
+                used_qb.append(gate.qubits[1]._index)
+
+    return used_qb
+
+def neighbours(qb_index,coupling_map):
+    """
+    Parameters: 
+    integer: index of a qubit 
+    list: coupling map of the backend (same format as in Qiskit)
+        
+    Returns: list: indices of neighbouring qubits of qb_index
+    """
+    neigh=[]
+    for qb_1,qb_2 in coupling_map:
+        if qb_1==qb_index and qb_2 not in neigh:
+            neigh.append(qb_2)
+        if qb_2==qb_index and qb_1 not in neigh:
+            neigh.append(qb_1)
+    return neigh
+
+
+def CNOT_used(qc,coupling_map):
+    """
+    Parameters: 
+    circuit (QuantumCircuit)
+    list: coupling map of the backend (same format as in Qiskit)
+        
+    Return: list: indices of possible CNOT used in the circuit
+    """
+    list_CNOT=[]
+    qct=transpile(qc,optimization_level=0,basis_gates=['cx','rx','rz','x'])
+    for gate in qct:
+        if gate.name=='cx':
+            qb_ctrl = gate.qubits[0]._index
+            qb_trgt = gate.qubits[1]._index
+            
+            if (qb_ctrl,qb_trgt) not in list_CNOT:
+                list_CNOT.append([qb_ctrl,qb_trgt])
+ 
+    return (list_CNOT)
+
+def neighbours_CNOT_used(qb_ctrl,qb_trgt,qc,coupling_map):
+    """
+    Parameters: 
+    integer: index of the control qubit of the CNOT
+    integer: index of the target qubit of the CNOT
+    circuit (QuantumCircuit)
+    list: coupling map of the backend (same format as in Qiskit)
+        
+    Return: list: neighbouring qubits of the CNOT used in the circuit
+    """
+    neigh_ctrl=neighbours(qb_ctrl,coupling_map)
+    neigh_trgt=neighbours(qb_trgt,coupling_map)
+    used_qb=used_qubits(qc)
+    neigh_CNOT=[]
+    for qb in used_qb:
+        if qb!=qb_ctrl and qb!=qb_trgt and (qb in neigh_ctrl or qb in neigh_trgt):
+            neigh_CNOT.append(qb)
+    return neigh_CNOT  
+    
+    
+def count_two_qubit_gates(circuit):
+    two_qubit_gates = [gate.operation for gate in circuit.data if gate.operation.num_qubits == 2]
+    return len(two_qubit_gates)
+    
+
+ 
