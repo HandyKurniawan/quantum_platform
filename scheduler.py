@@ -335,7 +335,8 @@ def get_metrics(header_id, job_id):
                 else:
                     count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit)
 
-                tmp = reverse_string_keys(count_dict_bin)
+                # tmp = reverse_string_keys(count_dict_bin)
+
                 tmp = count_dict_bin
                           
                 # print(count_dict_bin)
@@ -366,7 +367,7 @@ def get_metrics(header_id, job_id):
                         for i in range(total_partition):
                             end_index = end_index - total_qubit
                     
-                            tmp_dict = {key[end_index : start_index]:1}
+                            tmp_dict = {key[end_index : start_index]:value}
                             # res = sum_middle_digits_dict(hardware_counts[-1], end_index, start_index)
                             # print(f"Reps-{i}")
 
@@ -378,9 +379,9 @@ def get_metrics(header_id, job_id):
                             start_index = end_index
                     
                         if total_count_accept > 0:
-                            count_accept = count_accept + 1
+                            count_accept = count_accept + value
 
-                    print(circuit_name, noise_level, compilation_name, count_accept, count_logerror, count_undecided, success_rate_polar)
+                    print(circuit_name, noise_level, compilation_name, count_accept, len(tmp))
 
                 success_rate_quasi = 0
                 success_rate_nassc = 0
