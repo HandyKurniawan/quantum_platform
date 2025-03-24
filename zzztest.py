@@ -42,7 +42,7 @@ mysql_config = {
 # Connect to the MySQL database
 conn = mysql.connector.connect(**mysql_config)
 
-shots = 10000
+shots = 100
 
 from qEmQUIP import QEM, conf
 import mysql.connector
@@ -66,22 +66,29 @@ compilations = ["qiskit_3"]
 
 q.set_backend(program_type="sampler")
 
-mp_options = {"enable":True, "execution_type":"all"}
+mp_options = {"enable":True, "execution_type":"final"}
 
-prune_options = {"enable":True, "type":"calibration", "params": (0.020,0.10)}
+prune_options = {"enable":True, "type":"cal-avg", "params": (0.020,0.10)}
 # prune_options = {"enable":True, "type":"lf", "params": 50}
 """
 prune type:
-- calibration: use the threshold of the two-qubit gates and readout. Params: (cx,ro): tuple
+- cal-lcd: use the threshold of the two-qubit gates and readout with last calibration data. Params: (cx,ro): tuple
+- cal-avg: use the threshold of the two-qubit gates and readout with average calibration data. Params: (cx,ro): tuple
 - lf: use the qubits from LF benchmark. Params: lf: int, number qubits
 """
 
 
 #q.compile_multiprogramming(qasm_files*3, compilations)
 
-q.send_to_real_backend("sampler", qasm_files*2, compilations, 
-                       mp_options=mp_options,
-                       prune_options=prune_options)
+# q.send_to_real_backend("sampler", qasm_files*2, compilations, 
+#                        mp_options=mp_options,
+#                        prune_options=prune_options)
 
 # q.send_to_real_backend("sampler", qasm_files, compilations, 
 #                        prune_options=prune_options)
+
+noise_levels = [0, 1]
+
+q.run_simulator("sampler", qasm_files*2, compilations,
+                noise_levels, shots, send_to_db=True, 
+                mp_options=mp_options)

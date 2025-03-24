@@ -58,7 +58,7 @@ def insert_to_result_detail(conn,
                             cursor, 
                             header_id: int, 
                             circuit_name: str, 
-                            noisy_simulator, 
+                            noisy_simulator:bool, 
                             noise_level:float, 
                             compilation_name: str, 
                             compilation_time, 
@@ -67,7 +67,7 @@ def insert_to_result_detail(conn,
                             initial_mapping = "", 
                             final_mapping = "",
                             mp_circuits=None,
-                            prune_options: dict[str,bool|tuple[int|float]|int] = None
+                            prune_options: dict[str,bool|tuple[int|float]|int|str] = None
                             ):
         now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
@@ -103,7 +103,7 @@ def insert_to_result_detail(conn,
 
         prune_type = None
         prune_parameters = None
-        if prune_options != None:
+        if prune_options["enable"]:
             prune_type = prune_options["type"]
             prune_parameters = str(prune_options["params"])
 

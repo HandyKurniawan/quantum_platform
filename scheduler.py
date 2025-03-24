@@ -335,7 +335,7 @@ def get_metrics(header_id, job_id):
                 else:
                     count_dict_bin = convert_dict_int_to_binary(count_dict, total_qubit)
 
-                # tmp = reverse_string_keys(count_dict_bin)
+                tmp = reverse_string_keys(count_dict_bin)
                 tmp = count_dict_bin
                           
                 # print(count_dict_bin)
@@ -369,6 +369,9 @@ def get_metrics(header_id, job_id):
                             tmp_dict = {key[end_index : start_index]:1}
                             # res = sum_middle_digits_dict(hardware_counts[-1], end_index, start_index)
                             # print(f"Reps-{i}")
+
+                            # tmp_dict = reverse_string_keys(tmp_dict)
+
                             tmp_count_accept, tmp_count_logerror, tmp_count_undecided, tmp_success_rate_polar, tmp_detection_time, tmp_decoding_time =   polar_wrapper.get_logical_error_on_accepted_states(n, lstate, tmp_dict)
                             total_count_accept = total_count_accept + tmp_count_accept
                             
