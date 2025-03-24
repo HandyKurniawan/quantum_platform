@@ -575,14 +575,14 @@ class QEM:
                     raise ValueError(f'Total number of qubits ({total_qubits}) could not be higher than the available qubits ({total_largest_connected_qubits})')
                 
 
-
+                mp_circuits = 0
                 for qasm in qasm_files:
 
                     qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=True)
 
                     # check if the circuit has higher qubits than the existing largest connected component, then break it
                     if len(qc.circuit.qubits) > len(cm.largest_connected_component()):
-                        print(f"This circuit's qubit ({qc.circuit.qubits}) has higher than existing qubits({total_largest_connected_qubits})" )
+                        print(f"This circuit's qubit ({len(qc.circuit.qubits)}) has higher than existing qubits({len(cm.largest_connected_component())})" )
                         break
                     
                     # compiled here for each circuits
@@ -604,6 +604,8 @@ class QEM:
                     # compiled_circuits.append({"circuit":tqc, "initial_layout":tqc.layout.initial_layout})
                     
                     cm = build_idle_coupling_map(cm, used_qubit)
+
+                    mp_circuits = mp_circuits + 1
 
                 # if the mp execution type is final, add the first compile circuit to be run, to compare as with the single run result
                 if mp_execution_type == "final":
@@ -628,7 +630,7 @@ class QEM:
 
                 # combine everything for final circuits and send to DB
                 num_clbits = qc.circuit.num_clbits
-                mp_circuits = len(qasm_files)
+                # mp_circuits = len(qasm_files)
                 total_num_clbits = num_clbits * mp_circuits
                 final_circuit = merge_circuits(compiled_circuits[compilation_name],self.backend, num_cbits=total_num_clbits)
                 final_qasm = dumps(final_circuit)
@@ -668,7 +670,8 @@ class QEM:
                       sequence_type:str = "XX", 
                       scheduling_method:str = "alap",
                       mp_options: dict[str,bool|str] = {"enable":False},
-                      prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}
+                      prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False},
+                      seed_simulator: int = 123456
                       ):
         """
         
@@ -692,7 +695,8 @@ class QEM:
             conf.send_to_db = True
             # init header
             self.header_id = database_wrapper.init_result_header(self.cursor, self.user_id, hardware_name = hardware_name,
-                                                                 token=self.token, shots=shots, program_type=program_type)
+                                                                 token=self.token, shots=shots, program_type=program_type,
+                                                                 seed_simulator=seed_simulator)
         else:
             conf.send_to_db = False
 
@@ -763,7 +767,7 @@ class QEM:
 
         prune_options:
         1. enable: deterimine whether using multiprogramming or not
-        2.type: determine which pruning type to create coupling map
+        2. type: determine which pruning type to create coupling map
             - calibration: use the threshold of the two-qubit gates and readout. Params: (cx,ro): tuple
             - lf: use the qubits from LF benchmark. Params: lf: int, number qubits
         """

@@ -150,7 +150,11 @@ WHERE h.status = %s AND h.job_id = %s;''', ('pending', job_id, ))
     except Exception as e:
         print("Error for check result availability :", str(e))
 
-def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name, noisy_simulator = None):
+def process_simulator(service:QiskitRuntimeService, 
+                      header_id: int, 
+                      job_id: str, 
+                      hw_name: str, 
+                      noisy_simulator:AerSimulator = None):
     print("Checking results for: ", job_id, "with header id :", header_id)
     
 
@@ -165,7 +169,7 @@ def process_simulator(service:QiskitRuntimeService, header_id, job_id, hw_name, 
         backend = noisy_simulator
         print(backend.backend_name)
 
-    cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots 
+    cursor.execute('''SELECT d.id, q.updated_qasm, d.compilation_name, d.noise_level, h.shots, h.seed 
 FROM result_detail d
 INNER JOIN result_header h ON d.header_id = h.id
 INNER JOIN result_updated_qasm q ON d.id = q.detail_id 
@@ -178,7 +182,7 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
 
         try:
 
-            detail_id, updated_qasm, compilation_name, noise_level, shots = res
+            detail_id, updated_qasm, compilation_name, noise_level, shots, seed_simulator = res
 
             qc = QiskitCircuit(updated_qasm, skip_simulation=True)
 
@@ -194,23 +198,23 @@ WHERE h.status = %s AND h.job_id = %s AND d.header_id = %s AND j.quasi_dists IS 
                 noiseless = True
                 print("Preparing the noiseless simulator", compilation_name, noise_level, noiseless)
                 sim_ideal = AerSimulator()
-                job = sim_ideal.run(circuit, shots=shots)
-            elif noisy_simulator != None:
-                print("Preparing the noisy simulator", backend.backend_name, compilation_name, noise_level, noiseless)
-                job = backend.run(circuit, shots=shots)
+                job = sim_ideal.run(circuit, shots=shots, seed_simulator=seed_simulator)
+            elif noisy_simulator != None and isinstance(backend, AerSimulator):
+                print("Preparing the custom noisy simulator", backend.name, compilation_name, noise_level, noiseless)
+                job = backend.run(circuit, shots=shots, seed_simulator=seed_simulator)
 
             elif conf.user_id == 8:
                 print("Preparing the noisy CX simulator", backend.name, compilation_name, noise_level, noiseless)
 
                 sim_noisy = qiskit_wrapper.generate_sim_noise_cx(backend, noise_level)
 
-                job = sim_noisy.run(circuit, shots=shots)
+                job = sim_noisy.run(circuit, shots=shots, seed_simulator=seed_simulator)
 
             else:
-                print("Preparing the noisy simulator", backend.name, compilation_name, noise_level, noiseless)
+                print("Preparing the noisy simulator from backend", backend.name, compilation_name, noise_level, noiseless)
                 noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless)
                 # noise_model, sim_noisy, coupling_map = qiskit_wrapper.get_noisy_simulator(backend, noise_level, noiseless=True)
-                job = sim_noisy.run(circuit, shots=shots)
+                job = sim_noisy.run(circuit, shots=shots, seed_simulator=seed_simulator)
 
             # print("run the job")
             result = job.result()  

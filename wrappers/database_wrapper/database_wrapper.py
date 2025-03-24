@@ -23,8 +23,15 @@ from ..qiskit_wrapper import QiskitCircuit
 conf = Config()
 debug = conf.activate_debugging_time
 
-def init_result_header(cursor, user_id, hardware_name=conf.hardware_name, token=conf.qiskit_token, program_type = "sampler", shots = conf.shots,
-                       dd_options = {"enable":False}):
+def init_result_header(cursor, 
+                       user_id: int, 
+                       hardware_name: str = conf.hardware_name, 
+                       token: str=conf.qiskit_token, 
+                       program_type: str = "sampler", 
+                       shots: int = conf.shots,
+                       dd_options: dict = {"enable":False},
+                       seed_simulator: int = None
+                       ):
     if debug: tmp_start_time  = time.perf_counter()
 
     dd_enable = None
@@ -39,13 +46,13 @@ def init_result_header(cursor, user_id, hardware_name=conf.hardware_name, token=
     now_time = datetime.now().strftime("%Y%m%d%H%M%S")
     cursor.execute("""INSERT INTO result_header (user_id, hw_name, qiskit_token, program_type,
                    dd_enable, dd_sequence_type, dd_scheduling_method, 
-                   shots, runs, created_datetime) 
+                   shots, runs, seed, created_datetime) 
     VALUES (%s, %s, %s, %s, 
             %s, %s, %s,
-            %s, %s, %s)""",
+            %s, %s, %s, %s)""",
     (user_id, hardware_name, token, program_type, 
      dd_enable, dd_sequence_type, dd_scheduling_method,
-     shots, conf.runs, now_time))
+     shots, conf.runs, seed_simulator, now_time))
 
     header_id = cursor.lastrowid
 
