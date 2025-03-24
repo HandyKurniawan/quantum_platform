@@ -66,7 +66,9 @@ def insert_to_result_detail(conn,
                             observable=None, 
                             initial_mapping = "", 
                             final_mapping = "",
-                            mp_circuits=None):
+                            mp_circuits=None,
+                            prune_options: dict[str,bool|tuple[int|float]|int] = None
+                            ):
         now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
         noisy_simulator_flag = None
@@ -81,10 +83,10 @@ def insert_to_result_detail(conn,
         INSERT INTO result_detail
         (header_id, circuit_name, observable, compilation_name, compilation_time, 
         initial_mapping, final_mapping, noisy_simulator, noise_level, mp_circuits, 
-        created_datetime)
+        prune_type, prune_parameters, created_datetime)
         VALUES (%s, %s, %s, %s, %s, 
         %s, %s, %s, %s, %s,
-        %s);
+        %s, %s, %s);
         """
 
         str_initial_mapping = None
@@ -99,10 +101,16 @@ def insert_to_result_detail(conn,
         if final_mapping != "":
             json_final_mapping = json.dumps(final_mapping, default=str)
 
+        prune_type = None
+        prune_parameters = None
+        if prune_options != None:
+            prune_type = prune_options["type"]
+            prune_parameters = str(prune_options["params"])
+
 
         params = (header_id, circuit_name, str_observable, compilation_name, compilation_time, 
                   str_initial_mapping, json_final_mapping, noisy_simulator_flag, noise_level, mp_circuits,
-                  now_time)
+                  prune_type, prune_parameters, now_time)
 
         cursor.execute(sql, params)
         detail_id = cursor.lastrowid

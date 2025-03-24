@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
+from qiskit_ibm_runtime import IBMBackend
+import mysql.connector
 
 def create_full_graph(cm, coords, edge_weights):
     # Create a graph for qubits
@@ -324,4 +326,52 @@ WHERE i.hw_name = "{}" AND q.name = "lf_{}" ORDER BY i.calibration_datetime DESC
         prop_name, val, qubits = res
 
     return [int(x) for x in qubits[1:-1].split(", ")]
+
+def get_qubits_by_thresholds(hw_name:str, 
+                             threshold_CX:float, 
+                             threshold_readout:float, 
+                             calibration_type:str, 
+                             conn_config)->list[int]:
+    
+    with mysql.connector.connect(**conn_config) as conn:
+        cal_id = None
+        if calibration_type == "lcd":
+            last_cal_id, cal_datetime = get_latest_calibration_id(hw_name, conn)
+            # print(last_cal_id, cal_datetime)
+            
+            cal_id = last_cal_id
+        else:
+            pass
+
+        nodes_list_CX = get_edges_threshold(hw_name, threshold_CX, conn, cal_id)
+        nodes_list_readout = get_readout_threshold(hw_name, threshold_readout, conn, cal_id)
+        nodes_list = list(set(nodes_list_CX).union(nodes_list_readout))
+        
+        # print(len(nodes_list_CX), len(nodes_list_readout), len(nodes_list))
+    
+    return nodes_list
+
+def get_qubits_by_lf(backend:IBMBackend, 
+                     num_qubits: int, 
+                     conn_config
+                     )->list[int]:
+    
+    with mysql.connector.connect(**conn_config) as conn:
+        LF_100 = get_LF_qubits(backend.name, num_qubits, conn)
+        rem_qubits_LF_100 = []
+        
+        total_rem = 0
+        
+        # Remove Nodes
+        for i in range(backend.num_qubits):
+            # if i not in LF_100 and i in nodes_list:
+            if i not in LF_100:
+                rem_qubits_LF_100.append(i)
+                
+                total_rem = total_rem + 1
+        
+            # if total_rem > 23:
+            #     break
+    
+    return rem_qubits_LF_100
 

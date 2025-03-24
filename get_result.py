@@ -30,7 +30,7 @@ module_path = os.path.abspath(os.path.join('.', 'wrappers'))
 if module_path not in sys.path:
     sys.path.append(module_path)
 
-token = "9e068d694502429634a4706a9f08781beac043c44af9642dfe89757093b049ba266b0ce9f488d4220d386114b5f785a518827881e0645b530203026ad7ab9d7e"
+token = "971b2597e1f28e10a7c8992657e9ecc984a65bd4a22bacc497eda4d2945bf8e501b454b9e5d2527833808ab8ec62fc5fa0df3af38dccc02b85bd83c93f2e2e31"
 
 q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
 

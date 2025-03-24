@@ -19,6 +19,10 @@ from wrappers.multiprogramming_wrapper import (
     get_LF_presets_cm
 )
 
+from wrappers.prune_wrapper import (
+    get_qubits_by_thresholds, get_qubits_by_lf
+)
+
 import sys, glob, os
 from commons import (
     convert_to_json, triq_optimization, qiskit_optimization, 
@@ -167,10 +171,11 @@ class QEM:
         
         if program_type == "sampler":
             if isinstance(self.backend, IBMBackend):
+                # TODO: check the dynamical_decoupling options
                 options = SamplerOptions(
                     default_shots=shots,
-                    dynamical_decoupling=dd_options,
-                    twirling= twirling_options
+                    # dynamical_decoupling=dd_options,
+                    # twirling= twirling_options
                 )
 
                 self.program = Sampler(mode=self.backend, options=options) 
@@ -187,8 +192,8 @@ class QEM:
                 default_shots=shots,
                 optimization_level=conf.optimization_level,
                 resilience_level=conf.resilience_level,
-                dynamical_decoupling=dd_options,
-                twirling= twirling_options
+                # dynamical_decoupling=dd_options,
+                # twirling= twirling_options
             )
             self.program = Estimator(mode=self.backend,options=options)
 
@@ -223,7 +228,8 @@ class QEM:
                      recent_n: int = None, 
                      noise_level: float = None,
                      cm: CouplingMap = None,
-                     mp_execution_type: str = None
+                     mp_execution_type: str = None,
+                     prune_options: dict[str,bool|tuple[int|float]|int] = None
                      ):
         """
         hmmm
@@ -244,8 +250,9 @@ class QEM:
 
         if conf.send_to_backend: 
             if mp_execution_type != "final":
-                database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
-                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping)
+                database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, 
+                                                         conf.noisy_simulator, noise_level, compilation_name, compilation_time, 
+                                                         updated_qasm, observable, initial_mapping, prune_options=prune_options)
             
         return updated_qasm, initial_mapping
 
@@ -441,6 +448,23 @@ class QEM:
         print(file_path)
         return glob.glob(os.path.expanduser(os.path.join(file_path, "*.qasm")))
 
+    def _get_prune_node_list(self, prune_options: dict[str,bool|tuple[int|float]|int] = None
+                             )-> list[int]:
+        nodes_list = []
+        if prune_options["type"]=="calibration":
+            threshold_CX = prune_options["params"][0]
+            threshold_RO = prune_options["params"][1]
+            nodes_list = get_qubits_by_thresholds(self.backend.name,
+                                                    threshold_CX,
+                                                    threshold_RO,
+                                                    "avg",
+                                                    conf.mysql_calibration_config)
+        elif prune_options["type"]=="lf":
+            lf_num_qubits = prune_options["params"]
+            nodes_list = get_qubits_by_lf(self.backend, lf_num_qubits, conf.mysql_calibration_config)
+
+        return nodes_list
+
     def compile(self, 
                 qasm:str, 
                 compilation_name:str, 
@@ -448,11 +472,18 @@ class QEM:
                 generate_props:bool=False, 
                 noise_level:float=None,
                 cm:CouplingMap=None,
-                mp_execution_type: str = None
-                )-> tuple[str, list[int]]:
+                mp_execution_type: str = None,
+                prune_options: dict[str,bool|tuple[int|float]|int] = None
+                )-> tuple[str, list]:
 
         updated_qasm = ""
         initial_mapping = ""
+
+        # this means that it is for the normal computation with the prune options on
+        if cm == None and mp_execution_type == None and prune_options != None:
+            nodes_list = self._get_prune_node_list(prune_options)
+            cm = build_idle_coupling_map(self.backend.coupling_map, nodes_list)
+
 
         if "nc" in compilation_name:
             updated_qasm = self.qasm_original
@@ -465,7 +496,8 @@ class QEM:
                                                               generate_props=generate_props, 
                                                               noise_level=noise_level,
                                                               cm=cm,
-                                                              mp_execution_type = mp_execution_type)
+                                                              mp_execution_type = mp_execution_type,
+                                                              prune_options=prune_options)
         elif "triq" in compilation_name:
             tmp = compilation_name.split("_")
             layout = tmp[2]
@@ -490,7 +522,8 @@ class QEM:
                                  qasm_files:list[str], 
                                  compilations: list[str], 
                                  exclude_qubits: list[int]= [],
-                                 mp_execution_type: str = "final"
+                                 mp_execution_type: str = "final",
+                                 prune_options: dict[str,bool|tuple[int|float]|int] = None
                                  ):
         """
         mp_execution_type: determine how the multiprogramming create a circuit
@@ -539,7 +572,8 @@ class QEM:
                 updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, 
                                                              compilation_name=compilation_name, 
                                                              cm=cm,
-                                                             mp_execution_type=mp_execution_type)
+                                                             mp_execution_type=mp_execution_type,
+                                                             prune_options=prune_options)
 
 
                 tqc = QuantumCircuit.from_qasm_str(updated_qasm)
@@ -575,7 +609,8 @@ class QEM:
                                                          compilation_time=compilation_time, 
                                                          updated_qasm=final_qasm, 
                                                          observable=None, 
-                                                         mp_circuits=mp_circuits) 
+                                                         mp_circuits=mp_circuits,
+                                                         prune_options=prune_options) 
     
         return compiled_circuits
 
@@ -643,10 +678,24 @@ class QEM:
                              shots: int=conf.shots, 
                              hardware_name: str = conf.hardware_name,
                              dd_options: DynamicalDecouplingOptions = {"enable":False}, 
-                             twirling_options: TwirlingOptions = {},
-                             enable_mp: bool = False,
-                             mp_execution_type: str = "final"
+                             twirling_options: TwirlingOptions = {"enable":False},
+                             mp_options: dict[str,bool|str] = {"enable":False},
+                             prune_options: dict[str,bool|tuple[int|float]|int] = {"enable":False}
                              ):
+        """
+        mp_options:
+        1. enable: deterimine whether using multiprogramming or not
+        2. execution_type: determine how the multiprogramming create a circuit
+           - all = run the circuits individually + the final merged circuit
+           - partition = run the circuits individually
+           - final = run only the final merged circuit
+
+        prune_options:
+        1. enable: deterimine whether using multiprogramming or not
+        2.type: determine which pruning type to create coupling map
+            - calibration: use the threshold of the two-qubit gates and readout. Params: (cx,ro): tuple
+            - lf: use the qubits from LF benchmark. Params: lf: int, number qubits
+        """
         # Update the
         conf.send_to_db = True
         conf.hardware_name = hardware_name
@@ -656,10 +705,21 @@ class QEM:
                                                              dd_options=dd_options)
         
         # for multiprogramming
-        if enable_mp:
+        if mp_options["enable"]:
+
+            nodes_list = []
+
+            # this is for the prune options for multiprogramming
+            if prune_options["enable"]:
+                nodes_list = self._get_prune_node_list(prune_options)
+
+
             compiled_circuits = self.compile_multiprogramming(qasm_files=qasm_files, 
                                                               compilations=compilations,
-                                                              mp_execution_type=mp_execution_type)
+                                                              exclude_qubits=nodes_list,
+                                                              mp_execution_type=mp_options["execution_type"],
+                                                              prune_options=prune_options
+                                                              )
 
         else: # for normal 
             for qasm in qasm_files:
@@ -671,7 +731,9 @@ class QEM:
                 
                 for comp in compilations:
                     print("Compiling circuit: {} for compilation: {}".format(self.circuit_name, comp))
-                    self.compile(qasm=qc.qasm_original, compilation_name=comp)
+                    self.compile(qasm=qc.qasm_original, 
+                                 compilation_name=comp,
+                                 prune_options=prune_options)
 
         if conf.noisy_simulator:
             # Send to local simulator, just send to the database, execution is on scheduler.py

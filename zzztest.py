@@ -54,7 +54,7 @@ mysql_config = {
     'database': 'framework'
 }
 
-token = "9e068d694502429634a4706a9f08781beac043c44af9642dfe89757093b049ba266b0ce9f488d4220d386114b5f785a518827881e0645b530203026ad7ab9d7e"
+token = "971b2597e1f28e10a7c8992657e9ecc984a65bd4a22bacc497eda4d2945bf8e501b454b9e5d2527833808ab8ec62fc5fa0df3af38dccc02b85bd83c93f2e2e31"
 q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, skip_db=False)
 
 # prepare the circuit
@@ -66,5 +66,22 @@ compilations = ["qiskit_3"]
 
 q.set_backend(program_type="sampler")
 
+mp_options = {"enable":True, "execution_type":"all"}
+
+prune_options = {"enable":True, "type":"calibration", "params": (0.020,0.10)}
+# prune_options = {"enable":True, "type":"lf", "params": 50}
+"""
+prune type:
+- calibration: use the threshold of the two-qubit gates and readout. Params: (cx,ro): tuple
+- lf: use the qubits from LF benchmark. Params: lf: int, number qubits
+"""
+
+
 #q.compile_multiprogramming(qasm_files*3, compilations)
-q.send_to_real_backend("sampler", qasm_files*2, compilations, enable_mp=True, mp_execution_type="final")
+
+q.send_to_real_backend("sampler", qasm_files*2, compilations, 
+                       mp_options=mp_options,
+                       prune_options=prune_options)
+
+# q.send_to_real_backend("sampler", qasm_files, compilations, 
+#                        prune_options=prune_options)
