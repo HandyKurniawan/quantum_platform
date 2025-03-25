@@ -192,7 +192,7 @@ def run_simulation_all(hw_name, shots = 4000):
     # print("Get Result...")
     # q.get_qiskit_result()
 
-for i in range(5):
+for i in range(10):
 
     try:
         run_simulation_all("ibm_kyiv", 4000)
@@ -208,12 +208,12 @@ for i in range(5):
     except Exception as e:
         print(f"An error occurred: {str(e)}. ")
 
-    try:
-        run_simulation_all("ibm_brisbane", 4000)
-        pass
+    # try:
+    #     run_simulation_all("ibm_brisbane", 4000)
+    #     pass
 
-    except Exception as e:
-        print(f"An error occurred: {str(e)}.")
+    # except Exception as e:
+    #     print(f"An error occurred: {str(e)}.")
 
 
 
