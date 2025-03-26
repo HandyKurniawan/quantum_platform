@@ -64,9 +64,9 @@ def run_simulation_one(hw_name:str,
     token = "971b2597e1f28e10a7c8992657e9ecc984a65bd4a22bacc497eda4d2945bf8e501b454b9e5d2527833808ab8ec62fc5fa0df3af38dccc02b85bd83c93f2e2e31"
     conf.hardware_name = hw_name
     conf.triq_measurement_type = triq_measurement_type
-    conf.user_id=3
+    conf.user_id=2
     q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, hw_name=hw_name)
-    conf.user_id=3
+    conf.user_id=2
     conf.triq_measurement_type = triq_measurement_type
     conf.hardware_name = hw_name
     qasm_files = q.get_qasm_files_from_path(file_path)
@@ -115,44 +115,44 @@ def run_simulation_all(hw_name, shots = 4000):
 
     # #end region n2
 
-    # #region n3
-    # Setup the object for n3_x
-    # normal
-    mp_options = {"enable":True, "execution_type":"partition"}
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
-                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=7, shots=shots,
-                       mp_options=mp_options, seed_simulator=seed_simulator  )
+    # # #region n3
+    # # Setup the object for n3_x
+    # # normal
+    # mp_options = {"enable":True, "execution_type":"partition"}
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=7, shots=shots,
+    #                    mp_options=mp_options, seed_simulator=seed_simulator  )
     
-    # prune-lcd
-    mp_options = {"enable":True, "execution_type":"partition"}
-    prune_options = {"enable":True, "type":"cal-lcd", "params": (0.045,0.20)}
+    # # prune-lcd
+    # mp_options = {"enable":True, "execution_type":"partition"}
+    # prune_options = {"enable":True, "type":"cal-lcd", "params": (0.045,0.20)}
 
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
-                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=7, shots=shots,
-                       mp_options=mp_options, prune_options=prune_options, 
-                       seed_simulator=seed_simulator  )
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=7, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options, 
+    #                    seed_simulator=seed_simulator  )
 
-    # prune-avg
-    mp_options = {"enable":True, "execution_type":"partition"}
-    prune_options = {"enable":True, "type":"cal-avg", "params": (0.045,0.20)}
+    # # prune-avg
+    # mp_options = {"enable":True, "execution_type":"partition"}
+    # prune_options = {"enable":True, "type":"cal-avg", "params": (0.045,0.20)}
 
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
-                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=7, shots=shots,
-                       mp_options=mp_options, prune_options=prune_options, 
-                       seed_simulator=seed_simulator  )
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=7, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options, 
+    #                    seed_simulator=seed_simulator  )
 
-    # prune-avg
-    mp_options = {"enable":True, "execution_type":"partition"}
-    prune_options = {"enable":True, "type":"lf", "params": 100}
+    # # prune-avg
+    # mp_options = {"enable":True, "execution_type":"partition"}
+    # prune_options = {"enable":True, "type":"lf", "params": 100}
 
-    run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
-                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=7, shots=shots,
-                       mp_options=mp_options, prune_options=prune_options, 
-                       seed_simulator=seed_simulator  )
+    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n3/x", 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=7, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options, 
+    #                    seed_simulator=seed_simulator  )
 
     
     # # Setup the object for n3_z_qiskit
@@ -194,21 +194,63 @@ def run_simulation_all(hw_name, shots = 4000):
     # print("Get Result...")
     # q.get_qiskit_result()
 
-for i in range(10):
+    #region CalibrationPaper
+    file_path = "./circuits/calibration"
+    reps = 1
+
+    # normal
+    mp_options = {"enable":True, "execution_type":"partition"}
+    run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+                       repeat=reps, shots=shots,
+                       mp_options=mp_options, seed_simulator=seed_simulator  )
+    
+    # # prune-lcd
+    # mp_options = {"enable":True, "execution_type":"partition"}
+    # prune_options = {"enable":True, "type":"cal-lcd", "params": (0.045,0.20)}
+
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=reps, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options, 
+    #                    seed_simulator=seed_simulator  )
+
+    # # prune-avg
+    # mp_options = {"enable":True, "execution_type":"partition"}
+    # prune_options = {"enable":True, "type":"cal-avg", "params": (0.045,0.20)}
+
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=reps, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options, 
+    #                    seed_simulator=seed_simulator  )
+
+    # # prune-avg
+    # mp_options = {"enable":True, "execution_type":"partition"}
+    # prune_options = {"enable":True, "type":"lf", "params": 100}
+
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=reps, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options, 
+    #                    seed_simulator=seed_simulator  )
+    #endregion CalibrationPaper
+
+for i in range(1):
 
     try:
-        run_simulation_all("ibm_kyiv", 4000)
+        run_simulation_all("ibm_kyiv", 20000)
         pass
 
     except Exception as e:
         print(f"An error occurred: {str(e)}. ")
 
-    try:
-        run_simulation_all("ibm_sherbrooke", 4000)
-        pass
+    # try:
+    #     run_simulation_all("ibm_sherbrooke", 4000)
+    #     pass
 
-    except Exception as e:
-        print(f"An error occurred: {str(e)}. ")
+    # except Exception as e:
+    #     print(f"An error occurred: {str(e)}. ")
 
     # try:
     #     run_simulation_all("ibm_brisbane", 4000)
