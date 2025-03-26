@@ -596,6 +596,7 @@ class QEM:
                 
 
                 mp_circuits = 0
+                total_num_clbits = 0
                 for qasm in qasm_files:
 
                     qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=True)
@@ -626,6 +627,8 @@ class QEM:
                     cm = build_idle_coupling_map(cm, used_qubit)
 
                     mp_circuits = mp_circuits + 1
+                    
+                    total_num_clbits = total_num_clbits + tqc.num_clbits
 
                 # if the mp execution type is final, add the first compile circuit to be run, to compare as with the single run result
                 if mp_execution_type == "final":
@@ -647,18 +650,13 @@ class QEM:
                                                                 prune_options=prune_options) 
                     
 
-
-                # combine everything for final circuits and send to DB
-                num_clbits = qc.circuit.num_clbits
-                # mp_circuits = len(qasm_files)
-                total_num_clbits = num_clbits * mp_circuits
-                final_circuit = merge_circuits(compiled_circuits[compilation_name],self.backend, num_cbits=total_num_clbits)
-                final_qasm = dumps(final_circuit)
-
                 tmp_end_time = time.perf_counter()
                 compilation_time = tmp_end_time - tmp_start_time
 
                 if mp_execution_type == "final":
+                    final_circuit = merge_circuits(compiled_circuits[compilation_name],self.backend, num_cbits=total_num_clbits)
+                    final_qasm = dumps(final_circuit)
+
                     if conf.send_to_backend: 
                         database_wrapper.insert_to_result_detail(conn=self.conn, 
                                                                 cursor=self.cursor, 
