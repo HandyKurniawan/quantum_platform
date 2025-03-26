@@ -324,11 +324,25 @@ def get_initial_mapping_mapomatic(input_qasm, backend, calibration_type = calibr
 
     return initial_layout
 
-def get_initial_mapping_sabre(input_qasm, backend, calibration_type = calibration_type_enum.lcd, 
-                                  recent_n = None, generate_props = False):
+def get_initial_mapping_sabre(input_qasm: str, 
+                              backend: IBMBackend, 
+                              calibration_type: str = calibration_type_enum.lcd, 
+                              recent_n: int = None, 
+                              generate_props: bool = False,
+                              cm: CouplingMap = None
+                              ):
+    
     
     circuit = QuantumCircuit.from_qasm_str(input_qasm)
-    sabre_qc = transpile(circuit, backend, optimization_level = 3)
+    
+    pm = generate_preset_pass_manager(optimization_level=3,
+                                          backend=backend,
+                                          coupling_map=cm
+                                          )
+    sabre_qc = pm.run(circuit)
+    
+    # sabre_qc = transpile(circuit, backend, optimization_level = 3)
+
     initial_layout = get_initial_layout_from_circuit(sabre_qc)
 
     return initial_layout

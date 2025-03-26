@@ -74,7 +74,7 @@ def insert_to_result_detail(conn,
                             initial_mapping = "", 
                             final_mapping = "",
                             mp_circuits=None,
-                            prune_options: dict[str,bool|tuple[int|float]|int|str] = None
+                            prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}
                             ):
         now_time = datetime.now().strftime("%Y%m%d%H%M%S")
         

@@ -229,7 +229,7 @@ class QEM:
                      noise_level: float = None,
                      cm: CouplingMap = None,
                      mp_execution_type: str = None,
-                     prune_options: dict[str,bool|tuple[int|float]|int|str] = None
+                     prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}
                      ):
         """
         hmmm
@@ -256,7 +256,16 @@ class QEM:
             
         return updated_qasm, initial_mapping
 
-    def apply_triq(self, compilation_name, qasm=None, observable=None, layout="mapo", generate_props = False, noise_level=None):
+    def apply_triq(self, 
+                   compilation_name:str, 
+                   qasm:str=None, 
+                   observable=None, 
+                   layout:str="sabre", 
+                   generate_props:bool = False, 
+                   noise_level=None,
+                   cm: CouplingMap = None,
+                   mp_execution_type: str = None,
+                   prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}):
         """
         """    
         if qasm is None:
@@ -274,9 +283,10 @@ class QEM:
                     qasm, self.real_backend, calibration_type=calibration_type, 
                     generate_props=generate_props, recent_n=0)
         elif layout == "sabre":
+
             initial_mapping = qiskit_wrapper.get_initial_mapping_sabre(
                     qasm, self.real_backend, calibration_type=calibration_type, 
-                    generate_props=generate_props, recent_n=0)
+                    generate_props=generate_props, recent_n=0, cm=cm)
         
         triq_wrapper.generate_initial_mapping_file(initial_mapping)
 
@@ -291,8 +301,11 @@ class QEM:
         
         compilation_name = layout + "_" + compilation_name
         if conf.send_to_backend: 
-            database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
-                                                     compilation_name, compilation_time, updated_qasm, observable, initial_mapping, final_mapping)
+            if mp_execution_type != "final":
+                database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, 
+                                                     conf.noisy_simulator, noise_level, compilation_name, 
+                                                     compilation_time, updated_qasm, observable, initial_mapping, 
+                                                     final_mapping, prune_options=prune_options)
 
         return updated_qasm, initial_mapping
     
@@ -448,7 +461,7 @@ class QEM:
         print(file_path)
         return glob.glob(os.path.expanduser(os.path.join(file_path, "*.qasm")))
 
-    def _get_prune_node_list(self, prune_options: dict[str,bool|tuple[int|float]|int|str] = None
+    def _get_prune_node_list(self, prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}
                              )-> list[int]:
         nodes_list = []
         if "cal" in prune_options["type"]:
@@ -475,14 +488,14 @@ class QEM:
                 noise_level:float=None,
                 cm:CouplingMap=None,
                 mp_execution_type: str = None,
-                prune_options: dict[str,bool|tuple[int|float]|int|str] = None
+                prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}
                 )-> tuple[str, list]:
 
         updated_qasm = ""
         initial_mapping = ""
 
         # this means that it is for the normal computation with the prune options on
-        if cm == None and mp_execution_type == None and prune_options != None:
+        if cm == None and mp_execution_type == None and prune_options["enable"]:
             nodes_list = self._get_prune_node_list(prune_options)
             cm = build_idle_coupling_map(self.backend.coupling_map, nodes_list)
 
@@ -504,7 +517,14 @@ class QEM:
             tmp = compilation_name.split("_")
             layout = tmp[2]
             compilation = tmp[0] + "_" + tmp[1]
-            updated_qasm, initial_mapping = self.apply_triq(qasm=qasm, observable=observable, compilation_name=compilation, layout=layout, noise_level=noise_level)
+            updated_qasm, initial_mapping = self.apply_triq(qasm=qasm, 
+                                                            observable=observable, 
+                                                            compilation_name=compilation, 
+                                                            layout=layout, 
+                                                            noise_level=noise_level,
+                                                            cm=cm,
+                                                            mp_execution_type = mp_execution_type,
+                                                            prune_options=prune_options)
 
         return updated_qasm, initial_mapping
     
@@ -525,7 +545,7 @@ class QEM:
                                  compilations: list[str], 
                                  exclude_qubits: list[int]= [],
                                  mp_execution_type: str = "final",
-                                 prune_options: dict[str,bool|tuple[int|float]|int|str] = None,
+                                 prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False},
                                  run_simulation: bool = False,
                                  noise_levels: list[float] = [None]
                                  ):
@@ -638,20 +658,21 @@ class QEM:
                 tmp_end_time = time.perf_counter()
                 compilation_time = tmp_end_time - tmp_start_time
 
-                if conf.send_to_backend: 
-                    database_wrapper.insert_to_result_detail(conn=self.conn, 
-                                                            cursor=self.cursor, 
-                                                            header_id=self.header_id, 
-                                                            circuit_name=self.circuit_name, 
-                                                            noisy_simulator=run_simulation, 
-                                                            noise_level=noise_level, 
-                                                            compilation_name=compilation_name, 
-                                                            compilation_time=compilation_time, 
-                                                            updated_qasm=final_qasm, 
-                                                            observable=None, 
-                                                            mp_circuits=mp_circuits,
-                                                            prune_options=prune_options) 
-    
+                if mp_execution_type == "final":
+                    if conf.send_to_backend: 
+                        database_wrapper.insert_to_result_detail(conn=self.conn, 
+                                                                cursor=self.cursor, 
+                                                                header_id=self.header_id, 
+                                                                circuit_name=self.circuit_name, 
+                                                                noisy_simulator=run_simulation, 
+                                                                noise_level=noise_level, 
+                                                                compilation_name=compilation_name, 
+                                                                compilation_time=compilation_time, 
+                                                                updated_qasm=final_qasm, 
+                                                                observable=None, 
+                                                                mp_circuits=mp_circuits,
+                                                                prune_options=prune_options) 
+        
         return compiled_circuits
 
 
@@ -737,7 +758,11 @@ class QEM:
                         if program_type == "estimator":
                             observable = observables[idx]
 
-                        updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, observable=observable, compilation_name=comp, generate_props=False, noise_level=noise_level)
+                        updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, 
+                                                                     observable=observable, 
+                                                                     compilation_name=comp, 
+                                                                     generate_props=False, 
+                                                                     noise_level=noise_level)
                     
         if send_to_db:  
             # Send to local simulator
