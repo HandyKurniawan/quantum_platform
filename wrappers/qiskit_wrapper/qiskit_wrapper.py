@@ -853,7 +853,7 @@ def get_active_token(remaining: int,
                      token_number: int):
 
     sql = """SELECT token, int_remaining, int_pending_jobs, int_max_pending_jobs FROM qiskit_token 
-    WHERE int_remaining > 0 and int_pending_jobs < 3 AND description = "updated" """
+    WHERE int_remaining > 0 and int_pending_jobs < 1 AND description = "updated" """
 
     if remaining > 200:
         sql = sql + """ and int_pending_jobs = 0 """

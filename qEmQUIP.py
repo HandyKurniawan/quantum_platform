@@ -653,7 +653,7 @@ class QEM:
                 tmp_end_time = time.perf_counter()
                 compilation_time = tmp_end_time - tmp_start_time
 
-                if mp_execution_type == "final":
+                if mp_execution_type != "partition":
                     final_circuit = merge_circuits(compiled_circuits[compilation_name],self.backend, num_cbits=total_num_clbits)
                     final_qasm = dumps(final_circuit)
 

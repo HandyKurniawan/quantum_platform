@@ -39,6 +39,7 @@ __all__ = [
     "convert_dict_binary_to_int",
     "reverse_string_keys",
     "sum_last_n_digits_dict",
+    "sum_middle_digits_dict",
     "used_qubits",
     "neighbours",
     "CNOT_used",

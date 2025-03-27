@@ -11,7 +11,8 @@ from qiskit_ibm_runtime.utils.runner_result import RunnerResult
 from commons import (Config, convert_utc_to_local, calculate_time_diff, get_count_1q, get_count_2q, 
     calculate_circuit_cost, get_correct_output_dict, calculate_success_rate_nassc, calculate_success_rate_tvd, 
     calculate_success_rate_polar, calculate_hellinger_distance, calculate_success_rate_tvd_new, 
-    convert_to_json, is_mitigated, get_initial_mapping_json, normalize_counts, convert_dict_int_to_binary, reverse_string_keys, convert_dict_binary_to_int
+    convert_to_json, is_mitigated, get_initial_mapping_json, normalize_counts, convert_dict_int_to_binary, reverse_string_keys, convert_dict_binary_to_int,
+    sum_middle_digits_dict
 )
 
 import wrappers.qiskit_wrapper as qiskit_wrapper
@@ -272,9 +273,19 @@ def get_metrics(header_id, job_id):
         WHERE h.status = %s AND h.job_id = %s AND h.id = %s AND j.quasi_dists IS NOT NULL;''', ("executed", job_id, header_id))
         results_details_json = cursor.fetchall()
 
+        mp_data = []
+        mp_total_clbits = 0
+        success_rate_quasi = 0
+        success_rate_nassc = 0
+        success_rate_tvd = 0
+        success_rate_tvd_new = 0
+        hellinger_distance = 0
+
         # print(len(results_details_json))
         for idx, res in enumerate(results_details_json):
             detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level, shots, mp_circuits = res
+
+            mp_data.append({})
 
             n = 2
             lstate = "Z"
@@ -425,14 +436,66 @@ def get_metrics(header_id, job_id):
                 success_rate_tvd_new = 0
                 hellinger_distance = 0
             else:
-                correct_output = get_correct_output_dict(cursor, detail_id)
-                success_rate_quasi = calculate_success_rate_nassc(correct_output, quasi_dists_dict)
-                success_rate_nassc = success_rate_quasi
-                # success_rate_quasi_std = calculate_success_rate_nassc(correct_output, quasi_dists_std_dict)
-                success_rate_tvd = calculate_success_rate_tvd(correct_output, quasi_dists_dict)
-                success_rate_tvd_new = calculate_success_rate_tvd_new(correct_output, quasi_dists_dict)
-                hellinger_distance = calculate_hellinger_distance(correct_output, quasi_dists_dict)
-                success_rate_polar = 0
+                if mp_circuits == None:
+
+                    correct_output = get_correct_output_dict(cursor, detail_id)
+
+                    mp_data[idx]["correct_output"] = correct_output
+                    mp_data[idx]["num_clbits"] = qc.num_clbits
+                    mp_data[idx]["circuit_name"] = circuit_name
+                    mp_total_clbits = mp_total_clbits + qc.num_clbits
+
+                    success_rate_quasi = calculate_success_rate_nassc(correct_output, quasi_dists_dict)
+                    success_rate_nassc = success_rate_quasi
+                    # success_rate_quasi_std = calculate_success_rate_nassc(correct_output, quasi_dists_std_dict)
+                    success_rate_tvd = calculate_success_rate_tvd(correct_output, quasi_dists_dict)
+                    success_rate_tvd_new = calculate_success_rate_tvd_new(correct_output, quasi_dists_dict)
+                    hellinger_distance = calculate_hellinger_distance(correct_output, quasi_dists_dict)
+                    success_rate_polar = 0
+                else:
+
+                    end_index = 0
+                    start_index = None
+
+                    count_dict_bin = convert_dict_int_to_binary(quasi_dists_dict, mp_total_clbits)
+                    total_circuit = len(mp_data)- 1 
+
+                    for k in range(total_circuit) :
+                        mp_dict = mp_data[k]
+
+                        mp_corr_out = mp_dict["correct_output"]
+                        # mp_corr_out_count = {}
+                        # if (round(sum(mp_corr_out.values())) <= 1):
+                        #     for key, value in mp_corr_out.items():
+                        #         mp_corr_out_count[key] = value * shots
+
+
+                        mp_num_clbits = mp_dict["num_clbits"]
+                        mp_circ_name = mp_dict["circuit_name"]
+
+                        mp_corr_out_bin = convert_dict_int_to_binary(mp_corr_out, mp_num_clbits)
+
+                        end_index = end_index - mp_num_clbits
+                        
+                        tmp =  sum_middle_digits_dict(count_dict_bin, end_index, start_index)
+                        
+                        start_index = end_index
+                        print(mp_circ_name, calculate_success_rate_tvd(mp_corr_out_bin, tmp), mp_corr_out_bin )
+
+                        success_rate_quasi = success_rate_quasi + calculate_success_rate_nassc(mp_corr_out_bin, tmp)
+                        success_rate_tvd = success_rate_tvd + calculate_success_rate_tvd(mp_corr_out_bin, tmp)
+                        success_rate_tvd_new = success_rate_tvd_new + calculate_success_rate_tvd_new(mp_corr_out_bin, tmp)
+                        hellinger_distance = hellinger_distance + calculate_hellinger_distance(mp_corr_out_bin, tmp)
+                        
+
+                    success_rate_quasi = success_rate_quasi / total_circuit
+
+                    success_rate_nassc = success_rate_quasi
+
+                    success_rate_tvd = success_rate_tvd / total_circuit
+                    success_rate_tvd_new = success_rate_tvd_new / total_circuit
+                    hellinger_distance = hellinger_distance / total_circuit
+                    success_rate_polar = 0
 
             # check if the metric is already there, just update
             cursor.execute('SELECT detail_id FROM metric WHERE detail_id = %s', (detail_id,))
