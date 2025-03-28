@@ -869,7 +869,10 @@ def get_active_token(remaining: int,
 
 #region Noisy Simulator
 
-def get_noisy_simulator(backend, error_percentage = 1, noiseless = False, method="automatic"):
+def get_noisy_simulator(backend: IBMBackend, 
+                        error_percentage: float = 1, 
+                        noiseless: bool = False, 
+                        method: str ="automatic"):
     _backend = copy.deepcopy(backend)
     _properties = _backend.properties()
     _prop_dict = _properties.to_dict()
@@ -929,22 +932,32 @@ def get_noisy_simulator(backend, error_percentage = 1, noiseless = False, method
     coupling_map = _backend.configuration().coupling_map
     # print(coupling_map)
     
-    noise_model = NoiseModel.from_backend_properties(new_properties, dt = 0.1)
     
-    if noiseless or error_percentage == 0.0:
-        sim_noisy = AerSimulator()
+    
+    if backend.name in (["ibm_fez", "ibm_marrakesh", "ibm_torino"]):
+        if noiseless or error_percentage == 0.0:
+            sim_noisy = AerSimulator()
+        else:
+            sim_noisy = AerSimulator.from_backend(backend=backend)
+
+        return None, sim_noisy, coupling_map
+
     else:
-        sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties,
-                                noise_model=noise_model, method = method
-                                # max_shot_size=100,method='statevector', max_memory_mb=10000 
-                                )
-        sim_noisy.set_options(
-            noise_model=noise_model,
-            method = method
-            # max_shot_size=100, max_memory_mb=10000, method='statevector'
-            )
+        noise_model = NoiseModel.from_backend_properties(new_properties, dt = 0.1)
+        if noiseless or error_percentage == 0.0:
+            sim_noisy = AerSimulator()
+        else:
+            sim_noisy = AerSimulator(configuration=_backend.configuration(), properties=new_properties,
+                                    noise_model=noise_model, method = method
+                                    # max_shot_size=100,method='statevector', max_memory_mb=10000 
+                                    )
+            sim_noisy.set_options(
+                noise_model=noise_model,
+                method = method
+                # max_shot_size=100, max_memory_mb=10000, method='statevector'
+                )
     
-    return noise_model, sim_noisy, coupling_map
+        return noise_model, sim_noisy, coupling_map
 
 def generate_sim_noise_cx(backend, noise_level, method="automatic"):
     noise_cx = NoiseModel()

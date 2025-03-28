@@ -32,9 +32,9 @@ def update_hardware_configs(hw_name):
     print(token)
 
     conf.hardware_name = hw_name
-    conf.user_id=3
+    conf.user_id=5
     q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, hw_name=hw_name)
-    conf.user_id=3
+    conf.user_id=5
     conf.hardware_name = hw_name
     conf.triq_measurement_type = "polar_meas"
     
@@ -64,9 +64,9 @@ def run_simulation_one(hw_name:str,
     token = "971b2597e1f28e10a7c8992657e9ecc984a65bd4a22bacc497eda4d2945bf8e501b454b9e5d2527833808ab8ec62fc5fa0df3af38dccc02b85bd83c93f2e2e31"
     conf.hardware_name = hw_name
     conf.triq_measurement_type = triq_measurement_type
-    conf.user_id=2
+    conf.user_id=5
     q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, hw_name=hw_name)
-    conf.user_id=2
+    conf.user_id=5
     conf.triq_measurement_type = triq_measurement_type
     conf.hardware_name = hw_name
     qasm_files = q.get_qasm_files_from_path(file_path)
