@@ -167,21 +167,21 @@ for i in range(1):
     #     print(f"An error occurred: {str(e)}.")
 
     try:
-        run_simulation_all("ibm_fez", 4000)
+        run_simulation_all("ibm_fez", 4000, (0.025, 0.05), (0.01, 0.05))
         pass
 
     except Exception as e:
         print(f"An error occurred: {str(e)}.")
 
     try:
-        run_simulation_all("ibm_torino", 4000)
+        run_simulation_all("ibm_torino", 4000, (0.025, 0.05), (0.01, 0.05))
         pass
 
     except Exception as e:
         print(f"An error occurred: {str(e)}.")
 
     try:
-        run_simulation_all("ibm_marrakesh", 4000)
+        run_simulation_all("ibm_marrakesh", 4000, (0.025, 0.05), (0.01, 0.05))
         pass
 
     except Exception as e:
