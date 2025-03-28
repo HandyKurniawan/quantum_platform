@@ -218,7 +218,7 @@ def run_simulation_all(hw_name, shots = 4000):
     prune_options = {"enable":True, "type":"cal-lcd", "params": (0.045,0.20)}
     run_simulation_one(hw_name, noise_levels, file_path=file_path, 
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=4, shots=shots,
+                       repeat=3, shots=shots,
                        mp_options=mp_options, prune_options=prune_options  )
 
     # prune-avg
@@ -226,7 +226,7 @@ def run_simulation_all(hw_name, shots = 4000):
     prune_options = {"enable":True, "type":"cal-avg", "params": (0.045,0.20)}
     run_simulation_one(hw_name, noise_levels, file_path=file_path, 
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=4, shots=shots,
+                       repeat=3, shots=shots,
                        mp_options=mp_options, prune_options=prune_options  )
 
     # prune-lf
@@ -234,28 +234,46 @@ def run_simulation_all(hw_name, shots = 4000):
     prune_options = {"enable":True, "type":"lf", "params": 100}
     run_simulation_one(hw_name, noise_levels, file_path=file_path, 
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=4, shots=shots,
+                       repeat=3, shots=shots,
                        mp_options=mp_options, prune_options=prune_options  )
     
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
-    #                    compilations=["triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=shots )
-    
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/x", 
-    #                    compilations=["triq_avg_sabre"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=shots )
-    
+
+    file_path = "./circuits/polar_sim/n4/z"
     # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
     #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
     #                    repeat=1, shots=shots )
+
+    # normal
+    # mp_options = {"enable":True, "execution_type":"final"}
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=5, shots=shots,
+    #                    mp_options=mp_options  )
     
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
-    #                    compilations=["triq_lcd_sabre"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=shots )
+    # # prune-lcd
+    # mp_options = {"enable":True, "execution_type":"final"}
+    # prune_options = {"enable":True, "type":"cal-lcd", "params": (0.045,0.20)}
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=3, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options  )
+
+    # # prune-avg
+    # mp_options = {"enable":True, "execution_type":"final"}
+    # prune_options = {"enable":True, "type":"cal-avg", "params": (0.045,0.20)}
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=3, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options  )
+
+    # # prune-lf
+    # mp_options = {"enable":True, "execution_type":"final"}
+    # prune_options = {"enable":True, "type":"lf", "params": 100}
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=3, shots=shots,
+    #                    mp_options=mp_options, prune_options=prune_options  )
     
-    # run_simulation_one(hw_name, noise_levels, file_path="./circuits/polar_sim/n4/z", 
-    #                    compilations=["triq_avg_sabre"], triq_measurement_type="polar_meas", 
-    #                    repeat=1, shots=shots )
 
     # # #endregion n4
 
@@ -266,19 +284,19 @@ def run_simulation_all(hw_name, shots = 4000):
 
 for i in range(1):
 
-    try:
-        run_simulation_all("ibm_kyiv", 4000)
-        pass
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}. ")
-
     # try:
-    #     run_simulation_all("ibm_sherbrooke", 4000)
+    #     run_simulation_all("ibm_kyiv", 4000)
     #     pass
 
     # except Exception as e:
     #     print(f"An error occurred: {str(e)}. ")
+
+    try:
+        run_simulation_all("ibm_sherbrooke", 4000)
+        pass
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}. ")
 
     # try:
     #     run_simulation_all("ibm_brisbane", 4000)

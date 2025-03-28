@@ -223,25 +223,32 @@ def get_edges_threshold(hw_name, threshold, conn, cal_id = None):
     # conn = mysql.connector.connect(**mysql_config)
     cursor = conn.cursor()
 
+    native_gates_2q = "cz"
+    if hw_name in (["ibm_kyiv", "ibm_brisbane", "ibm_sherbrooke"]):
+        native_gates_2q = "ecr"
+
     edges_list = []
     nodes_list = []
 
     if cal_id is None:
-        sql = """
+        sql = f"""
         SELECT qubit_control, qubit_target FROM (
-    SELECT qubit_control, qubit_target, AVG(ecr_error) AS avg_ecr_error
+    SELECT qubit_control, qubit_target, AVG({native_gates_2q}_error) AS avg_{native_gates_2q}_error
     FROM (
-    SELECT DISTINCT qubit_control, qubit_target, ecr_error, ecr_date
+    SELECT DISTINCT qubit_control, qubit_target, {native_gates_2q}_error, {native_gates_2q}_date
     FROM calibration_data.ibm_two_qubit_gate_spec q
-    WHERE q.hw_name = "{}" AND ecr_error != 1
+    WHERE q.hw_name = "{hw_name}" AND {native_gates_2q}_error != 1
+    AND {native_gates_2q}_date BETWEEN date_add(now(), INTERVAL -30 DAY) AND now()
     ) X GROUP BY qubit_control, qubit_target) Y
-    WHERE avg_ecr_error > {}
-    """.format(hw_name, threshold)
+    WHERE avg_{native_gates_2q}_error > {threshold}
+    """
     else:
-        sql = """
+        sql = f"""
     SELECT qubit_control, qubit_target
     FROM calibration_data.ibm_two_qubit_gate_spec q
-    WHERE q.hw_name = "{}" AND CASE WHEN ecr_error = 0 THEN cz_error ELSE ecr_error END > {} AND calibration_id = {}
+    WHERE q.hw_name = "{hw_name}" 
+    AND CASE WHEN {native_gates_2q}_error = 0 THEN {native_gates_2q}_error ELSE {native_gates_2q}_error END > {threshold} 
+    AND calibration_id = {cal_id}
     """.format(hw_name, threshold, cal_id)
 
     cursor.execute(sql)
@@ -276,7 +283,7 @@ def get_readout_threshold(hw_name, threshold, conn, cal_id = None):
     SELECT DISTINCT qubit, readout_error, readout_error_date
     FROM calibration_data.ibm_qubit_spec q
     INNER JOIN calibration_data.ibm i ON q.calibration_id = i.calibration_id 
-    WHERE i.hw_name = "{}" AND readout_error != 1
+    WHERE i.hw_name = "{}" AND readout_error != 1 AND readout_error_date BETWEEN date_add(now(), INTERVAL -30 DAY) AND now()
     ) X GROUP BY qubit) Y
     WHERE avg_readout_error > {};
     """.format(hw_name, threshold)

@@ -90,7 +90,11 @@ def run_simulation_one(hw_name:str,
 
 
 
-def run_simulation_all(hw_name, shots = 4000):
+def run_simulation_all(hw_name:str, 
+                       shots:int = 4000,
+                       threshold_lcd = (0.045,0.20),
+                       threshold_avg = (0.045,0.20)):
+    
     
 
     noise_levels = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
@@ -100,16 +104,17 @@ def run_simulation_all(hw_name, shots = 4000):
     reps = 1
     execution_type = "all"
 
-    # normal
-    mp_options = {"enable":True, "execution_type":execution_type}
-    run_simulation_one(hw_name, noise_levels, file_path=file_path, 
-                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-                       repeat=reps, shots=shots,
-                       mp_options=mp_options)
+    # # normal
+    # mp_options = {"enable":True, "execution_type":execution_type}
+    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+    #                    repeat=reps, shots=shots,
+    #                    mp_options=mp_options)
     
     # prune-lcd
     mp_options = {"enable":True, "execution_type":execution_type}
-    prune_options = {"enable":True, "type":"cal-lcd", "params": (0.045,0.20)}
+    prune_options = {"enable":True, "type":"cal-lcd", "params": threshold_lcd}
+
 
     run_simulation_one(hw_name, noise_levels, file_path=file_path, 
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
@@ -119,7 +124,7 @@ def run_simulation_all(hw_name, shots = 4000):
 
     # prune-avg
     mp_options = {"enable":True, "execution_type":execution_type}
-    prune_options = {"enable":True, "type":"cal-avg", "params": (0.045,0.20)}
+    prune_options = {"enable":True, "type":"cal-avg", "params": threshold_avg}
 
     run_simulation_one(hw_name, noise_levels, file_path=file_path, 
                        compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
@@ -140,28 +145,47 @@ def run_simulation_all(hw_name, shots = 4000):
 
 for i in range(1):
 
+    # try:
+    #     run_simulation_all("ibm_kyiv", 4000)
+    #     pass
+
+    # except Exception as e:
+    #     print(f"An error occurred: {str(e)}. ")
+
+    # try:
+    #     run_simulation_all("ibm_sherbrooke", 4000)
+    #     pass
+
+    # except Exception as e:
+    #     print(f"An error occurred: {str(e)}. ")
+
+    # try:
+    #     run_simulation_all("ibm_brisbane", 4000)
+    #     pass
+
+    # except Exception as e:
+    #     print(f"An error occurred: {str(e)}.")
+
     try:
-        run_simulation_all("ibm_kyiv", 4000)
-        pass
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}. ")
-
-    try:
-        run_simulation_all("ibm_sherbrooke", 4000)
-        pass
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}. ")
-
-    try:
-        run_simulation_all("ibm_brisbane", 4000)
+        run_simulation_all("ibm_fez", 4000)
         pass
 
     except Exception as e:
         print(f"An error occurred: {str(e)}.")
 
+    try:
+        run_simulation_all("ibm_torino", 4000)
+        pass
 
+    except Exception as e:
+        print(f"An error occurred: {str(e)}.")
+
+    try:
+        run_simulation_all("ibm_marrakesh", 4000)
+        pass
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}.")
 
 
 # token = qiskit_wrapper.get_active_token(100, 0, 1)[0][0]

@@ -42,6 +42,7 @@ class Config:
         self.hardware_name = self.config_parser[quantum_config_name]['hardware_name']
         self.base_folder = self.config_parser[quantum_config_name]['base_folder']
         self.shots = int(self.config_parser[quantum_config_name]['shots'])
+        self.use_ibm_cloud = True if self.config_parser[quantum_config_name]['use_ibm_cloud'] == "1" else False
         self.ibm_cloud_instance = self.config_parser[quantum_config_name]['ibm_cloud_instance']
         # self.qiskit_token = self.config_parser[quantum_config_name]['token']
         self.qiskit_token = ""

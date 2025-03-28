@@ -32,6 +32,7 @@ if module_path not in sys.path:
 
 token = "971b2597e1f28e10a7c8992657e9ecc984a65bd4a22bacc497eda4d2945bf8e501b454b9e5d2527833808ab8ec62fc5fa0df3af38dccc02b85bd83c93f2e2e31"
 
+
 q = QEM(runs=conf.runs, user_id=conf.user_id, token=token)
 
 print("Get Result Simulator...")

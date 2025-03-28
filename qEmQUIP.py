@@ -46,12 +46,13 @@ from qiskit.qasm2 import dumps
 from datetime import datetime
 import mysql.connector
 import time
+import numpy as np
 # import json
 # import mapomatic as mm
 # import mthree
 # import pandas as pd
 
-from qiskit.circuit.library import XGate, YGate
+from qiskit.circuit.library import XGate, YGate, ZGate, RZGate
 from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
 from qiskit.transpiler import PassManager
 from scheduler import check_result_availability, get_result, process_simulator, get_metrics
@@ -144,11 +145,16 @@ class QEM:
         print("Saving IBM Account...")
         QiskitRuntimeService.save_account(channel="ibm_quantum", token=token, overwrite=True)
 
-        if hardware_name == "ibm_algiers":
+        if conf.use_ibm_cloud:
+            print("Using IBM Cloud...")
+            token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+            self.token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
             self.service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
         else:
             self.service = QiskitRuntimeService(channel="ibm_quantum", token=token)
         
+        # self.service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
+
         print(f"Retrieving the real backend information of {hardware_name}...")
         self.real_backend = self.service.backend(hardware_name)
         
@@ -321,17 +327,23 @@ class QEM:
 
     #     return probs_int
     
-    def apply_dd(self, circuit: QuantumCircuit, backend: IBMBackend, sequence_type: str = "XX", scheduling_method: str = "alap"):
+    def apply_dd(self, 
+                 circuit: QuantumCircuit, 
+                 backend: IBMBackend, 
+                 sequence_type: str = "XX", 
+                 scheduling_method: str = "alap"):
 
         X = XGate()
         Y = YGate()
+        Z = ZGate()
+        RZ = RZGate(np.pi)
         
         if sequence_type == "XX":
             dd_sequence = [X, X]
         elif sequence_type == "XpXm":
             dd_sequence = [X, X]
         elif sequence_type == "XY4":
-            dd_sequence = [X, Y, X, Y]
+            dd_sequence = [X, X, RZ, X, RZ, X]
 
         target = backend.target
 
@@ -864,8 +876,14 @@ class QEM:
                 continue
 
             if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
-                QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
-                service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
+                if conf.use_ibm_cloud:
+                    print("Using IBM Cloud...")
+                    token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+                    self.token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+                    service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
+                else:
+                    QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
+                    service = QiskitRuntimeService(channel="ibm_quantum", token=token)
 
             if job_id == "simulator":
                 process_simulator(service, header_id, job_id, hw_name, noisy_simulator=noisy_simulator)
