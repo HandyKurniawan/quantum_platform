@@ -4,6 +4,7 @@ from qiskit.transpiler import CouplingMap
 from qiskit.circuit import Clbit
 from qiskit.circuit.library import RZZGate, RZGate, XGate, IGate
 from qiskit.converters import circuit_to_dag, dag_to_circuit
+from qiskit_ibm_runtime import IBMBackend
 
 from pathlib import Path
 
@@ -233,45 +234,51 @@ def multiprogram_compilation_qiskit(circuits, backend, opt_level=3, exclude_qubi
             
     # return compiled_circuits
     
-def merge_circuits(compiled_circuits, backend, num_cbits=0):
-    num_qbits = backend.num_qubits
+def merge_circuits(compiled_circuits:dict[str, list[dict[QuantumCircuit, list[int]]]], 
+                   backend: IBMBackend, 
+                   num_cbits: int = 0):
+    try:
+        num_qbits = backend.num_qubits
 
-    if num_cbits == 0:
-        num_cbits = num_qbits
-    
-    final_circuit = QuantumCircuit(num_qbits, num_cbits)
-    creg = ClassicalRegister(num_cbits, 'c')
-    dag = circuit_to_dag(final_circuit)
-    
-    new_dag = dag.copy_empty_like()
-    m_idx = 0
-    for i in compiled_circuits: 
+        if num_cbits == 0:
+            num_cbits = num_qbits
         
-        dag = circuit_to_dag(i["circuit"])
+        final_circuit = QuantumCircuit(num_qbits, num_cbits)
+        creg = ClassicalRegister(num_cbits, 'c')
+        dag = circuit_to_dag(final_circuit)
         
-        for dn in dag.topological_op_nodes():
-            if dn.name == "barrier":
-                continue
-                
-            if len(dn.cargs) >0 :
-
-                if dn.name == "measure":
-                    # print(dn.cargs, dn.op, dn.qargs, dn.name)
+        new_dag = dag.copy_empty_like()
+        m_idx = 0
+        for i in compiled_circuits: 
+            
+            dag = circuit_to_dag(i["circuit"])
+            
+            for dn in dag.topological_op_nodes():
+                if dn.name == "barrier":
+                    continue
                     
-                    upd_cargs = [Clbit(creg, m_idx),]
-                    m_idx = m_idx + 1
-        
-                    new_dag.apply_operation_back(dn.op, dn.qargs, upd_cargs)            
-                elif dn.name == "if_else":
-                    # # print(dn.cargs, dn.op, dn.qargs, dn.name)
-                    # new_dag.apply_operation_back(dn.op, dn.qargs, dn.cargs, dn.params)    
-                    # # print(dn.params)
-                    pass
-            else:
-                new_dag.apply_operation_back(dn.op, dn.qargs, dn.cargs)
+                if len(dn.cargs) >0 :
 
-    final_circuit = dag_to_circuit(new_dag)
-    
+                    if dn.name == "measure":
+                        # print(dn.cargs, dn.op, dn.qargs, dn.name)
+                        
+                        upd_cargs = [Clbit(creg, m_idx),]
+                        m_idx = m_idx + 1
+            
+                        new_dag.apply_operation_back(dn.op, dn.qargs, upd_cargs)            
+                    elif dn.name == "if_else":
+                        # # print(dn.cargs, dn.op, dn.qargs, dn.name)
+                        # new_dag.apply_operation_back(dn.op, dn.qargs, dn.cargs, dn.params)    
+                        # # print(dn.params)
+                        pass
+                else:
+                    new_dag.apply_operation_back(dn.op, dn.qargs, dn.cargs)
+
+        final_circuit = dag_to_circuit(new_dag)
+    except Exception as e:
+            print(f"An error occurred in merge_circuits: {str(e)}.")
+            raise ValueError(f'merge_circuits: {str(e)}')
+
     return final_circuit
 
 def build_active_coupling_map(cm, selected_qubit):

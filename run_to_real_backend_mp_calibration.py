@@ -105,11 +105,11 @@ def run_simulation_all(hw_name:str,
     execution_type = "all"
 
     # # normal
-    # mp_options = {"enable":True, "execution_type":execution_type}
-    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
-    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-    #                    repeat=reps, shots=shots,
-    #                    mp_options=mp_options)
+    mp_options = {"enable":True, "execution_type":execution_type}
+    run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+                       repeat=reps, shots=shots,
+                       mp_options=mp_options)
     
     # prune-lcd
     mp_options = {"enable":True, "execution_type":execution_type}
@@ -145,48 +145,49 @@ def run_simulation_all(hw_name:str,
 
 for i in range(1):
 
-    # try:
-    #     run_simulation_all("ibm_kyiv", 4000)
-    #     pass
+    if not conf.use_ibm_cloud:
+        try:
+            run_simulation_all("ibm_kyiv", 4000)
+            pass
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}. ")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}. ")
 
-    # try:
-    #     run_simulation_all("ibm_sherbrooke", 4000)
-    #     pass
+        try:
+            run_simulation_all("ibm_sherbrooke", 4000)
+            pass
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}. ")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}. ")
 
-    # try:
-    #     run_simulation_all("ibm_brisbane", 4000)
-    #     pass
+        try:
+            run_simulation_all("ibm_brisbane", 4000)
+            pass
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}.")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}.")
 
-    try:
-        run_simulation_all("ibm_fez", 4000, (0.025, 0.05), (0.01, 0.05))
-        pass
+    if conf.use_ibm_cloud:
+        # try:
+        #     run_simulation_all("ibm_fez", 4000, (0.025, 0.05), (0.01, 0.05))
+        #     pass
 
-    except Exception as e:
-        print(f"An error occurred: {str(e)}.")
+        # except Exception as e:
+        #     print(f"An error occurred: {str(e)}.")
 
-    try:
-        run_simulation_all("ibm_torino", 4000, (0.025, 0.05), (0.01, 0.05))
-        pass
+        try:
+            run_simulation_all("ibm_torino", 4000, (0.035, 0.08), (0.01, 0.05))
+            pass
 
-    except Exception as e:
-        print(f"An error occurred: {str(e)}.")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}.")
 
-    try:
-        run_simulation_all("ibm_marrakesh", 4000, (0.025, 0.05), (0.01, 0.05))
-        pass
+        # try:
+        #     run_simulation_all("ibm_marrakesh", 4000, (0.025, 0.05), (0.01, 0.05))
+        #     pass
 
-    except Exception as e:
-        print(f"An error occurred: {str(e)}.")
-
+        # except Exception as e:
+        #     print(f"An error occurred: {str(e)}.")
 
 # token = qiskit_wrapper.get_active_token(100, 0, 1)[0][0]
 # print(token)

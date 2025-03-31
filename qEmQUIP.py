@@ -233,6 +233,7 @@ class QEM:
                      generate_props: bool = False, 
                      recent_n: int = None, 
                      noise_level: float = None,
+                     dd_options: DynamicalDecouplingOptions = {"enable":False}, 
                      cm: CouplingMap = None,
                      mp_execution_type: str = None,
                      prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}
@@ -249,10 +250,11 @@ class QEM:
 
         compilation_name, calibration_type, enable_mapomatic, qiskit_optimization_level = qiskit_wrapper.get_compilation_setup(compilation_name, recent_n)
         
-        updated_qasm, compilation_time, initial_mapping = qiskit_wrapper.optimize_qasm(
+        updated_qasm, compilation_time, initial_mapping, updated_circuit = qiskit_wrapper.optimize_qasm(
             qasm, self.real_backend, qiskit_optimization_level,
             enable_mirage=enable_mirage, enable_mapomatic=enable_mapomatic,
-            calibration_type=calibration_type, generate_props=generate_props, recent_n=recent_n, cm=cm)
+            calibration_type=calibration_type, generate_props=generate_props, recent_n=recent_n, 
+            dd_options=dd_options, cm=cm)
 
         if conf.send_to_backend: 
             if mp_execution_type != "final":
@@ -260,7 +262,7 @@ class QEM:
                                                          conf.noisy_simulator, noise_level, compilation_name, compilation_time, 
                                                          updated_qasm, observable, initial_mapping, prune_options=prune_options)
             
-        return updated_qasm, initial_mapping
+        return updated_qasm, initial_mapping, updated_circuit
 
     def apply_triq(self, 
                    compilation_name:str, 
@@ -344,6 +346,9 @@ class QEM:
             dd_sequence = [X, X]
         elif sequence_type == "XY4":
             dd_sequence = [X, X, RZ, X, RZ, X]
+        elif sequence_type == "XY8":
+            dd_sequence = [X, X, RZ, X, RZ, X, X, X, RZ, X, RZ, X]
+        
 
         target = backend.target
 
@@ -388,14 +393,18 @@ class QEM:
             for res in results:
                 detail_id, updated_qasm, compilation_name = res
 
-                qc = QiskitCircuit(updated_qasm, skip_simulation=True)
+                # qc = QiskitCircuit(updated_qasm, skip_simulation=True)
+                qc = QuantumCircuit.from_qasm_str(updated_qasm)
+
+                if dd_options["enable"]:
+                    qc = self.apply_dd(qc, self.real_backend, dd_options["sequence_type"], dd_options["scheduling_method"])
 
                 # 20250320 - Handy, remarked to avoid confusion and reduce complexity because of transpiling from basis 
                 # if compilation_name not in ("qiskit_3", "qiskit_0") and "nc" not in compilation_name:
                 #     circuit = qc.transpile_to_target_backend(self.real_backend)
                 # else:
                 #     circuit = qc.circuit_original
-                circuit = qc.circuit_original
+                circuit = qc
 
                 for i in range(runs):
                     list_circuits.append(circuit)
@@ -498,9 +507,11 @@ class QEM:
                 observable=None, 
                 generate_props:bool=False, 
                 noise_level:float=None,
+                dd_options: DynamicalDecouplingOptions = {"enable":False}, 
                 cm:CouplingMap=None,
                 mp_execution_type: str = None,
-                prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False}
+                prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False},
+                
                 )-> tuple[str, list]:
 
         updated_qasm = ""
@@ -518,9 +529,10 @@ class QEM:
                 database_wrapper.insert_to_result_detail(self.conn, self.cursor, self.header_id, self.circuit_name, conf.noisy_simulator, noise_level, 
                                                         compilation_name, 0, updated_qasm, observable, initial_mapping) 
         elif "qiskit" in compilation_name or "mapomatic" in compilation_name:
-            updated_qasm, initial_mapping = self.apply_qiskit(qasm=qasm, observable=observable, 
+            updated_qasm, initial_mapping, updated_circuit = self.apply_qiskit(qasm=qasm, observable=observable, 
                                                               compilation_name=compilation_name, 
                                                               generate_props=generate_props, 
+                                                              dd_options=dd_options,
                                                               noise_level=noise_level,
                                                               cm=cm,
                                                               mp_execution_type = mp_execution_type,
@@ -538,7 +550,7 @@ class QEM:
                                                             mp_execution_type = mp_execution_type,
                                                             prune_options=prune_options)
 
-        return updated_qasm, initial_mapping
+        return updated_qasm, initial_mapping, updated_circuit
     
     def get_custom_backend(self, calibration_type, hw_name, 
                          recent_n = None, start_date = None, end_date = None, 
@@ -557,6 +569,7 @@ class QEM:
                                  compilations: list[str], 
                                  exclude_qubits: list[int]= [],
                                  mp_execution_type: str = "final",
+                                 dd_options: DynamicalDecouplingOptions = {"enable":False}, 
                                  prune_options: dict[str,bool|tuple[int|float]|int|str] = {"enable":False},
                                  run_simulation: bool = False,
                                  noise_levels: list[float] = [None]
@@ -567,122 +580,132 @@ class QEM:
         - partition = run the circuits individually
         - final = run only the final merged circuit
         """
+        try:
 
-        # to prevent running on the real backedn with noise levels
-        if run_simulation == False:
-            noise_levels = [None]
-
-        for noise_level in noise_levels:
-            compiled_circuits: dict[str, list[dict[QuantumCircuit, list[int]]]] = {}
-
-            for compilation_name in compilations:
-
-                tmp_start_time  = time.perf_counter()
-
-                compiled_circuits[compilation_name] = []
-
-                cm = self.backend.coupling_map
-                prevously_used_qubits = []
-                used_qubit = []
-
-                # if there is a list in exclude_qubits
-                if len(exclude_qubits) > 0:
-                    for q in exclude_qubits:
-                        prevously_used_qubits.append(q)
-                        used_qubit.append(q)
-                    
-                    cm = build_idle_coupling_map(cm, used_qubit)
-                
-                total_qubits = 0
-                for qasm in qasm_files:
-                    qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=True)
-                    
-                    total_qubits = total_qubits + len(used_qubits(qc.circuit))
-                
-                total_largest_connected_qubits = len(cm.largest_connected_component())
-                print(f"Total qubits: {total_qubits}, CM-Long: {total_largest_connected_qubits}" )
-                # max_reps = np.floor(backend.num_qubits / len(qc.qubits))
-
-                if total_qubits > total_largest_connected_qubits:
-                    raise ValueError(f'Total number of qubits ({total_qubits}) could not be higher than the available qubits ({total_largest_connected_qubits})')
-                
-
-                mp_circuits = 0
-                total_num_clbits = 0
-                for qasm in qasm_files:
-
-                    qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=True)
-
-                    # check if the circuit has higher qubits than the existing largest connected component, then break it
-                    if len(qc.circuit.qubits) > len(cm.largest_connected_component()):
-                        print(f"This circuit's qubit ({len(qc.circuit.qubits)}) has higher than existing qubits({len(cm.largest_connected_component())})" )
-                        break
-                    
-                    # compiled here for each circuits
-                    updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, 
-                                                                compilation_name=compilation_name, 
-                                                                noise_level=noise_level,
-                                                                cm=cm,
-                                                                mp_execution_type=mp_execution_type,
-                                                                prune_options=prune_options)
-
-
-                    tqc = QuantumCircuit.from_qasm_str(updated_qasm)
-
-                    used_qubit = used_qubits(tqc)
-                    for q in used_qubit:
-                        prevously_used_qubits.append(q)
-
-                    compiled_circuits[compilation_name].append({"circuit":tqc, "initial_layout":initial_mapping})
-                    # compiled_circuits.append({"circuit":tqc, "initial_layout":tqc.layout.initial_layout})
-                    
-                    cm = build_idle_coupling_map(cm, used_qubit)
-
-                    mp_circuits = mp_circuits + 1
-                    
-                    total_num_clbits = total_num_clbits + tqc.num_clbits
-
-                # if the mp execution type is final, add the first compile circuit to be run, to compare as with the single run result
-                if mp_execution_type == "final":
-                    tmp_circuit = compiled_circuits[compilation_name][0]["circuit"]
-                    tmp_qasm = dumps(tmp_circuit)
-
-                    if conf.send_to_backend: 
-                        database_wrapper.insert_to_result_detail(conn=self.conn, 
-                                                                cursor=self.cursor, 
-                                                                header_id=self.header_id, 
-                                                                circuit_name=self.circuit_name, 
-                                                                noisy_simulator=run_simulation, 
-                                                                noise_level=noise_level, 
-                                                                compilation_name=compilation_name, 
-                                                                compilation_time=None, 
-                                                                updated_qasm=tmp_qasm, 
-                                                                observable=None, 
-                                                                mp_circuits=None,
-                                                                prune_options=prune_options) 
-                    
-
-                tmp_end_time = time.perf_counter()
-                compilation_time = tmp_end_time - tmp_start_time
-
-                if mp_execution_type != "partition":
-                    final_circuit = merge_circuits(compiled_circuits[compilation_name],self.backend, num_cbits=total_num_clbits)
-                    final_qasm = dumps(final_circuit)
-
-                    if conf.send_to_backend: 
-                        database_wrapper.insert_to_result_detail(conn=self.conn, 
-                                                                cursor=self.cursor, 
-                                                                header_id=self.header_id, 
-                                                                circuit_name=self.circuit_name, 
-                                                                noisy_simulator=run_simulation, 
-                                                                noise_level=noise_level, 
-                                                                compilation_name=compilation_name, 
-                                                                compilation_time=compilation_time, 
-                                                                updated_qasm=final_qasm, 
-                                                                observable=None, 
-                                                                mp_circuits=mp_circuits,
-                                                                prune_options=prune_options) 
         
+            # to prevent running on the real backedn with noise levels
+            if run_simulation == False:
+                noise_levels = [None]
+
+            for noise_level in noise_levels:
+                compiled_circuits: dict[str, list[dict[QuantumCircuit, list[int]]]] = {}
+
+                for compilation_name in compilations:
+
+                    tmp_start_time  = time.perf_counter()
+
+                    compiled_circuits[compilation_name] = []
+
+                    cm = self.backend.coupling_map
+                    prevously_used_qubits = []
+                    used_qubit = []
+
+                    # if there is a list in exclude_qubits
+                    if len(exclude_qubits) > 0:
+                        for q in exclude_qubits:
+                            prevously_used_qubits.append(q)
+                            used_qubit.append(q)
+                        
+                        cm = build_idle_coupling_map(cm, used_qubit)
+                    
+                    total_qubits = 0
+                    for qasm in qasm_files:
+                        qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=True)
+                        
+                        total_qubits = total_qubits + len(used_qubits(qc.circuit))
+                    
+                    total_largest_connected_qubits = len(cm.largest_connected_component())
+                    print(f"Total qubits: {total_qubits}, CM-Long: {total_largest_connected_qubits}" )
+                    # max_reps = np.floor(backend.num_qubits / len(qc.qubits))
+
+                    if total_qubits > total_largest_connected_qubits:
+                        raise ValueError(f'Total number of qubits ({total_qubits}) could not be higher than the available qubits ({total_largest_connected_qubits})')
+                    
+
+                    mp_circuits = 0
+                    total_num_clbits = 0
+                    for qasm in qasm_files:
+
+                        qc = self.get_circuit_properties(qasm_source=qasm, skip_simulation=True)
+
+                        # check if the circuit has higher qubits than the existing largest connected component, then break it
+                        if len(qc.circuit.qubits) > len(cm.largest_connected_component()):
+                            print(f"This circuit's qubit ({len(qc.circuit.qubits)}) has higher than existing qubits({len(cm.largest_connected_component())})" )
+                            break
+
+                        print(f"Current qubits: {len(qc.circuit.qubits)}, CM-Long: {len(cm.largest_connected_component())}" )
+                        
+                        # compiled here for each circuits
+                        updated_qasm, initial_mapping, updated_circuit = self.compile(qasm=qc.qasm_original, 
+                                                                    compilation_name=compilation_name, 
+                                                                    noise_level=noise_level,
+                                                                    dd_options=dd_options,
+                                                                    cm=cm,
+                                                                    mp_execution_type=mp_execution_type,
+                                                                    prune_options=prune_options)
+
+
+                        # tqc = QuantumCircuit.from_qasm_str(updated_qasm)
+
+                        # used_qubit = used_qubits(updated_circuit)
+                        used_qubit = initial_mapping
+                        for q in used_qubit:
+                            prevously_used_qubits.append(q)
+
+                        compiled_circuits[compilation_name].append({"circuit":updated_circuit, "initial_layout":initial_mapping})
+                        # compiled_circuits.append({"circuit":tqc, "initial_layout":tqc.layout.initial_layout})
+                        
+                        cm = build_idle_coupling_map(cm, used_qubit)
+
+                        mp_circuits = mp_circuits + 1
+                        
+                        total_num_clbits = total_num_clbits + updated_circuit.num_clbits
+
+                    # if the mp execution type is final, add the first compile circuit to be run, to compare as with the single run result
+                    if mp_execution_type == "final":
+                        tmp_circuit = compiled_circuits[compilation_name][0]["circuit"]
+                        tmp_qasm = dumps(tmp_circuit)
+
+                        if conf.send_to_backend: 
+                            database_wrapper.insert_to_result_detail(conn=self.conn, 
+                                                                    cursor=self.cursor, 
+                                                                    header_id=self.header_id, 
+                                                                    circuit_name=self.circuit_name, 
+                                                                    noisy_simulator=run_simulation, 
+                                                                    noise_level=noise_level, 
+                                                                    compilation_name=compilation_name, 
+                                                                    compilation_time=None, 
+                                                                    updated_qasm=tmp_qasm, 
+                                                                    observable=None, 
+                                                                    mp_circuits=None,
+                                                                    prune_options=prune_options) 
+                        
+
+                    tmp_end_time = time.perf_counter()
+                    compilation_time = tmp_end_time - tmp_start_time
+
+                    if mp_execution_type != "partition":
+                        final_circuit = merge_circuits(compiled_circuits[compilation_name],self.backend, num_cbits=total_num_clbits)
+                        final_qasm = dumps(final_circuit)
+
+                        if conf.send_to_backend: 
+                            database_wrapper.insert_to_result_detail(conn=self.conn, 
+                                                                    cursor=self.cursor, 
+                                                                    header_id=self.header_id, 
+                                                                    circuit_name=self.circuit_name, 
+                                                                    noisy_simulator=run_simulation, 
+                                                                    noise_level=noise_level, 
+                                                                    compilation_name=compilation_name, 
+                                                                    compilation_time=compilation_time, 
+                                                                    updated_qasm=final_qasm, 
+                                                                    observable=None, 
+                                                                    mp_circuits=mp_circuits,
+                                                                    prune_options=prune_options) 
+        except Exception as e:
+            print(f"An error occurred in compile_multiprogramming: {str(e)}.")
+            database_wrapper.update_result_header_status_by_header_id(self.header_id, "error")
+            database_wrapper.update_result_header_job_id_by_header_id(self.header_id, "aaa")
+
         return compiled_circuits
 
 
@@ -768,7 +791,7 @@ class QEM:
                         if program_type == "estimator":
                             observable = observables[idx]
 
-                        updated_qasm, initial_mapping = self.compile(qasm=qc.qasm_original, 
+                        updated_qasm, initial_mapping, updated_circuit = self.compile(qasm=qc.qasm_original, 
                                                                      observable=observable, 
                                                                      compilation_name=comp, 
                                                                      generate_props=False, 
@@ -827,6 +850,7 @@ class QEM:
             compiled_circuits = self.compile_multiprogramming(qasm_files=qasm_files, 
                                                               compilations=compilations,
                                                               exclude_qubits=nodes_list,
+                                                              dd_options=dd_options,
                                                               mp_execution_type=mp_options["execution_type"],
                                                               prune_options=prune_options
                                                               )
@@ -843,6 +867,7 @@ class QEM:
                     print("Compiling circuit: {} for compilation: {}".format(self.circuit_name, comp))
                     self.compile(qasm=qc.qasm_original, 
                                  compilation_name=comp,
+                                 dd_options=dd_options,
                                  prune_options=prune_options)
 
         if conf.noisy_simulator:
@@ -875,21 +900,26 @@ class QEM:
             if type == "real" and job_id == "simulator":
                 continue
 
+            if not conf.use_ibm_cloud and hw_name in (["ibm_fez", "ibm_marrakesh", "ibm_torino" ]):
+                continue
+
             if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
                 if conf.use_ibm_cloud:
                     print("Using IBM Cloud...")
                     token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
                     self.token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+                    qiskit_token = token
                     service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
                 else:
                     QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
-                    service = QiskitRuntimeService(channel="ibm_quantum", token=token)
+                    service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
 
             if job_id == "simulator":
                 process_simulator(service, header_id, job_id, hw_name, noisy_simulator=noisy_simulator)
             else:
-                job = service.job(job_id)
                 print("Checking results for: ", job_id, "with header id :", header_id)
+                job = service.job(job_id)
+                
 
                 if check_result_availability(job, header_id):
                     get_result(job)

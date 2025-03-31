@@ -254,6 +254,17 @@ def update_result_header_status_by_header_id(header_id, new_status):
     cursor.close()
     conn.close()
 
+def update_result_header_job_id_by_header_id(header_id, new_job_id):
+    '''
+    Updates result_header entries that contained prev_status to new_status by header_id
+    '''
+    conn = mysql.connector.connect(**conf.mysql_config)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE result_header SET job_id = %s, updated_datetime = NOW() WHERE id = %s', (new_job_id, header_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
 def update_result_header(cursor, job):
     execution_time = job.metrics()["usage"]["quantum_seconds"]
     job_time = job.metrics()["timestamps"]

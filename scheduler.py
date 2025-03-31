@@ -266,10 +266,11 @@ def get_metrics(header_id, job_id):
 
     try:
         cursor.execute('''SELECT j.detail_id, j.qasm, j.quasi_dists, j.quasi_dists_std, d.circuit_name, 
-                       d.compilation_name, d.noise_level, j.shots, d.mp_circuits 
+                       d.compilation_name, d.noise_level, j.shots, d.mp_circuits, h.dd_enable, q.updated_qasm
                        FROM framework.result_backend_json j
         INNER JOIN framework.result_detail d ON j.detail_id = d.id
         INNER JOIN framework.result_header h ON d.header_id = h.id
+        INNER JOIN framework.result_updated_qasm q ON q.detail_id = d.id
         WHERE h.status = %s AND h.job_id = %s AND h.id = %s AND j.quasi_dists IS NOT NULL;''', ("executed", job_id, header_id))
         results_details_json = cursor.fetchall()
 
@@ -282,8 +283,10 @@ def get_metrics(header_id, job_id):
         hellinger_distance = 0
 
         # print(len(results_details_json))
+        # updated qasm: this is the circuit qasm before adding delay and dd sequence
+        # qasm: this is the circuit qasm after adding delay, but it is broken if dd is enabled.
         for idx, res in enumerate(results_details_json):
-            detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level, shots, mp_circuits = res
+            detail_id, qasm, quasi_dists, quasi_dists_std, circuit_name, compilation_name, noise_level, shots, mp_circuits, dd_enable, updated_qasm = res
 
             mp_data.append({})
 
@@ -313,8 +316,16 @@ def get_metrics(header_id, job_id):
 
             # quasi_dists_std_dict = json.loads(quasi_dists_std) 
             
-            qc = QuantumCircuit.from_qasm_str(qasm)
-            qc = qiskit_wrapper.transpile_to_basis_gate(qc)
+            
+            
+            # 20250328, Handy - Delay cannot be transpiled ot basis gates
+            if dd_enable != 1:
+                qc = QuantumCircuit.from_qasm_str(qasm)
+                qc = qiskit_wrapper.transpile_to_basis_gate(qc)
+            else:
+                qc = QuantumCircuit.from_qasm_str(updated_qasm)
+                
+            
             total_gate = sum(qc.count_ops().values())
             total_one_qubit_gate = get_count_1q(qc)
             total_two_qubit_gate = get_count_2q(qc)
@@ -456,6 +467,12 @@ def get_metrics(header_id, job_id):
 
                     end_index = 0
                     start_index = None
+
+                    success_rate_quasi = 0
+                    success_rate_nassc = 0
+                    success_rate_tvd = 0
+                    success_rate_tvd_new = 0
+                    hellinger_distance = 0
 
                     count_dict_bin = convert_dict_int_to_binary(quasi_dists_dict, mp_total_clbits)
                     total_circuit = len(mp_data)- 1 

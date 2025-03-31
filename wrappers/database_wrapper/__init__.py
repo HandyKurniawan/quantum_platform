@@ -7,6 +7,7 @@ from .database_wrapper import (
     get_pending_jobs,
     get_executed_jobs,
     update_result_header_status_by_header_id,
+    update_result_header_job_id_by_header_id,
     update_result_header
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "get_pending_jobs",
     "get_executed_jobs",
     "update_result_header_status_by_header_id",
+    "update_result_header_job_id_by_header_id",
     "update_result_header"
 ]

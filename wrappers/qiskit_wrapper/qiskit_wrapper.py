@@ -23,6 +23,10 @@ import requests
 import copy
 import mysql.connector
 from qiskit.qasm2 import dumps
+from qiskit_ibm_runtime.options import SamplerOptions, EstimatorOptions, DynamicalDecouplingOptions, TwirlingOptions
+from qiskit.circuit.library import XGate, YGate, ZGate, RZGate
+from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
+from qiskit.transpiler import PassManager
 
 from .fake_ibm_perth import NewFakePerthRealAdjust, NewFakePerthRecent15, NewFakePerthRecent15Adjust, \
                         NewFakePerthMix, NewFakePerthMixAdjust, NewFakePerthAverage, NewFakePerthAverageAdjust
@@ -216,9 +220,57 @@ def get_fake_backend(calibration_type, backend, recent_n, generate_props,
 
     return tmp_backend
 
+def apply_dd(
+            circuit: QuantumCircuit, 
+            backend: IBMBackend, 
+            dd_options: DynamicalDecouplingOptions = {"enable":False}
+            ):
+
+        sequence_type = dd_options["sequence_type"]
+        scheduling_method = dd_options["scheduling_method"]
+
+        X = XGate()
+        Y = YGate()
+        Z = ZGate()
+        RZ = RZGate(np.pi)
+        
+        if sequence_type == "XX":
+            dd_sequence = [X, X]
+        elif sequence_type == "XpXm":
+            dd_sequence = [X, X]
+        elif sequence_type == "XY4":
+            dd_sequence = [X, X, RZ, X, RZ, X]
+
+        target = backend.target
+
+        # Set the scheduling method
+        if scheduling_method == "alap":
+            scheduling = ALAPScheduleAnalysis(target=target)
+        elif scheduling_method == "asap":
+            scheduling = ASAPScheduleAnalysis(target=target)
+
+        dd_pm = PassManager(
+        [
+            scheduling,
+            PadDynamicalDecoupling(target=target, dd_sequence=dd_sequence),
+        ]
+        )
+        
+        circuit_dd = dd_pm.run(circuit)
+
+        return circuit_dd
+
 # Function to import and optimize a QASM circuit
-def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enable_mapomatic = False,
-                  calibration_type = calibration_type_enum.lcd, recent_n = None, initial_layout = None, generate_props = False,
+def optimize_qasm(input_qasm: str, 
+                  backend: IBMBackend, 
+                  optimization: int, 
+                  enable_mirage: bool = False, 
+                  enable_mapomatic: bool = False,
+                  calibration_type: str = calibration_type_enum.lcd, 
+                  recent_n: int = None, 
+                  initial_layout = None, 
+                  generate_props: bool = False,
+                  dd_options: DynamicalDecouplingOptions = {"enable":False}, 
                   cm: CouplingMap = None):
     # Load the input QASM circuit
     circuit = QuantumCircuit.from_qasm_str(input_qasm)
@@ -273,7 +325,10 @@ def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enab
         transpiled_circuit = pm.run(circuit)
         
         initial_mapping = get_initial_layout_from_circuit(transpiled_circuit)
-        
+
+    # if dd_options["enable"]:
+    #     transpiled_circuit = apply_dd(transpiled_circuit, tmp_backend, dd_options=dd_options)
+
     tmp_end_time = time.perf_counter()
     compilation_time = tmp_end_time - tmp_start_time
 
@@ -282,7 +337,7 @@ def optimize_qasm(input_qasm, backend, optimization, enable_mirage = False, enab
 
     # print(optimized_qasm)
 
-    return optimized_qasm, compilation_time, initial_mapping
+    return optimized_qasm, compilation_time, initial_mapping, transpiled_circuit
 
 def get_best_circuit_sabre(circ, backend):
     trans_qc_list = transpile([circ]*10, backend, optimization_level=3)
@@ -299,7 +354,7 @@ def get_best_mapomatic_layout(circ, backend):
     
     return layouts[0], best_small_qc
 
-def get_initial_layout_from_circuit(qc):
+def get_initial_layout_from_circuit(qc: QuantumCircuit):
     virtual_bits = qc.layout.initial_layout.get_virtual_bits()
     initial_layout_dict = {}
     initial_layout = []
@@ -310,6 +365,8 @@ def get_initial_layout_from_circuit(qc):
     
     for i in range(len(initial_layout_dict.keys())):
         initial_layout.append(initial_layout_dict[i])
+
+    # initial_layout = qc.layout.initial_index_layout(filter_ancillas=True)
     
     return initial_layout
 
@@ -853,7 +910,7 @@ def get_active_token(remaining: int,
                      token_number: int):
 
     sql = """SELECT token, int_remaining, int_pending_jobs, int_max_pending_jobs FROM qiskit_token 
-    WHERE int_remaining > 0 and int_pending_jobs < 1 AND description = "updated" """
+    WHERE int_remaining > 0 and int_pending_jobs = 0 AND description = "updated" """
 
     if remaining > 200:
         sql = sql + """ and int_pending_jobs = 0 """
