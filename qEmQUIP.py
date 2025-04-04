@@ -317,20 +317,33 @@ class QEM:
 
         return updated_qasm, initial_mapping
     
-    def apply_mthree(self, backend, circuit, counts, shots):
+    def apply_mthree(self, 
+                     backend: IBMBackend | AerSimulator, 
+                     circuit: QuantumCircuit, 
+                     counts: dict, 
+                     shots: int, 
+                     type: str = "normal"):
         mit = mthree.M3Mitigation(backend)
         
         mappings = mthree.utils.final_measurement_mapping(circuit)
 
-        mit.cals_from_system(mappings, shots)
+        mit.cals_from_system(mappings, 50000)
 
-        shortened_counts = sum_last_n_digits_dict(counts, len(mappings))
+        # shortened_counts = sum_last_n_digits_dict(counts, len(mappings))
+        # m3_quasi = mit.apply_correction(shortened_counts, mappings)
 
-        m3_quasi = mit.apply_correction(shortened_counts, mappings)
-        probs = m3_quasi.nearest_probability_distribution()
-        probs_int = convert_dict_binary_to_int(probs)
+        if type == "polar":
+            m3_quasi = mit.apply_correction(counts, mappings)
+            probs = {key: round(value * shots) for key, value in m3_quasi.items()}
 
-        return probs_int
+            return probs
+        else:
+            m3_quasi = mit.apply_correction(counts, mappings)
+            probs = m3_quasi.nearest_probability_distribution()
+
+            probs_int = convert_dict_binary_to_int(probs)
+
+            return probs_int
     
     def apply_dd(self, 
                  circuit: QuantumCircuit, 
