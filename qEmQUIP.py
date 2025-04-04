@@ -49,7 +49,7 @@ import time
 import numpy as np
 # import json
 # import mapomatic as mm
-# import mthree
+import mthree
 # import pandas as pd
 
 from qiskit.circuit.library import XGate, YGate, ZGate, RZGate
@@ -317,17 +317,20 @@ class QEM:
 
         return updated_qasm, initial_mapping
     
-    # def apply_mthree(self, backend, initial_mapping, counts, shots):
-    #     mit = mthree.M3Mitigation(backend)
-    #     mit.cals_from_system(initial_mapping, shots)
+    def apply_mthree(self, backend, circuit, counts, shots):
+        mit = mthree.M3Mitigation(backend)
+        
+        mappings = mthree.utils.final_measurement_mapping(circuit)
 
-    #     shortened_counts = sum_last_n_digits_dict(counts, len(initial_mapping))
+        mit.cals_from_system(mappings, shots)
 
-    #     m3_quasi = mit.apply_correction(shortened_counts, initial_mapping)
-    #     probs = m3_quasi.nearest_probability_distribution()
-    #     probs_int = convert_dict_binary_to_int(probs)
+        shortened_counts = sum_last_n_digits_dict(counts, len(mappings))
 
-    #     return probs_int
+        m3_quasi = mit.apply_correction(shortened_counts, mappings)
+        probs = m3_quasi.nearest_probability_distribution()
+        probs_int = convert_dict_binary_to_int(probs)
+
+        return probs_int
     
     def apply_dd(self, 
                  circuit: QuantumCircuit, 
