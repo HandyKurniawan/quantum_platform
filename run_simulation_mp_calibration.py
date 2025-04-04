@@ -27,27 +27,6 @@ from random import randint
 
 token = "476ea8c61cc54f36e4a21d70a8442f94203c9d87096eaad0886a3e8154d8c2e79bcad6f927c6050a76335dd68d783f478c1b828504748a4377b441c335c831aa"
 
-def update_hardware_configs(hw_name):
-    token = qiskit_wrapper.get_active_token(remaining=100, repetition=0, token_number=1)[0][0]
-    print(token)
-
-    conf.hardware_name = hw_name
-    conf.user_id=5
-    q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, hw_name=hw_name)
-    conf.user_id=5
-    conf.hardware_name = hw_name
-    conf.triq_measurement_type = "polar_meas"
-    
-    # # update TriQ configs from calibration data
-    # q.update_hardware_configs(hw_name=hw_name)
-
-    # # update IBM FakeBackend configuration
-    # shots = 1000
-    # q.set_backend(program_type="sampler", shots=shots)
-    # qiskit_wrapper.generate_new_props(q.backend, "avg")
-    # qiskit_wrapper.generate_new_props(q.backend, "mix")
-    # qiskit_wrapper.generate_new_props(q.backend, "recent_15_adjust")
-
 def run_simulation_one(hw_name:str, 
                        noise_levels: list[float], 
                        file_path: str, 
@@ -64,9 +43,9 @@ def run_simulation_one(hw_name:str,
     token = "971b2597e1f28e10a7c8992657e9ecc984a65bd4a22bacc497eda4d2945bf8e501b454b9e5d2527833808ab8ec62fc5fa0df3af38dccc02b85bd83c93f2e2e31"
     conf.hardware_name = hw_name
     conf.triq_measurement_type = triq_measurement_type
-    conf.user_id=5
+    conf.user_id=2
     q = QEM(runs=conf.runs, user_id=conf.user_id, token=token, hw_name=hw_name)
-    conf.user_id=5
+    conf.user_id=2
     conf.triq_measurement_type = triq_measurement_type
     conf.hardware_name = hw_name
     qasm_files = q.get_qasm_files_from_path(file_path)
@@ -114,81 +93,83 @@ def run_simulation_all(hw_name: str,
                        repeat=reps, shots=shots,
                        mp_options=mp_options, seed_simulator=seed_simulator  )
     
-    # # prune-lcd
-    # mp_options = {"enable":True, "execution_type":execution_type}
-    # prune_options = {"enable":True, "type":"cal-lcd", "params": threshold_lcd}
+    # prune-lcd
+    mp_options = {"enable":True, "execution_type":execution_type}
+    prune_options = {"enable":True, "type":"cal-lcd", "params": threshold_lcd}
 
-    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
-    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-    #                    repeat=reps, shots=shots,
-    #                    mp_options=mp_options, prune_options=prune_options, 
-    #                    seed_simulator=seed_simulator  )
+    run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+                       repeat=reps, shots=shots,
+                       mp_options=mp_options, prune_options=prune_options, 
+                       seed_simulator=seed_simulator  )
 
-    # # prune-avg
-    # mp_options = {"enable":True, "execution_type":execution_type}
-    # prune_options = {"enable":True, "type":"cal-avg", "params": threshold_avg}
+    # prune-avg
+    mp_options = {"enable":True, "execution_type":execution_type}
+    prune_options = {"enable":True, "type":"cal-avg", "params": threshold_avg}
 
-    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
-    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-    #                    repeat=reps, shots=shots,
-    #                    mp_options=mp_options, prune_options=prune_options, 
-    #                    seed_simulator=seed_simulator  )
+    run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+                       repeat=reps, shots=shots,
+                       mp_options=mp_options, prune_options=prune_options, 
+                       seed_simulator=seed_simulator  )
 
-    # # prune-avg
-    # mp_options = {"enable":True, "execution_type":execution_type}
-    # prune_options = {"enable":True, "type":"lf", "params": 100}
+    # prune-avg
+    mp_options = {"enable":True, "execution_type":execution_type}
+    prune_options = {"enable":True, "type":"lf", "params": 100}
 
-    # run_simulation_one(hw_name, noise_levels, file_path=file_path, 
-    #                    compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
-    #                    repeat=reps, shots=shots,
-    #                    mp_options=mp_options, prune_options=prune_options, 
-    #                    seed_simulator=seed_simulator  )
+    run_simulation_one(hw_name, noise_levels, file_path=file_path, 
+                       compilations=["qiskit_3"], triq_measurement_type="polar_meas", 
+                       repeat=reps, shots=shots,
+                       mp_options=mp_options, prune_options=prune_options, 
+                       seed_simulator=seed_simulator  )
     # #endregion CalibrationPaper
 
-for i in range(1):
+for i in range(10):
 
-    # try:
-    #     run_simulation_all("ibm_kyiv", 10000)
-    #     pass
+    if not conf.use_ibm_cloud:
+        try:
+            run_simulation_all("ibm_kyiv", 10000)
+            pass
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}. ")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}. ")
 
-    # try:
-    #     run_simulation_all("ibm_sherbrooke", 10000)
-    #     pass
+        try:
+            run_simulation_all("ibm_sherbrooke", 10000)
+            pass
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}. ")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}. ")
 
-    # try:
-    #     run_simulation_all("ibm_brisbane", 10000)
-    #     pass
+        try:
+            run_simulation_all("ibm_brisbane", 10000)
+            pass
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}.")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}.")
 
-    try:
-        run_simulation_all("ibm_fez", 4000, (0.025, 0.05), (0.01, 0.05))
-        pass
+    if conf.use_ibm_cloud:
 
-    except Exception as e:
-        print(f"An error occurred: {str(e)}.")
+        try:
+            run_simulation_all("ibm_fez", 10000, (0.025, 0.05), (0.01, 0.05))
+            pass
 
-    # try:
-    #     run_simulation_all("ibm_torino", 4000, (0.025, 0.05), (0.01, 0.05))
-    #     pass
+        except Exception as e:
+            print(f"An error occurred: {str(e)}.")
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}.")
+        try:
+            run_simulation_all("ibm_torino", 10000, (0.025, 0.05), (0.01, 0.05))
+            pass
 
-    # try:
-    #     run_simulation_all("ibm_marrakesh", 4000, (0.025, 0.05), (0.01, 0.05))
-    #     pass
+        except Exception as e:
+            print(f"An error occurred: {str(e)}.")
 
-    # except Exception as e:
-    #     print(f"An error occurred: {str(e)}.")
+        try:
+            run_simulation_all("ibm_marrakesh", 10000, (0.025, 0.05), (0.01, 0.05))
+            pass
 
+        except Exception as e:
+            print(f"An error occurred: {str(e)}.")
 
 
 # token = qiskit_wrapper.get_active_token(100, 0, 1)[0][0]

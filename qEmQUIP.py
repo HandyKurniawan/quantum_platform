@@ -903,6 +903,9 @@ class QEM:
             if not conf.use_ibm_cloud and hw_name in (["ibm_fez", "ibm_marrakesh", "ibm_torino" ]):
                 continue
 
+            if conf.use_ibm_cloud and hw_name in (["ibm_kyiv", "ibm_sherbrooke", "ibm_brisbane" ]):
+                continue
+
             if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
                 if conf.use_ibm_cloud:
                     print("Using IBM Cloud...")
@@ -911,6 +914,7 @@ class QEM:
                     qiskit_token = token
                     service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
                 else:
+                    print(qiskit_token)
                     QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
                     service = QiskitRuntimeService(channel="ibm_quantum", token=qiskit_token)
 
