@@ -16,7 +16,8 @@ from qiskit_ibm_runtime import SamplerV2 as Sampler, IBMBackend
 from qiskit_aer.noise import NoiseModel, pauli_error
 from qiskit_aer import AerSimulator
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-from commons import calibration_type_enum, sql_query, normalize_counts, Config, qiskit_compilation_enum
+from commons import (calibration_type_enum, sql_query, normalize_counts, Config, 
+                     qiskit_compilation_enum, used_qubits)
 from qiskit.providers.models import BackendProperties
 import json
 import requests
@@ -27,6 +28,15 @@ from qiskit_ibm_runtime.options import SamplerOptions, EstimatorOptions, Dynamic
 from qiskit.circuit.library import XGate, YGate, ZGate, RZGate
 from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
 from qiskit.transpiler import PassManager
+from qiskit.circuit.library import UnitaryGate
+from qiskit.circuit import Qubit, QuantumRegister, Instruction, Parameter
+import qiskit.quantum_info as qi
+from qiskit.converters import circuit_to_dag, dag_to_circuit
+
+from qiskit_aer.noise import (NoiseModel, QuantumError, ReadoutError,
+    pauli_error, depolarizing_error, thermal_relaxation_error)
+
+from wrappers.dd_wrapper import (apply_pad_delay)
 
 from .fake_ibm_perth import NewFakePerthRealAdjust, NewFakePerthRecent15, NewFakePerthRecent15Adjust, \
                         NewFakePerthMix, NewFakePerthMixAdjust, NewFakePerthAverage, NewFakePerthAverageAdjust
@@ -223,11 +233,8 @@ def get_fake_backend(calibration_type, backend, recent_n, generate_props,
 def apply_dd(
             circuit: QuantumCircuit, 
             backend: IBMBackend, 
-            dd_options: DynamicalDecouplingOptions = {"enable":False}
-            ):
-
-        sequence_type = dd_options["sequence_type"]
-        scheduling_method = dd_options["scheduling_method"]
+            sequence_type: str = "XX", 
+            scheduling_method: str = "alap"):
 
         X = XGate()
         Y = YGate()
@@ -240,6 +247,9 @@ def apply_dd(
             dd_sequence = [X, X]
         elif sequence_type == "XY4":
             dd_sequence = [X, X, RZ, X, RZ, X]
+        elif sequence_type == "XY8":
+            dd_sequence = [X, X, RZ, X, RZ, X, X, X, RZ, X, RZ, X]
+        
 
         target = backend.target
 
@@ -1033,6 +1043,217 @@ def generate_sim_noise_cx(backend, noise_level, method="automatic"):
     )
 
     return sim_noise_cx
+
+def get_zz_rates_from_backend_in_hz(backend: IBMBackend
+                                    )->dict[float]:
+    edges = backend.coupling_map.get_edges()
+    prop_dict = backend.properties().to_dict()
+
+    zz_rates = {}
+
+    for e in edges:
+        zz_prop_1 = f'zz_{e[0]}{e[1]}'
+        zz_prop_2 = f'zz_{e[1]}{e[0]}'
+    
+        #zz_rates[e] = 0
+    
+        for g in prop_dict["general"]:
+            if g["name"] == zz_prop_1:
+                zz_rates[e] = g["value"] * 1e9 # change unit to Hz
+            elif g["name"] == zz_prop_2:
+                zz_rates[e] = g["value"] * 1e9 # change unit to Hz
+
+    return zz_rates
+
+def get_qubits_T1_T2(backend:IBMBackend
+                     )->tuple[list, list]:
+    prop_dict = backend.properties().to_dict()
+    list_T1 = []
+    list_T2 = []
+    
+    for i in prop_dict["qubits"]:
+        for j in i:
+            if (j["name"] in ("T1")):
+                list_T1.append(j["value"] * 1000) # convert to nanosecond
+            if (j["name"] in ("T2")):
+                list_T2.append(j["value"] * 1000) # convert to nanosecond
+
+    return list_T1, list_T2  
+
+def get_gates_length(tqc: QuantumCircuit, 
+                     backend:IBMBackend
+                     )->dict:
+    prop_dict = backend.properties().to_dict()
+
+    measure_length = 0
+    for i in prop_dict["qubits"]:
+        for j in i:
+            if (j["name"] in ("readout_length")):
+                measure_length = j["value"] # already in nanosecond
+                
+    gates_length = {}
+    
+    for key in tqc.count_ops().keys():
+        for i in prop_dict["gates"]:
+            if(i["gate"] == key):
+                pars = i["parameters"]
+                for par in pars:
+                    if par["name"] == "gate_length":
+                        gates_length[key] = par["value"] # already in nanosecond
+    
+    gates_length["measure"] = measure_length
+
+    return gates_length
+
+def generate_errors_thermal_relaxation(tqc: QuantumCircuit, 
+                                       backend:IBMBackend
+                                       )->dict:
+    gates_length = get_gates_length(tqc, backend)
+    list_T1, list_T2 = get_qubits_T1_T2(backend)
+    errors_thermal = {}
+    
+    for key in tqc.count_ops().keys():
+        if key != "ecr":
+            errors_thermal[key] = [
+            thermal_relaxation_error(t1, t2, gates_length[key]) for t1, t2 in zip(list_T1, list_T2)
+        ]
+        else:
+            errors_thermal[key] = [
+            [
+                thermal_relaxation_error(t1a, t2a, gates_length[key]).expand(
+                    thermal_relaxation_error(t1b, t2b, gates_length[key])
+                )
+                for t1a, t2a in zip(list_T1, list_T2)
+            ]
+            for t1b, t2b in zip(list_T1, list_T2)
+        ]
+    
+    # this code is to try to make an error for delay gate, but i think this doesn't work
+    errors_thermal["delay"] = errors_thermal["sx"]
+
+    return errors_thermal
+
+def generate_thermal_noise_model_on_used_qubits(tqc: QuantumCircuit, 
+                                                backend: IBMBackend
+                                                )->NoiseModel:
+    list_edges_used = []
+    used_qbs = used_qubits(tqc)
+    
+    errors_thermal = generate_errors_thermal_relaxation(tqc, backend)
+
+    for i in backend.coupling_map.get_edges():
+        for q in used_qbs:
+            if q in i:
+                list_edges_used.append(i)
+    
+    list_edges_used = list(set(list_edges_used))
+
+    noise_thermal = NoiseModel()
+    
+    for key in tqc.count_ops().keys():
+        if key != "ecr":
+            for q in used_qbs:
+                noise_thermal.add_quantum_error(errors_thermal[key][q], key, [q])
+        else:
+            for j,k in list_edges_used:
+                noise_thermal.add_quantum_error(errors_thermal[key][j][k], key, [j, k])
+
+    return noise_thermal
+
+def get_neighbor_zz_rates_by_qubit(zz_rates: dict, 
+                                   cm: CouplingMap, 
+                                   idle_qubit: int
+                                   )->dict:
+    neighbor_zz_rates = {}
+    
+    #for key, value in zz_rates.items():
+    #    if idle_qubit in key:
+    #        neighbour_zz_rates[key] = value
+
+    for n in cm.neighbors(idle_qubit):
+        neighbor_zz_rates[n] = zz_rates[(idle_qubit, n)]
+
+    return neighbor_zz_rates
+
+def create_rzz_operator(dur: int, 
+                        zz_rate: float, 
+                        dt: float):
+    rzz_theta = (dur * zz_rate * dt)
+    #print(q1._index, q2_idx, rzz_theta)
+    
+    zz_matrix = qi.Operator(
+                            [
+        [np.exp(-1j * rzz_theta), 0, 0, 0],
+        [0, np.exp(1j * rzz_theta), 0, 0],
+        [0, 0, np.exp(1j * rzz_theta), 0],
+        [0, 0, 0, np.exp(-1j * rzz_theta)]
+    ])
+
+    # Create custom gate
+    rzz_gate = UnitaryGate(zz_matrix, label='ZZ_crosstalk')
+
+    return rzz_gate
+
+def replace_delay_with_rzz(tqc: QuantumCircuit, 
+                           backend: IBMBackend, 
+                           add_dd: bool = False,
+                           duration_factor: float = 1
+                           ):
+    tqc_delay = apply_pad_delay(tqc, backend) # add delay to compiled circuit
+    
+    dag = circuit_to_dag(tqc_delay) # convert to dag
+    new_dag = dag.copy_empty_like()
+    
+    cm = backend.coupling_map
+    zz_rates = get_zz_rates_from_backend_in_hz(backend)
+
+    used_qbs = used_qubits(tqc)
+    dt = backend.dt
+    
+    for dn in dag.topological_op_nodes():
+        if dn.name == "delay":
+            dur = dn.op.duration * duration_factor
+            q1 = dn.qargs[0]
+    
+            if q1._index in used_qbs:
+    
+                neighbor_zz_rates = get_neighbor_zz_rates_by_qubit(zz_rates, cm, q1._index)
+        
+                for q2_idx, zz_rate in neighbor_zz_rates.items(): # adding RZZ Gate if the neighbor qubits is idle, and the current is also idle.
+                    #if q2_idx not in used_qbs: # only add if the neighboring qubit is not in the 
+                    q2 = Qubit(QuantumRegister(127, "q"), q2_idx)
+
+                    #rzz_gate = RZZGate(rzz_theta)
+
+
+                    if not add_dd:
+                        rzz_gate = create_rzz_operator(dur, zz_rate, dt)
+                        new_dag.apply_operation_back(rzz_gate, [q1, q2])
+                    else:
+                        dur_frag = np.floor(dur / 4)
+                        rzz_gate = create_rzz_operator(dur_frag, zz_rate, dt)
+                        
+                        for num_delay in range(4):
+                            
+                            new_dag.apply_operation_back(rzz_gate, [q1, q2])
+                            if num_delay % 2 == 0:
+                                #new_dag.apply_operation_back(Delay(np.floor(dur_frag / 4)),  [q1])
+                                #new_dag.apply_operation_back(Delay(np.floor(dur_frag / 4)),  [q2])
+                                new_dag.apply_operation_back(XGate(), [q2])
+                            else:
+                                #new_dag.apply_operation_back(Delay(np.floor(dur_frag / 4)),  [q1])
+                                #new_dag.apply_operation_back(Delay(np.floor(dur_frag / 4)),  [q2])
+                                new_dag.apply_operation_back(XGate(), [q1])
+                        
+        else:
+            new_dag.apply_operation_back(dn.op, dn.qargs, dn.cargs)
+    
+    new_circ = dag_to_circuit(new_dag) # return dag to circuit
+    #tqc_rzz = transpile(new_circ, optimization_level=0, backend=backend) # transpile to basis gate
+    tqc_rzz = new_circ
+
+    return tqc_rzz
+
 
 #endregion
 

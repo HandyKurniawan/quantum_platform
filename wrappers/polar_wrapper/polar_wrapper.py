@@ -496,6 +496,9 @@ def polar_code_p2(n, meas_data=False, base="z"):
 
     if meas_data:
         for i in s:
+            if base == "x":
+                qc.h(i)
+
             qc.measure(i,m[0])
             m.pop(0)
 
