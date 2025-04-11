@@ -147,9 +147,9 @@ class QEM:
 
         if conf.use_ibm_cloud:
             print("Using IBM Cloud...")
-            token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
-            self.token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
-            self.service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
+            #token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+            #self.token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+            #self.service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
         else:
             self.service = QiskitRuntimeService(channel="ibm_quantum", token=token)
         
@@ -925,10 +925,10 @@ class QEM:
             if tmp_qiskit_token == "" or tmp_qiskit_token != qiskit_token:
                 if conf.use_ibm_cloud:
                     print("Using IBM Cloud...")
-                    token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
-                    self.token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
-                    qiskit_token = token
-                    service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
+                    #token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+                    #self.token = "tyF4ya7NOGlq9Ls_JM5JJ0vG0IJmdu_Ea2rc-xTauvJ_"
+                    #qiskit_token = token
+                    #service = QiskitRuntimeService(channel="ibm_cloud", token=token, instance=conf.ibm_cloud_instance)
                 else:
                     print(qiskit_token)
                     QiskitRuntimeService.save_account(channel="ibm_quantum", token=qiskit_token, overwrite=True)
