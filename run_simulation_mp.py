@@ -38,7 +38,7 @@ def run_simulation_one(hw_name:str,
     # token = qiskit_wrapper.get_active_token(remaining=100, repetition=0, token_number=1)[0][0]
     # print(token)
 
-    token = "971b2597e1f28e10a7c8992657e9ecc984a65bd4a22bacc497eda4d2945bf8e501b454b9e5d2527833808ab8ec62fc5fa0df3af38dccc02b85bd83c93f2e2e31"
+    token = "476ea8c61cc54f36e4a21d70a8442f94203c9d87096eaad0886a3e8154d8c2e79bcad6f927c6050a76335dd68d783f478c1b828504748a4377b441c335c831aa"
     conf.hardware_name = hw_name
     conf.triq_measurement_type = triq_measurement_type
     conf.user_id=3
