@@ -101,8 +101,8 @@ def read_file(file_path):
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
-def convert_to_json(dictiontary):
-    return json.dumps(dictiontary, indent = 0) 
+def convert_to_json(dictionary):
+    return json.dumps(dictionary, indent = 0) 
 
 def sql_query(sql, params, conn_config = conf.mysql_config):
     success = False

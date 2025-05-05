@@ -405,7 +405,7 @@ def get_i_position(n):
     
     return i
 
-def polar_code_p2(n, meas_data=False, base="z"):
+def polar_code_p2(n, meas_data=False, base="z", add_barrier=False):
     bit_format = "0:0{}b".format(n)
     bit_format = "{" + bit_format + "}"
     # bit_format = "{0:04b}"
@@ -495,6 +495,10 @@ def polar_code_p2(n, meas_data=False, base="z"):
     qc = generate_polar_encoding_measurement(qc, n, s, a, m, n_bit)
 
     if meas_data:
+
+        if add_barrier:
+            qc.barrier(range(qc.num_qubits))
+
         for i in s:
             if base == "x":
                 qc.h(i)

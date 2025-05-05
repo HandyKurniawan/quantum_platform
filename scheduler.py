@@ -281,6 +281,7 @@ def get_metrics(header_id, job_id):
         success_rate_tvd = 0
         success_rate_tvd_new = 0
         hellinger_distance = 0
+        success_rate_tvd_dict = {}
 
         # print(len(results_details_json))
         # updated qasm: this is the circuit qasm before adding delay and dd sequence
@@ -477,6 +478,8 @@ def get_metrics(header_id, job_id):
                     count_dict_bin = convert_dict_int_to_binary(quasi_dists_dict, mp_total_clbits)
                     total_circuit = len(mp_data)- 1 
 
+                    
+
                     for k in range(total_circuit) :
                         mp_dict = mp_data[k]
 
@@ -497,7 +500,8 @@ def get_metrics(header_id, job_id):
                         tmp =  sum_middle_digits_dict(count_dict_bin, end_index, start_index)
                         
                         start_index = end_index
-                        print(mp_circ_name, calculate_success_rate_tvd(mp_corr_out_bin, tmp), mp_corr_out_bin )
+                        print(mp_circ_name, np.round(calculate_success_rate_tvd(mp_corr_out_bin, tmp),5), mp_corr_out_bin )
+                        success_rate_tvd_dict[mp_circ_name] = calculate_success_rate_tvd(mp_corr_out_bin, tmp)
 
                         success_rate_quasi = success_rate_quasi + calculate_success_rate_nassc(mp_corr_out_bin, tmp)
                         success_rate_tvd = success_rate_tvd + calculate_success_rate_tvd(mp_corr_out_bin, tmp)
@@ -522,25 +526,26 @@ def get_metrics(header_id, job_id):
                 cursor.execute("""UPDATE metric SET total_gate = %s, total_one_qubit_gate = %s, total_two_qubit_gate = %s, circuit_depth = %s, 
                 circuit_cost = %s, success_rate_tvd = %s, success_rate_nassc = %s, success_rate_quasi = %s, 
                 success_rate_polar = %s, hellinger_distance = %s, success_rate_tvd_new = %s, polar_count_accept = %s, polar_count_logerror = %s,
-                polar_count_undecided = %s, detection_time = %s, decoding_time = %s 
+                polar_count_undecided = %s, detection_time = %s, decoding_time = %s, success_rate_tvd_json = %s
                 WHERE detail_id = %s; """, 
                 (total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
                 success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, 
-                count_undecided, detection_time, decoding_time, detail_id))
+                count_undecided, detection_time, decoding_time, convert_to_json(success_rate_tvd_dict), detail_id))
                 
             else:
                 cursor.execute("""INSERT INTO metric(detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
                 success_rate_polar, hellinger_distance, success_rate_tvd_new, polar_count_accept, polar_count_logerror, 
-                polar_count_undecided, detection_time, decoding_time)
+                polar_count_undecided, detection_time, decoding_time, success_rate_tvd_json)
                 VALUES (%s, %s, %s, %s, %s,
                 %s, %s, %s, %s, 
                 %s, %s, %s, %s, %s, 
-                %s, %s, %s); """, 
+                %s, %s, %s, %s); """, 
                 (detail_id, total_gate, total_one_qubit_gate, total_two_qubit_gate, circuit_depth, 
                 circuit_cost, success_rate_tvd, success_rate_nassc, success_rate_quasi, 
-                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, count_undecided, detection_time, decoding_time))
+                success_rate_polar, hellinger_distance, success_rate_tvd_new, count_accept, count_logerror, 
+                count_undecided, detection_time, decoding_time, convert_to_json(success_rate_tvd_dict)))
                 
             # update_result_header_status_by_header_id(cursor, header_id, 'done')
 
