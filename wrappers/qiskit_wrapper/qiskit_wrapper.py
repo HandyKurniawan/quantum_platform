@@ -18,7 +18,7 @@ from qiskit_aer import AerSimulator
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from commons import (calibration_type_enum, sql_query, normalize_counts, Config, 
                      qiskit_compilation_enum, used_qubits)
-from qiskit.providers.models import BackendProperties
+from qiskit_ibm_runtime.models import BackendProperties
 import json
 import requests
 import copy
@@ -60,7 +60,7 @@ from .fake_ibm_brisbane import NewFakeBrisbaneRecent1, NewFakeBrisbaneRecent2, N
                         NewFakeBrisbaneRecent45
 import time
 import numpy as np
-import mapomatic as mm
+#import mapomatic as mm
 
 conf = Config()
 
@@ -349,21 +349,6 @@ def optimize_qasm(input_qasm: str,
 
     return optimized_qasm, compilation_time, initial_mapping, transpiled_circuit
 
-def get_best_circuit_sabre(circ, backend):
-    trans_qc_list = transpile([circ]*10, backend, optimization_level=3)
-    best_cx_count = [circ.depth(lambda x: len(x.qubits) == 2) for circ in trans_qc_list]
-    best_idx = np.argmin(best_cx_count)
-    best_qc = trans_qc_list[best_idx]
-    best_small_qc = mm.deflate_circuit(best_qc)
-
-    return best_small_qc
-
-def get_best_mapomatic_layout(circ, backend):
-    best_small_qc = get_best_circuit_sabre(circ, backend)
-    layouts = mm.matching_layouts(best_small_qc, backend)
-    
-    return layouts[0], best_small_qc
-
 def get_initial_layout_from_circuit(qc: QuantumCircuit):
     virtual_bits = qc.layout.initial_layout.get_virtual_bits()
     initial_layout_dict = {}
@@ -380,16 +365,6 @@ def get_initial_layout_from_circuit(qc: QuantumCircuit):
     
     return initial_layout
 
-def get_initial_mapping_mapomatic(input_qasm, backend, calibration_type = calibration_type_enum.lcd, 
-                                  recent_n = None, generate_props = False):
-    
-    circuit = QuantumCircuit.from_qasm_str(input_qasm)
-    tmp_backend = get_fake_backend(calibration_type, backend, recent_n, generate_props)
-    initial_layout, new_circuit = get_best_mapomatic_layout(circuit, tmp_backend)
-
-    # print("Mapo initial_layout :", initial_layout)
-
-    return initial_layout
 
 def get_initial_mapping_sabre(input_qasm: str, 
                               backend: IBMBackend, 
