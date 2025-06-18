@@ -282,12 +282,6 @@ class QEM:
 
         tmp_start_time  = time.perf_counter()
         initial_mapping = ""
-        # if layout == "mapo":
-        #     # Generate Initial Mapping from Mapomatic to a File
-        #     initial_mapping = qiskit_wrapper.get_initial_mapping_mapomatic(
-        #             qasm, self.real_backend, calibration_type=calibration_type, 
-        #             generate_props=generate_props, recent_n=0)
-        # el
         if layout == "sabre":
 
             initial_mapping = qiskit_wrapper.get_initial_mapping_sabre(
