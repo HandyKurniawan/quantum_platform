@@ -47,10 +47,7 @@ from datetime import datetime
 import mysql.connector
 import time
 import numpy as np
-# import json
-# import mapomatic as mm
 import mthree
-# import pandas as pd
 
 from qiskit.circuit.library import XGate, YGate, ZGate, RZGate
 from qiskit.transpiler.passes import ALAPScheduleAnalysis, ASAPScheduleAnalysis, PadDynamicalDecoupling
@@ -285,12 +282,7 @@ class QEM:
 
         tmp_start_time  = time.perf_counter()
         initial_mapping = ""
-        if layout == "mapo":
-            # Generate Initial Mapping from Mapomatic to a File
-            initial_mapping = qiskit_wrapper.get_initial_mapping_mapomatic(
-                    qasm, self.real_backend, calibration_type=calibration_type, 
-                    generate_props=generate_props, recent_n=0)
-        elif layout == "sabre":
+        if layout == "sabre":
 
             initial_mapping = qiskit_wrapper.get_initial_mapping_sabre(
                     qasm, self.real_backend, calibration_type=calibration_type, 

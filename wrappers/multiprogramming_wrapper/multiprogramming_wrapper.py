@@ -9,7 +9,7 @@ from qiskit_ibm_runtime import IBMBackend
 from pathlib import Path
 
 from commons import used_qubits, neighbours, CNOT_used, neighbours_CNOT_used
-# from qiskit_wrapper import get_initial_layout_from_circuit
+from ..qiskit_wrapper import get_initial_layout_from_circuit
 
 def avoid_simultaneous_cnot(tqc, backend, type="ctrl"):
     dag = circuit_to_dag(tqc)
@@ -175,64 +175,64 @@ def build_active_coupling_map(cm, selected_qubit):
     return CouplingMap(qubit_active)
     
 def multiprogram_compilation_qiskit(circuits, backend, opt_level=3, exclude_qubits=[], presets_cm=[]): 
-    pass
-    # cm = backend.coupling_map
-    # prevously_used_qubits = []
-    # used_qubit = []
-    # compiled_circuits = []
+    # pass
+    cm = backend.coupling_map
+    prevously_used_qubits = []
+    used_qubit = []
+    compiled_circuits = []
 
-    # # if there is a list in exclude_qubits
-    # if len(exclude_qubits) > 0:
-    #     for q in exclude_qubits:
-    #         prevously_used_qubits.append(q)
-    #         used_qubit.append(q)
+    # if there is a list in exclude_qubits
+    if len(exclude_qubits) > 0:
+        for q in exclude_qubits:
+            prevously_used_qubits.append(q)
+            used_qubit.append(q)
         
-    #     cm = build_idle_coupling_map(cm, used_qubit)
+        cm = build_idle_coupling_map(cm, used_qubit)
     
-    # total_qubits = 0
-    # for qc in circuits:
-    #     total_qubits = total_qubits + len(used_qubits(qc))
+    total_qubits = 0
+    for qc in circuits:
+        total_qubits = total_qubits + len(used_qubits(qc))
     
-    # # max_reps = np.floor(backend.num_qubits / len(qc.qubits))
+    # max_reps = np.floor(backend.num_qubits / len(qc.qubits))
 
-    # if total_qubits > backend.num_qubits - len(exclude_qubits):
-    #     raise ValueError(f'Total number of qubits ({total_qubits}) could not be higher than the maximum qubits ({backend.num_qubits})')
+    if total_qubits > backend.num_qubits - len(exclude_qubits):
+        raise ValueError(f'Total number of qubits ({total_qubits}) could not be higher than the maximum qubits ({backend.num_qubits})')
 
-    # # for i in range(reps):
-    # if len(presets_cm) == 0:
-    #     for qc in circuits:
-    #         pm = generate_preset_pass_manager(
-    #             optimization_level=opt_level, backend=backend, coupling_map=cm
-    #         )
+    # for i in range(reps):
+    if len(presets_cm) == 0:
+        for qc in circuits:
+            pm = generate_preset_pass_manager(
+                optimization_level=opt_level, backend=backend, coupling_map=cm
+            )
     
-    #         tqc = pm.run(qc)
+            tqc = pm.run(qc)
     
-    #         used_qubit = used_qubits(tqc)
-    #         for q in used_qubit:
-    #             prevously_used_qubits.append(q)
+            used_qubit = used_qubits(tqc)
+            for q in used_qubit:
+                prevously_used_qubits.append(q)
     
-    #         compiled_circuits.append({"circuit":tqc, "initial_layout":get_initial_layout_from_circuit(tqc)})
-    #         # compiled_circuits.append({"circuit":tqc, "initial_layout":tqc.layout.initial_layout})
+            compiled_circuits.append({"circuit":tqc, "initial_layout":get_initial_layout_from_circuit(tqc)})
+            # compiled_circuits.append({"circuit":tqc, "initial_layout":tqc.layout.initial_layout})
             
-    #         cm = build_idle_coupling_map(cm, used_qubit)
-    # else:
-    #     for idx, qc in enumerate(circuits):
-    #         cm = presets_cm[idx]
+            cm = build_idle_coupling_map(cm, used_qubit)
+    else:
+        for idx, qc in enumerate(circuits):
+            cm = presets_cm[idx]
             
-    #         pm = generate_preset_pass_manager(
-    #             optimization_level=opt_level, backend=backend, coupling_map=cm
-    #         )
+            pm = generate_preset_pass_manager(
+                optimization_level=opt_level, backend=backend, coupling_map=cm
+            )
     
-    #         tqc = pm.run(qc)
+            tqc = pm.run(qc)
     
-    #         used_qubit = used_qubits(tqc)
-    #         for q in used_qubit:
-    #             prevously_used_qubits.append(q)
+            used_qubit = used_qubits(tqc)
+            for q in used_qubit:
+                prevously_used_qubits.append(q)
     
-    #         compiled_circuits.append({"circuit":tqc, "initial_layout":get_initial_layout_from_circuit(tqc)})
-    #         # compiled_circuits.append({"circuit":tqc, "initial_layout":tqc.layout.initial_layout})
+            compiled_circuits.append({"circuit":tqc, "initial_layout":get_initial_layout_from_circuit(tqc)})
+            # compiled_circuits.append({"circuit":tqc, "initial_layout":tqc.layout.initial_layout})
             
-    # return compiled_circuits
+    return compiled_circuits
     
 def merge_circuits(compiled_circuits:dict[str, list[dict[QuantumCircuit, list[int]]]], 
                    backend: IBMBackend, 
