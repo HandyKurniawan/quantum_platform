@@ -355,7 +355,7 @@ def get_initial_layout_from_circuit(qc: QuantumCircuit):
     initial_layout = []
     
     for key, value in virtual_bits.items():
-        if "'q'" in "{}".format(key):
+        if """q""" in "{}".format(key):
             initial_layout_dict[key._index] = value 
     
     for i in range(len(initial_layout_dict.keys())):
