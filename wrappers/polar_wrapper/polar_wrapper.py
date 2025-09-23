@@ -116,7 +116,7 @@ def get_q1prep_sr(n, lstate, results):
 
     return count_success / total_shots
 
-def get_logical_error_on_accepted_states(n, lstate, results):
+def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
     # lstate = "X" # prepared logical state: may be "Z" (|0>) or "X" (|+>)
     
@@ -127,7 +127,9 @@ def get_logical_error_on_accepted_states(n, lstate, results):
     # zpos: last position frozen in zero, counting from zero! (0 <= zpos < N-1)
     # list of zpos values, assuming that logical |0> is prepared (lstate = "Z")
     #       n =   0   1   2  3  4  5   6   7   8   9   10 
-    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    # zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    if zpos_list == None:
+        zpos_list = [-1, -1, 1, 3, 12, 7, 22, 15, 90, 31, 362]
 
     if lstate == "Z":
         # |0> is prepared: take zpos value from the list above
@@ -137,6 +139,8 @@ def get_logical_error_on_accepted_states(n, lstate, results):
         zpos = zpos_list[n] -1
     else:
         raise TypeError("Illegal 'lstate' value")
+    
+    # print("zpos : ", zpos)
 
     N     = 2**n     # polar code length
     mnum  = n*(N//2) # number of measurement results for each state preparation
@@ -344,14 +348,18 @@ def generate_polar_encoding(qc, n, s, n_bit):
                 
     return qc
     
-def make_polar_qc_based_p2(n, meas_data=False):
+def make_polar_qc_based_p2(n, meas_data=False, base="z"):
     qr = 2**n
     ar = 2**(n-1)
 
     total_qubit = qr + ar
 
     if meas_data:
-        cr = total_qubit + (ar * (n-1))
+        if (n == 5 and base == "z"):
+            cr = 64
+        else:
+            cr = total_qubit + (ar * (n-1))
+        
     else:
         cr = (ar * (n)) 
     
@@ -449,11 +457,13 @@ def get_i_position(n):
     elif n == 3:
         i = 4
     elif n == 4:
-        i = 7
+        # i = 7 # depolarising channel ignoring correlations
+        i = 13 # depolarising channel using correlations
     elif n == 5:
         i = 8
     elif n == 6:
-        i = 23
+        i = 23 # depolarising channel ignoring correlations
+        # i = 50 # depolarising channel using correlations
     elif n == 7:
         i = 16
     
@@ -474,7 +484,7 @@ def polar_code_p2(n, meas_data=False, base="z", add_barrier=False):
     # n_bit = bit_format.format(n-1)
     print("n =", n, ", b =", "{} ({})".format(n_bit, i-1), ", i =", i)
     
-    qc=make_polar_qc_based_p2(n, meas_data)
+    qc=make_polar_qc_based_p2(n, meas_data, base)
     # s=range(2**n + 2**(n-1))
     
     s=[]
