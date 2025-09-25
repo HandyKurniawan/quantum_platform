@@ -457,8 +457,8 @@ def get_i_position(n):
     elif n == 3:
         i = 4
     elif n == 4:
-        # i = 7 # depolarising channel ignoring correlations
-        i = 13 # depolarising channel using correlations
+        i = 7 # depolarising channel ignoring correlations
+        # i = 13 # depolarising channel using correlations
     elif n == 5:
         i = 8
     elif n == 6:
