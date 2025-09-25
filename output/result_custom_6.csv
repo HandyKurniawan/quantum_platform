@@ -1,0 +1,3 @@
+,circuit_name,type,error_scale,count_accepted,prep_rate,success_rate,ler,total_discard,shots
+0,polar_all_meas_n5_z_m,normal,0.1,0,0.0,0.0,0.0,0.0,0
+1,polar_all_meas_n5_z_m,dynamic,0.1,7619883,0.952485375,1.0,0.0,0.0,8000000
