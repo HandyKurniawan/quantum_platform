@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+output/STIM/polar_n*.txt
+output/STIM/processed/polar_n*.txt
+output/STIM/bak/polar_n*.txt
+output/STIM/fixlater/polar_n*.txt
+output/STIM/test_result/polar_n*.txt
+
 # C extensions
 *.so
 

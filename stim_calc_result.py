@@ -45,6 +45,17 @@ if __name__ == "__main__":
     i_values = range(2, (2**n_values[0])+1)
     shots_values = [int(1e5)]
 
+    n_values = [6]
+    # lstate_values = ["x", "z"]
+    lstate_values = ["z"]
+    # sim_type_values = ["normal", "m1", "m2"]
+    sim_type_values = ["normal"]
+    # p_error_values = [0.01, 0.005]
+    p_error_values = [0.01]
+    i_values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16]
+    # i_values = range(2, (2**n_values[0])+1)
+    shots_values = [int(1e5)]
+
 
     for sim_type in sim_type_values:
 
