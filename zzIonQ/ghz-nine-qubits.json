@@ -1,0 +1,59 @@
+{													
+  "lang": "json",										
+  "target": "simulator",									
+  "name": "ghz - nine qubits",								
+  "body": {											
+    "gateset": "qis",									
+    "qubits": 9,										
+    "circuit": [										
+      {											
+        "gate": "h",									
+        "target": 0,									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 1,									
+        "control": 0									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 2,									
+        "control": 1									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 3,									
+        "control": 2									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 4,									
+        "control": 3									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 5,									
+        "control": 4									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 6,									
+        "control": 5									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 7,									
+        "control": 6									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 8,									
+        "control": 7									
+      },											
+      // note that measurement is implicit in the IonQ syntax		
+      // we always measure all qubits at the end of a circuit		
+      // if you don’t want all of the qubits’ final states,	you 		
+      // can use the meas_map option to generate remapped output	 	
+    ]												
+  }													
+}

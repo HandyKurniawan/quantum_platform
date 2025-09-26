@@ -1,0 +1,56 @@
+{													
+  "lang": "json",										
+  "target": "simulator",									
+  "noise": {"model":"ideal"},									
+  "name": "ghz - 9Q - ideal simulation",						
+  "body": {											
+    "gateset": "qis", 									
+    "qubits": 9,										
+    "circuit": [										
+        {											
+        "gate": "h",									
+        "target": 0,									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 1,									
+        "control": 0									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 2,									
+        "control": 1									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 3,									
+        "control": 2									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 4,									
+        "control": 3									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 5,									
+        "control": 4									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 6,									
+        "control": 5									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 7,									
+        "control": 6									
+      },											
+      {											
+        "gate": "cnot",								
+        "target": 8,									
+        "control": 7									
+      }
+    ]												
+  }													
+}

@@ -273,9 +273,11 @@ def get_best_circuit_sabre(circ, backend):
     best_cx_count = [circ.depth(lambda x: len(x.qubits) == 2) for circ in trans_qc_list]
     best_idx = np.argmin(best_cx_count)
     best_qc = trans_qc_list[best_idx]
-    best_small_qc = mm.deflate_circuit(best_qc)
+    
+    # best_small_qc = best_qc
+    # best_small_qc = mm.deflate_circuit(best_qc)
 
-    return best_small_qc
+    return best_qc
 
 def get_best_mapomatic_layout(circ, backend):
     best_small_qc = get_best_circuit_sabre(circ, backend)
@@ -312,7 +314,11 @@ def get_initial_mapping_sabre(input_qasm, backend, calibration_type = calibratio
                                   recent_n = None, generate_props = False):
     
     circuit = QuantumCircuit.from_qasm_str(input_qasm)
-    sabre_qc = transpile(circuit, backend, optimization_level = 3)
+    
+    sabre_qc = get_best_circuit_sabre(circuit, backend)
+
+    # sabre_qc = transpile(circuit, backend, optimization_level = 3)
+
     initial_layout = get_initial_layout_from_circuit(sabre_qc)
 
     return initial_layout
