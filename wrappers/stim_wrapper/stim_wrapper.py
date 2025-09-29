@@ -5,6 +5,7 @@ import stim
 import collections
 import os
 from wrappers.polar_wrapper import (divide_half_list, get_logical_error_on_accepted_states)
+import json
 
 def convert_i_to_meas_type(i, n, lstate = "z"):
     bit_format = "0:0{}b".format(n)
@@ -218,57 +219,98 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, seeds):
         # counts[bit_string] += 1
         bitstrings.append(bit_string)
 
-    # return counts
-    return bitstrings
+    counts = collections.Counter(bitstrings)
+    return counts
+    # return bitstrings
 
-def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots):
+def get_processed_shots(n, lstate, p_error, i):
+    total_shots = 0
+
+    # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_normal.txt"
+    # if os.path.exists(file_path):
+    #     with open(file_path, "r") as f:
+    #         lines = f.read().splitlines()
+    #         total_shots = len(lines)
+
+    file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_normal.json"
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:  # "a" means append mode
+            loaded_dict = json.load(f)
+            current_counter = collections.Counter(loaded_dict)
+            total_shots = sum(current_counter.values())
+    
+
+    return total_shots
+
+def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots, seed_starts):
 
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     zpos_list[n] = i-1
 
-    file_path = f"./output/STIM/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
-
-    existing_data = 0
-    if os.path.exists(file_path):
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-            existing_data = len(lines)
-
-    # shots = 1000
-    seed_list = range(existing_data, existing_data + shots + 1)
+    # to get total shots from the normal method files
+    total_shots = get_processed_shots(n, lstate, p_error, i)
+    seed_list = range(total_shots, total_shots + shots + 5)
+    print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots + 5)
 
     # print(existing_data, seed_list[0], seed_list[-1])
-
     results = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, seed_list)
 
-    with open(file_path, "a") as f:  # "a" means append mode
-        f.write("\n".join(results) + "\n")
+    # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
+    # with open(file_path, "a") as f:  # "a" means append mode
+    #     f.write("\n".join(results) + "\n")
+
+    file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+    try:
+        with open(file_path, "r") as f:  # "a" means append mode
+            loaded_dict = json.load(f)
+            current_counter = collections.Counter(loaded_dict)
+
+    except FileNotFoundError:
+        current_counter = collections.Counter()
+
+    # updating the counter with the new results
+    current_counter.update(results)
+
+    with open(file_path, "w") as f:  # "a" means append mode
+        json.dump(dict(current_counter), f)
+
 
 def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots):
     #m1 circuit simplify
     #m2 m1 + error detection
 
-    
-    file_path = f"./output/STIM/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
-
     meas_type = convert_i_to_meas_type(i, n, lstate)
-
     # print(n, lstate, i, p_error, sim_type, meas_type, file_path)
 
-    if not os.path.exists(file_path):
-        return None  # skip missing files
+    # to get total shots from the normal method files
+    total_shots = get_processed_shots(n, lstate, p_error, i)
 
-    with open(file_path, "r") as f:
-        lines = f.read().splitlines()
+    # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
+    # if not os.path.exists(file_path):
+    #     return None  # skip missing files
 
-    shots_remained = len(lines)
-    # for m2 with error detection
-    count_detect_discard = shots - shots_remained
+    # with open(file_path, "r") as f:
+    #     lines = f.read().splitlines()
+
+    # shots_remained = len(lines)
+    # count_detect_discard = total_shots - shots_remained
+    # counts = collections.Counter(lines)
+
+    file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+    try:
+        with open(file_path, "r") as f:  # "a" means append mode
+            loaded_dict = json.load(f)
+            current_counter = collections.Counter(loaded_dict)
+            shots_remained = sum(current_counter.values())
+
+    except FileNotFoundError:
+        return None
+
+    count_detect_discard = total_shots - shots_remained
+    counts = dict(current_counter)
 
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     zpos_list[n] = i - 1
-
-    counts = collections.Counter(lines)
 
     # for key, value in counts.items():
     #     print(key, len(key), value)
@@ -287,12 +329,12 @@ def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots)
         "meas_type": meas_type,
         "p_error": p_error,
         "sim_type": sim_type,
-        "shots": shots,
+        "shots": total_shots,
         "count_accept": count_accept,
         "count_logerror": count_logerror,
         "count_undecided": count_undecided,
         "count_detect_discard": count_detect_discard,
-        "prep_rate": count_accept / (shots - count_detect_discard),
+        "prep_rate": count_accept / (total_shots - count_detect_discard),
         "LER": 1 - ler,
         "detect_normal": detect_normal,
         "decoding_normal": decoding_normal,

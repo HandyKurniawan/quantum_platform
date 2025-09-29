@@ -36,26 +36,27 @@ if __name__ == "__main__":
     # i_values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     # sim_type_values = ["normal", "m1"]
 
+    
     n_values = [6]
-    lstate_values = ["x", "z"]
-    sim_type_values = ["normal", "m1", "m2"]
-    # p_error_values = [0.01, 0.005]
-    p_error_values = [0.01]
-    # i_values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-    i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(1e5)]
-
-    n_values = [6]
-    # lstate_values = ["x", "z"]
     lstate_values = ["z"]
-    # sim_type_values = ["normal", "m1", "m2"]
-    sim_type_values = ["normal"]
-    # p_error_values = [0.01, 0.005]
-    p_error_values = [0.01]
-    i_values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16]
-    # i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(1e5)]
+    # lstate_values = ["z"]
+    sim_type_values = ["normal", "m1", "m2"]
+# sim_type_values = ["normal", "m2"]
+# p_error_values = [0.01, 0.005]
+    p_error_values = [0.01, 0.001]
+    i_values = [8,12,14,15,20,22,23,25,26,27,36,38,39,42,43,45,50,51,53]
+# i_values = [4,5]
+# i_values = range(2, (2**n_values[0])+1)
+    shots_values = [int(11e5)]
+    seed_starts_values = [100000]
 
+    n_values = [3]
+    lstate_values = ["x"]
+    sim_type_values = ["normal", "m1"]
+    p_error_values = [0.001]
+    i_values = [3]
+    shots_values = [int(1e5)]
+    seed_starts_values = [100]
 
     for sim_type in sim_type_values:
 
@@ -74,5 +75,5 @@ if __name__ == "__main__":
                 if res is not None:
                     results.append(res)
 
-        save_results_to_csv(results, filename="./output/STIM/polar_results.csv")
+        save_results_to_csv(results, filename="./output/STIM/polar_results_test.csv")
         print("✅ Results saved to polar_results.csv")

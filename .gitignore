@@ -8,6 +8,13 @@ output/STIM/processed/polar_n*.txt
 output/STIM/bak/polar_n*.txt
 output/STIM/fixlater/polar_n*.txt
 output/STIM/test_result/polar_n*.txt
+output/STIM/n3/polar_n*.txt
+output/STIM/n4/polar_n*.txt
+output/STIM/n5/polar_n*.txt
+output/STIM/n6/polar_n*.txt
+output/STIM/n7/polar_n*.txt
+output/STIM/n8/polar_n*.txt
+
 
 # C extensions
 *.so
