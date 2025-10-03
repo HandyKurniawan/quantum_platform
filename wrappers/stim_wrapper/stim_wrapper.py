@@ -434,8 +434,13 @@ def get_backend_information(backend):
         gate_error_x[i] = properties.gate_error(gate="x", qubits=i)
         readout_error[i] = properties.readout_error(i)
 
-    for pair in coupling_map:
-        gate_error_cz[pair] = properties.gate_error(gate="cz", qubits=pair)
+    if backend.name == "ibm_torino":
+        for pair in coupling_map:
+            gate_error_cz[pair] = properties.gate_error(gate="cz", qubits=pair)
+    elif backend.name == "ibm_brisbane":
+        for pair in coupling_map:
+            gate_error_cz[pair] = properties.gate_error(gate="ecr", qubits=pair)
+            gate_error_cz[(pair[1], pair[0])] = properties.gate_error(gate="ecr", qubits=pair)
 
     
     return t1, t2, gate_error_x, readout_error, gate_error_cz

@@ -123,8 +123,12 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
                     if res is not None:
                         results.append(res)
 
-            save_results_to_csv(results, filename=f"./output/STIM/{hw_name}_polar_results_json.csv")
-            print(f"✅ Results saved to {hw_name}_polar_results_json.csv")
+            if hw_name != None:
+                save_results_to_csv(results, filename=f"./output/STIM/{hw_name}_polar_results_json.csv")
+                print(f"✅ Results saved to {hw_name}_polar_results_json.csv")
+            else:
+                save_results_to_csv(results, filename=f"./output/STIM/polar_results_json.csv")
+                print(f"✅ Results saved to polar_results_json.csv")
 
 # -----------------------------
 # Parallel execution
@@ -133,75 +137,33 @@ if __name__ == "__main__":
     lstate_values = ["x", "z"]
     sim_type_values = ["normal", "m1", "m2"]
     n_values = [3]
-    p_error_values = [0.01]
+    p_error_values = [1, 0.1, 0.01]
     # i_values = [4]
     i_values = range(2, (2**n_values[0])+1)
     shots_values = [int(1e5)]
-    hw_name_values = ["ibm_torino"]
+    hw_name_values = ["ibm_brisbane"]
 
     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    # n_values = [4]
-    # p_error_values = [0.01, 0.001]
-    # i_values = [4,6,7,13]
+    n_values = [4]
+    i_values = range(2, (2**n_values[0])+1)
 
-    # run_all(n_values, p_error_values, i_values)
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    # n_values = [5]
-    # p_error_values = [0.01, 0.001]
-    # i_values = [8, 21]
+    n_values = [5]
+    i_values = range(2, (2**n_values[0])+1)
 
-    # run_all(n_values, p_error_values, i_values)
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    # n_values = [6]
-    # p_error_values = [0.001]
-    # i_values = [8, 25]
+    n_values = [6]
+    i_values = range(2, (2**n_values[0])+1)
 
-    # run_all(n_values, p_error_values, i_values)
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
+    hw_name_values = ["ibm_brisbane"]
+    n_values = [6]
+    i_values = range(2, (2**n_values[0])+1)
 
-    # lstate_values = ["x"]
-    # sim_type_values = ["normal", "m1", "m2"]
-    # shots_values = [int(1e4)]
-    # seed_starts_values = [100]
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    # n_values = [3]
-    # p_error_values = [0.001]
-    # i_values = [4]
-
-    # param_grid = list(itertools.product(
-    #     n_values,
-    #     lstate_values,
-    #     sim_type_values,
-    #     p_error_values,
-    #     i_values,
-    #     shots_values,
-    #     seed_starts_values
-    # ))
-
-    # max_workers = 10  # Adjust to your CPU
-    # with ProcessPoolExecutor(max_workers=max_workers) as executor:
-    #     list(executor.map(run_simulation, param_grid))
-
-    # logging.info("✅ All simulations finished!")
-
-    # for sim_type in sim_type_values:
-
-    #     param_grid = list(itertools.product(
-    #         n_values,
-    #         lstate_values,
-    #         i_values,
-    #         p_error_values,
-    #         [sim_type],
-    #         shots_values
-    #     ))
-
-    #     results = []
-    #     with ProcessPoolExecutor(max_workers=10) as executor:
-    #         for res in executor.map(wrapper, param_grid):
-    #             if res is not None:
-    #                 results.append(res)
-
-    #     save_results_to_csv(results, filename="./output/STIM/polar_results_json.csv")
-    #     print("✅ Results saved to polar_results_json.csv")
-
+   
