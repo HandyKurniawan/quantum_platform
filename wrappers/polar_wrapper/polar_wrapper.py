@@ -55,7 +55,7 @@ def get_q1prep_accepted_states(n, lstate, results):
 
 
 # from here is to calculate the preparation rate and logical error rate
-def get_q1prep_sr(n, lstate, results):
+def get_q1prep_sr(n, lstate, results, zpos_list = None):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
     # lstate = "X" # prepared logical state: may be "Z" (|0>) or "X" (|+>)
     
@@ -104,6 +104,7 @@ def get_q1prep_sr(n, lstate, results):
 
         # check if 'meas' are valid measurement results
         success, qstate_UV = q1prep(n, zpos, meas)
+        # success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
         if success == 1:
             count_success = count_success + meas_counts
             # print(meas)

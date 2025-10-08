@@ -4,7 +4,7 @@ import stim
 # import pandas as pd
 import collections
 import os
-from wrappers.polar_wrapper import (divide_half_list, get_logical_error_on_accepted_states)
+from wrappers.polar_wrapper import (divide_half_list, get_logical_error_on_accepted_states, get_q1prep_sr)
 import json
 
 from qiskit import QuantumCircuit
@@ -161,7 +161,84 @@ def check_for_mismatch(syndrome_bits, n, x_ind, detection_layer = 1):
             
     return False
 
-def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, seeds, backend = None, initial_layout = None):
+def simulate_stim_one_shot(n, lstate, sim_type, p_error, seed, 
+                           error_1q, readout_error, error_2q,
+                           meas_type, total_qubits, x_ind,
+                           cm = None, initial_layout = None
+                            ):
+    
+    count_detect_discard = 0
+    sim = stim.TableauSimulator(seed=seed)
+
+    error_detected_this_shot = False
+
+    for level in range(1, n+1):
+
+        # print(level, "-", meas_type[level - 1])
+        
+        num_loops = 2**(n - level)
+        start_idx_mult = 2**(level) + 2**(level - 1)
+
+        if sim_type in ["m1", "m2"] and level == x_ind + 1:
+            x_first = True
+        else:
+            x_first = False
+
+        if level <= x_ind:
+            # skip the beginning of zz measurement
+            # print("skip :" , level, x_ind)
+            pass
+        else:
+            # print("num_loops :", num_loops)
+            for loop_idx in range(num_loops):
+                start_idx = loop_idx * start_idx_mult
+                generate_circuit_extraction_syndrome_stim(sim, level, meas_type[level - 1], x_first, p_error=p_error, start_idx=start_idx,
+                                                            error_1q=error_1q, error_2q=error_2q, initial_layout=initial_layout, cm=cm)
+        
+            # with the simplification, the first measurement will be always 0
+            if not x_first:
+                for qb in range(2, total_qubits, 3): 
+                    noisy_measurement(sim, qb, p_error, readout_error, initial_layout)
+                    noisy_reset(sim, qb, p_error, error_1q, initial_layout)
+
+        # add error detection
+        # first error detection
+        if sim_type in ["m2"] and level - x_ind == 2:
+            cms = sim.current_measurement_record()
+            # print(cms)
+
+            detection_layer = 1
+            if sim_type == "m2":
+                detection_layer -=1
+
+            if check_for_mismatch(cms, n, x_ind, detection_layer):
+                error_detected_this_shot = True
+                break # Break from the `level` loop
+
+    # if error is detected, skip the operation
+    if error_detected_this_shot:
+        count_detect_discard += 1
+        return "", True
+
+    # Final measurements, simplified.
+    for qb_idx in (j for j in range(total_qubits) if j % 3 != 2):
+        if lstate == "x":
+            noisy_h(sim, qb_idx, p_error, error_1q, initial_layout)
+        noisy_measurement(sim, qb_idx, p_error, readout_error, initial_layout )
+        
+
+    final_measurements = sim.current_measurement_record()
+
+    # Generate the bit string, reverse it, and update the counts.
+    bit_string = ''.join(['1' if b else '0' for b in final_measurements])[::-1]
+
+    if sim_type in ["m1", "m2"]:
+        bit_string = bit_string + "0"*(2**(level - 1))
+
+    return bit_string, False
+
+def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seeds, backend = None, initial_layout = None,
+                             target_accept_count = None):
     """
     Simulates a quantum circuit for stabilizer code, simplified and optimized.
 
@@ -187,8 +264,6 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, seeds, back
     else:
         t1, t2, error_1q, readout_error, error_2q = None, None, None, None, None
         cm = None
-    
-    
 
     meas_type = convert_i_to_meas_type(i, n, lstate)
     N = 2**n
@@ -198,94 +273,72 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, seeds, back
     bitstrings = []
     total_qubits = N + ancilla_qubits
 
+    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    zpos_list[n] = i-1
+
     x_ind = 0
     for idx, m_type in enumerate(meas_type):
         if m_type == "x":
             x_ind = idx
             break
 
-    # print("index of the first x :", x_ind)
-    # gap = 2**x_ind
-
     count_detect_discard = 0
+    seed = 0
+    total_real_shot = total_meta_shots
 
-    for shot_idx in range(shots):
-        sim = stim.TableauSimulator(seed=seeds[shot_idx])
+    if target_accept_count == None:
 
-        error_detected_this_shot = False
+        for shot_idx in range(shots):
+            total_real_shot+= 1
 
-        for level in range(1, n+1):
+            seed = seeds[shot_idx]
+            bit_string, flag_discard = simulate_stim_one_shot(n, lstate, sim_type, p_error, seed, 
+                            error_1q, readout_error, error_2q,
+                            meas_type, total_qubits, x_ind,
+                            cm = cm, initial_layout = initial_layout,
+                            )
 
-            # print(level, "-", meas_type[level - 1])
-            
-            num_loops = 2**(n - level)
-            start_idx_mult = 2**(level) + 2**(level - 1)
+            if flag_discard:
+                count_detect_discard += 1
+                continue
 
-            if sim_type in ["m1", "m2"] and level == x_ind + 1:
-                x_first = True
-            else:
-                x_first = False
+            bitstrings.append(bit_string)
+    else:
 
-            if level <= x_ind:
-                # skip the beginning of zz measurement
-                # print("skip :" , level, x_ind)
-                pass
-            else:
-                # print("num_loops :", num_loops)
-                for loop_idx in range(num_loops):
-                    start_idx = loop_idx * start_idx_mult
-                    generate_circuit_extraction_syndrome_stim(sim, level, meas_type[level - 1], x_first, p_error=p_error, start_idx=start_idx,
-                                                              error_1q=error_1q, error_2q=error_2q, initial_layout=initial_layout, cm=cm)
-            
-                # with the simplification, the first measurement will be always 0
-                if not x_first:
-                    for qb in range(2, total_qubits, 3): 
-                        noisy_measurement(sim, qb, p_error, readout_error, initial_layout)
-                        noisy_reset(sim, qb, p_error, error_1q, initial_layout)
+        while len(bitstrings) + total_shots < target_accept_count:
+            total_real_shot+= 1
+            seed += 1 
 
-            # add error detection
-            # first error detection
-            if sim_type in ["m2"] and level - x_ind == 2:
-                cms = sim.current_measurement_record()
-                # print(cms)
+            bit_string, flag_discard = simulate_stim_one_shot(n, lstate, sim_type, p_error, seed, 
+                            error_1q, readout_error, error_2q,
+                            meas_type, total_qubits, x_ind,
+                            cm = cm, initial_layout = initial_layout,
+                            )
 
-                detection_layer = 1
-                if sim_type == "m2":
-                    detection_layer -=1
+            if flag_discard:
+                count_detect_discard += 1
+                continue
 
-                if check_for_mismatch(cms, n, x_ind, detection_layer):
-                    error_detected_this_shot = True
-                    break # Break from the `level` loop
+            res = {}
+            res[bit_string] = 1
 
-        # if error is detected, skip the operation
-        if error_detected_this_shot:
-            count_detect_discard += 1
-            continue # Continue to the next shot
+            count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
+        get_logical_error_on_accepted_states(
+            n, lstate.upper(), res, zpos_list
+        )
+            if round(count_accept) == 0:
+                # print("kebuang", bit_string, total_real_shot)
+                continue
 
-        # Final measurements, simplified.
-        for qb_idx in (j for j in range(total_qubits) if j % 3 != 2):
-            if lstate == "x":
-                noisy_h(sim, qb_idx, p_error, error_1q, initial_layout)
-            noisy_measurement(sim, qb_idx, p_error, readout_error, initial_layout )
-            
+            # print(total_real_shot, seed, bit_string)
 
-        final_measurements = sim.current_measurement_record()
-
-        # Generate the bit string, reverse it, and update the counts.
-        bit_string = ''.join(['1' if b else '0' for b in final_measurements])[::-1]
-
-        if sim_type in ["m1", "m2"]:
-            bit_string = bit_string + "0"*(2**(level - 1))
-        
-
-        # counts[bit_string] += 1
-        bitstrings.append(bit_string)
+            bitstrings.append(bit_string)
 
     counts = collections.Counter(bitstrings)
-    return counts
+    return counts, total_real_shot
     # return bitstrings
 
-def get_processed_shots(n, lstate, p_error, i, hw_name = None):
+def get_processed_shots(n, lstate, p_error, i, sim_type, hw_name = None, target_accept_count = None):
     total_shots = 0
 
     # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_normal.txt"
@@ -295,41 +348,77 @@ def get_processed_shots(n, lstate, p_error, i, hw_name = None):
     #         total_shots = len(lines)
 
     # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_normal.json"
+    if target_accept_count != None:
+        suffix_path = "_accepted"
+
     if hw_name != None:
-        file_path = f"./output/STIM/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_normal.json"
+        file_path = f"./output/STIM/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
     else:
-        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_normal.json"
+        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
 
     if os.path.exists(file_path):
         with open(file_path, "r") as f:  # "a" means append mode
             loaded_dict = json.load(f)
             current_counter = collections.Counter(loaded_dict)
             total_shots = sum(current_counter.values())
-    
 
     return total_shots
 
-def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots, seed_starts, backend = None, initial_layout = None):
+def get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name = None, target_accept_count = None):
+    total_shots = 0
+
+    if target_accept_count != None:
+        suffix_path = "_accepted"
+
+    if hw_name != None:
+        file_path = f"./output/STIM/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
+    else:
+        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
+
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:  # "a" means append mode
+            loaded_dict = json.load(f)
+            total_shots = loaded_dict["total_real_shots"]
+
+    return total_shots
+
+def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots, seed_starts, backend = None, initial_layout = None,
+                                         target_accept_count = None):
 
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     zpos_list[n] = i-1
 
     # to get total shots from the normal method files
-    total_shots = get_processed_shots(n, lstate, p_error, i)
-    seed_list = range(total_shots, total_shots + shots + 5)
-    print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots + 5)
+    hw_name = None
+    if backend != None:
+        hw_name = backend.name
 
+    total_shots = get_processed_shots(n, lstate, p_error, i, sim_type, hw_name=hw_name, target_accept_count=target_accept_count)
+    total_meta_shots = get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name=hw_name, target_accept_count=target_accept_count)
+    seed_list = range(total_shots, total_shots + shots + 1)
+    
     # print(existing_data, seed_list[0], seed_list[-1])
-    results = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, seed_list, backend=backend, initial_layout=initial_layout)
+    results, total_real_shots = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seed_list, backend=backend, initial_layout=initial_layout,
+                                       target_accept_count=target_accept_count)
+    
+    print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots + 1, "real shot:", total_real_shots)
 
     # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
     # with open(file_path, "a") as f:  # "a" means append mode
     #     f.write("\n".join(results) + "\n")
 
+    if target_accept_count != None:
+        suffix_path = "_accepted"
+
     if backend != None:
-        file_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+        file_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
     else:
-        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
+
+    if backend != None:
+        meta_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
+    else:
+        meta_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
 
     try:
         with open(file_path, "r") as f:  # "a" means append mode
@@ -346,15 +435,29 @@ def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots,
         json.dump(dict(current_counter), f)
 
 
-def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots, hw_name):
+    meta_dict = {
+        "total_shots": total_shots,
+        "shots": shots,
+        "total_real_shots": total_real_shots,
+        "lstate": lstate,
+        "p_error": p_error,
+        "sim_type": sim_type
+        }
+    
+    with open(meta_path, "w") as f:  # "a" means append mode
+        json.dump(meta_dict, f)
+
+
+def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots, hw_name, target_accept_count):
     #m1 circuit simplify
     #m2 m1 + error detection
 
     meas_type = convert_i_to_meas_type(i, n, lstate)
-    # print(n, lstate, i, p_error, sim_type, meas_type, file_path)
+    # print(n, lstate, i, p_error, sim_type, meas_type, shots, target_accept_count)
 
     # to get total shots from the normal method files
-    total_shots = get_processed_shots(n, lstate, p_error, i, hw_name)
+    total_shots = get_processed_shots(n, lstate, p_error, i, sim_type, hw_name, target_accept_count)
+    total_meta_shots = get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name, target_accept_count)
 
     # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
     # if not os.path.exists(file_path):
@@ -366,10 +469,13 @@ def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots,
     # shots_remained = len(lines)
     # count_detect_discard = total_shots - shots_remained
     # counts = collections.Counter(lines)
+    if target_accept_count != None:
+        suffix_path = "_accepted"
+
     if hw_name != None:
-        file_path = f"./output/STIM/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+        file_path = f"./output/STIM/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
     else:
-        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
 
     try:
         with open(file_path, "r") as f:  # "a" means append mode
@@ -379,6 +485,7 @@ def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots,
 
     except FileNotFoundError:
         return None
+    
 
     # print("shots :", shots, total_shots, shots_remained, file_path)
     count_detect_discard = total_shots - shots_remained
@@ -395,7 +502,10 @@ def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots,
         get_logical_error_on_accepted_states(
             n, lstate.upper(), counts, zpos_list
         )
+    
+    # print(file_path, shots_remained, sum(counts.values()), count_accept, 1-ler)
 
+    print(n, lstate, i, p_error, sim_type, total_meta_shots, count_accept, total_shots, count_detect_discard, "t:", (total_shots - count_detect_discard))
     # Return structured result
     return {
         "n": n,
@@ -404,6 +514,7 @@ def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots,
         "meas_type": meas_type,
         "p_error": p_error,
         "sim_type": sim_type,
+        "total_meta_shots": total_meta_shots,
         "shots": total_shots,
         "count_accept": count_accept,
         "count_logerror": count_logerror,
