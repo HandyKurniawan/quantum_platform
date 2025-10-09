@@ -140,65 +140,28 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 # Parallel execution
 # -----------------------------
 if __name__ == "__main__":
-    # # lstate_values = ["x", "z"]
-    # lstate_values = ["x"]
-    # sim_type_values = ["normal", "m1"]
-    # # sim_type_values = ["normal"]
-    # n_values = [4]
-    # # p_error_values = [0.01, 0.001]
-    # p_error_values = [0.01]
-    # i_values = [17]
-    # # i_values = range(2, (2**n_values[0])+1)
-    # shots_values = [int(1e6)]
-    # # hw_name_values = ["ibm_brisbane"]
-    # hw_name_values = [None]
-    # accepted_target_count_values = [1e6]
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # n_values = [5]
-    # i_values = range(2, (2**n_values[0])+1)
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    lstate_values = ["z"]
-    # lstate_values = ["x"]
+    lstate_values = ["x", "z"]
     sim_type_values = ["normal", "m1"]
-    # sim_type_values = ["normal"]
     n_values = [3]
     p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    i_values = [7]
+    i_values = [4, 5]
     # i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(5e6)]
+    shots_values = [int(1e6)]
     hw_name_values = [None]
-    accepted_target_count_values = [5e6]
+    accepted_target_count_values = [1e6]
 
     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
 
-    # n_values = [4]
-    # i_values = range(2, (2**n_values[0])+1)
+    n_values = [4]
+    i_values = [4, 6, 7, 13]
+    shots_values = [int(1e6)]
+    accepted_target_count_values = [1e6]
 
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
 
-    # n_values = [5]
-    # i_values = range(2, (2**n_values[0])+1)
+    n_values = [5]
+    i_values = [8, 21]
+    shots_values = [int(1e6)]
+    accepted_target_count_values = [1e6]
 
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # n_values = [5]
-    # i_values = range(2, (2**n_values[0])+1)
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # n_values = [6]
-    # i_values = range(2, (2**n_values[0])+1)
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # hw_name_values = ["ibm_brisbane"]
-    # n_values = [6]
-    # i_values = range(2, (2**n_values[0])+1)
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-   
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)

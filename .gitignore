@@ -21,6 +21,7 @@ output/STIM/bak/*polar_n*.json
 output/STIM/fixlater/*polar_n*.json
 output/STIM/test_result/*polar_n*.json
 output/STIM/n3/*polar_n*.json
+output/STIM/n3/1m/*polar_n*.json
 output/STIM/n4/*polar_n*.json
 output/STIM/n5/*polar_n*.json
 output/STIM/n6/*polar_n*.json

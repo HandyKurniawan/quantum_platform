@@ -26,6 +26,8 @@ def convert_i_to_meas_type(i, n, lstate = "z"):
 
     return meas_type
 
+
+
 def noisy_cx(sim: stim.TableauSimulator, ctrl: int, targ: int, p: float, error_2q = None, initial_layout = None, cm = None):
     sim.cx(ctrl, targ)
 
@@ -171,6 +173,10 @@ def simulate_stim_one_shot(n, lstate, sim_type, p_error, seed,
     sim = stim.TableauSimulator(seed=seed)
 
     error_detected_this_shot = False
+
+    # initialization error
+    for qb in range(total_qubits):
+        noisy_reset(sim, qb, p_error, error_1q, initial_layout)
 
     for level in range(1, n+1):
 
