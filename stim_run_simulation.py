@@ -175,14 +175,14 @@ if __name__ == "__main__":
 
     # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
 
-    lstate_values = ["z"]
+    lstate_values = ["x","z"]
     sim_type_values = ["normal", "m1"]
     n_values = [4]
-    p_error_values = [0]
-    i_values = [4]
-    # i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(1e3)]
+    p_error_values = [1, 0.1]
+    # i_values = [4, 5]
+    i_values = range(2, (2**n_values[0])+1)
+    shots_values = [int(1e6)]
     hw_name_values = ["ibm_torino"]
-    accepted_target_count_values = [1e3]
+    accepted_target_count_values = [1e6]
 
     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)

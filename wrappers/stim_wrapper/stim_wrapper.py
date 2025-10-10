@@ -22,7 +22,7 @@ def convert_i_to_meas_type(i, n, lstate = "z"):
     n_bit = bit_format.format(zpos)[::-1]
     meas_type = ['x' if char == '0' else 'z' for char in n_bit]
     
-    print(n, lstate, i, n_bit, meas_type)
+    # print(n, lstate, i, n_bit, meas_type)
 
     return meas_type
 
@@ -292,6 +292,8 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots
     seed = 0
     total_real_shot = total_meta_shots
 
+    print(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seeds, meas_type)
+
     if target_accept_count == None:
 
         for shot_idx in range(shots):
@@ -412,7 +414,7 @@ def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots,
     results, total_real_shots = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seed_list, backend=backend, initial_layout=initial_layout,
                                        target_accept_count=target_accept_count)
     
-    print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots + 1, "real shot:", total_real_shots)
+    print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots, "real shot:", total_real_shots)
 
     # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
     # with open(file_path, "a") as f:  # "a" means append mode
