@@ -308,10 +308,12 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots
                 count_detect_discard += 1
                 continue
 
-            bitstrings.append(bit_string)
+            # bitstrings.append(bit_string)
+            # counts.update([bit_string])
+            counts[bit_string] += 1
     else:
 
-        while len(bitstrings) + total_shots < target_accept_count:
+        while sum(counts.values()) + total_shots < target_accept_count:
             total_real_shot+= 1
             seed += 1 
 
@@ -338,9 +340,12 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots
 
             # print(total_real_shot, seed, bit_string)
 
-            bitstrings.append(bit_string)
+            # bitstrings.append(bit_string)
+            # counts.update([bit_string])
+            counts[bit_string] += 1
 
-    counts = collections.Counter(bitstrings)
+    # counts = collections.Counter(bitstrings)
+    
     return counts, total_real_shot
     # return bitstrings
 
