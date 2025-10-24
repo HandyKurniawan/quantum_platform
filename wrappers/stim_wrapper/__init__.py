@@ -9,7 +9,9 @@ from .stim_wrapper import (simulate_stim_polar_code, generate_circuit_extraction
                            calculate_logical_error_result_polar_normal,
                            compile_circuit_qiskit_to_stim,
                            create_circuit_polar_stim_from_qiskit,
-                           simulate_stim_polar_code_normal_from_qiskit_circuit
+                           simulate_stim_polar_code_normal_from_qiskit_circuit,
+                           simulate_batch_and_save_result_polar_qiskit,
+                           calculate_logical_error_result_polar_qiskit,
                            
                            
 )
@@ -36,7 +38,8 @@ __all__ = [
     "calculate_logical_error_result_polar_normal",
     "compile_circuit_qiskit_to_stim",
     "create_circuit_polar_stim_from_qiskit",
-    "simulate_stim_polar_code_normal_from_qiskit_circuit"
-
+    "simulate_stim_polar_code_normal_from_qiskit_circuit",
+    "simulate_batch_and_save_result_polar_qiskit",
+    "calculate_logical_error_result_polar_qiskit",
 
 ]

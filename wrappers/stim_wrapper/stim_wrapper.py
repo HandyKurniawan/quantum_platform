@@ -1274,3 +1274,75 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
             res_bit_string[reordered_string] = 1
 
     return res_bit_string
+
+def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i, shots, seed, backend):
+  
+    results = simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend)
+    
+    print(n, lstate, sim_type, p_error, i, shots)
+
+    file_path = f"./output/STIM/qiskit/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+
+    try:
+        with open(file_path, "r") as f:  
+            loaded_dict = json.load(f)
+            current_counter = collections.Counter(loaded_dict)
+
+    except FileNotFoundError:
+        current_counter = collections.Counter()
+
+    # updating the counter with the new results
+    current_counter.update(results)
+
+    with open(file_path, "w") as f:  
+        json.dump(dict(current_counter), f)
+
+def calculate_logical_error_result_polar_qiskit(n, lstate, i, p_error, sim_type, hw_name):
+    #m1 circuit simplify
+    #m2 m1 + error detection
+
+    meas_type = convert_i_to_meas_type(i, n, lstate)
+
+    file_path = f"./output/STIM/qiskit/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+
+    try:
+        with open(file_path, "r") as f:  # "a" means append mode
+            loaded_dict = json.load(f)
+            current_counter = collections.Counter(loaded_dict)
+            shots_remained = sum(current_counter.values())
+
+    except FileNotFoundError:
+        return None
+    
+    counts = dict(current_counter)
+    total_shots = sum(counts.values())
+
+    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    zpos_list[n] = i - 1
+
+    count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
+        get_logical_error_on_accepted_states(
+            n, lstate.upper(), counts, zpos_list
+        )
+    
+
+    print(n, lstate, i, meas_type, p_error, sim_type, count_accept, total_shots)
+    # Return structured result
+    return {
+        "n": n,
+        "lstate": lstate,
+        "i": i,
+        "meas_type": meas_type,
+        "p_error": p_error,
+        "sim_type": sim_type,
+        "total_meta_shots": 0,
+        "shots": total_shots,
+        "count_accept": count_accept,
+        "count_logerror": count_logerror,
+        "count_undecided": count_undecided,
+        "count_detect_discard": 0,
+        "prep_rate": count_accept / (total_shots - 0),
+        "LER": 1 - ler,
+        "detect_normal": detect_normal,
+        "decoding_normal": decoding_normal,
+    }
