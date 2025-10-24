@@ -594,10 +594,13 @@ def generate_circuit_extraction_syndrome(k, meas_type, x_first = False):
             if x_first:
                 qc.h(d1[idx])
                 qc.cx(d1[idx], d2[idx])
+                # qc.cz(d1[idx], d2[idx])
             else:
                 qc.h(ancillas[idx])
                 qc.cx(ancillas[idx], d1[idx])
                 qc.cx(ancillas[idx], d2[idx])
+                # qc.cz(ancillas[idx], d1[idx])
+                # qc.cz(ancillas[idx], d2[idx])
                 qc.h(ancillas[idx])
                 
                 # qc.measure(ancillas[idx], idx)
@@ -606,6 +609,8 @@ def generate_circuit_extraction_syndrome(k, meas_type, x_first = False):
         elif meas_type.lower() == "z":
             qc.cx(d1[idx], ancillas[idx])
             qc.cx(d2[idx], ancillas[idx])
+            # qc.cz(d1[idx], ancillas[idx])
+            # qc.cz(d2[idx], ancillas[idx])
 
             # qc.measure(ancillas[idx], idx)
             # qc.reset(ancillas[idx])
@@ -653,6 +658,10 @@ def generate_qiskit_polar_code(n, lstate, sim_type, i):
     cbits = ( ancilla_qubits * n ) + N
     qc = QuantumCircuit(total_qubits, cbits)
     error_detected_this_shot = False
+
+    # initialization
+    for i in range(total_qubits):
+        qc.reset(i)
 
     m_idx = 0
     for level in range(1, n+1):
@@ -713,9 +722,301 @@ def compiled_to_qiskit_hardware(qc, backend, optimization_level = 3, seed_transp
     ## change later back to 3
     pm = generate_preset_pass_manager(
         optimization_level=3, backend=backend,
-        seed_transpiler=seed_transpiler
+        seed_transpiler=seed_transpiler,
+        basis_gates=basis_gates
         )
     
     tqc = pm.run(qc)
 
     return tqc
+
+# -------------- STIM with Normal Simulation ------------------
+
+def generate_circuit_extraction_syndrome_stim_normal(circuit: stim.Circuit, k, meas_type, x_first = False, p_error = 0, start_idx_list = [0],
+                                              error_1q = None, error_2q = None, readout_error = None, initial_layout = None, cm=None
+                                              ):
+    
+    num_qbits = (2**k) + (2**(k-1))
+    num_cbits = 2**(k-1)
+    h_1 = []
+    h_2 = []
+    cnot_1 = []
+    cnot_2 = []
+    m = []
+    r = []
+
+    for start_idx in start_idx_list:
+        data_qubits = []
+        ancillas = []
+    
+        for i in range(2**(k-1)):
+            ancillas.append(i * 3 + 2 + start_idx) 
+
+        for i in range(start_idx, num_qbits + start_idx):
+            if i not in ancillas:
+                data_qubits.append(i) 
+
+        d1, d2 = divide_half_list(data_qubits)
+
+        for idx in range(len(d1)):
+
+            if meas_type.lower() == "x":
+
+                if x_first:
+                    h_1.append(d1[idx])
+                    cnot_1.append(d1[idx])
+                    cnot_1.append(d2[idx])
+
+                else:
+                    h_1.append(ancillas[idx])
+                    cnot_1.append(ancillas[idx])
+                    cnot_1.append(d1[idx])
+                    cnot_2.append(ancillas[idx])
+                    cnot_2.append(d2[idx])
+                    h_2.append(ancillas[idx])
+                    m.append(ancillas[idx])
+                    r.append(ancillas[idx])
+
+            elif meas_type.lower() == "z":
+                cnot_1.append(d1[idx])
+                cnot_1.append(ancillas[idx])
+                cnot_2.append(d2[idx])
+                cnot_2.append(ancillas[idx])
+                m.append(ancillas[idx])
+                r.append(ancillas[idx])
+
+    if len(h_1) > 0: 
+        circuit.append("H", h_1)
+
+        if error_1q != None:
+            for idx in h_1:
+                pq_targ = initial_layout[idx]
+                error_rate = error_1q[pq_targ] * p_error
+                circuit.append("X_ERROR", idx, error_rate)    
+        else:
+            circuit.append("X_ERROR", h_1, p_error)
+
+    if len(cnot_1) > 0: 
+        circuit.append("CNOT", cnot_1)
+
+        if error_2q != None:
+            for ctrl, targ in zip(cnot_1[::2], cnot_1[1::2]):
+                # pq = physical qubit
+                pq_ctrl = initial_layout[ctrl]
+                pq_targ = initial_layout[targ]
+
+                path = cm.shortest_undirected_path(pq_ctrl, pq_targ)
+                path_pairs = list(zip(path[:-1], path[1:]))
+
+                fid_total = 1
+                for pair in path_pairs:
+                    fid_total *= (1 - error_2q[pair])
+
+                error_rate = (1 - fid_total) * p_error
+
+                circuit.append("DEPOLARIZE2", [ctrl, targ], error_rate)
+        else:
+            circuit.append("DEPOLARIZE2", cnot_1, p_error)
+
+    
+    if len(cnot_2) > 0: 
+        circuit.append("CNOT", cnot_2)
+
+        if error_2q != None:
+            for ctrl, targ in zip(cnot_2[::2], cnot_2[1::2]):
+                # pq = physical qubit
+                pq_ctrl = initial_layout[ctrl]
+                pq_targ = initial_layout[targ]
+
+                path = cm.shortest_undirected_path(pq_ctrl, pq_targ)
+                path_pairs = list(zip(path[:-1], path[1:]))
+
+                fid_total = 1
+                for pair in path_pairs:
+                    fid_total *= (1 - error_2q[pair])
+
+                error_rate = (1 - fid_total) * p_error
+
+                circuit.append("DEPOLARIZE2", [ctrl, targ], error_rate)
+        else:
+            circuit.append("DEPOLARIZE2", cnot_2, p_error)
+
+    if len(h_2) > 0: 
+        circuit.append("H", h_2)
+
+        if error_1q != None:
+            for idx in h_2:
+                pq_targ = initial_layout[idx]
+                error_rate = error_1q[pq_targ] * p_error
+                circuit.append("X_ERROR", idx, error_rate)    
+        else:
+            circuit.append("X_ERROR", h_2, p_error)
+
+    if len(m) > 0: 
+        if error_1q != None:
+            for idx in m:
+                pq_targ = initial_layout[idx]
+                error_rate = error_1q[pq_targ] * p_error
+                circuit.append("X_ERROR", idx, error_rate)    
+        else:
+            circuit.append("X_ERROR", m, p_error)
+
+        circuit.append("M", m)
+
+    if len(r) > 0: 
+        circuit.append("R", r)
+        if error_1q != None:
+            for idx in r:
+                pq_targ = initial_layout[idx]
+                error_rate = error_1q[pq_targ] * p_error
+                circuit.append("X_ERROR", idx, error_rate)    
+        else:
+            circuit.append("X_ERROR", r, p_error)
+
+def create_circuit_polar_stim_normal(n, lstate, sim_type, p_error, seed, shots, 
+                           error_1q, readout_error, error_2q,
+                           meas_type, total_qubits, x_ind,
+                           cm = None, initial_layout = None
+                            ):
+
+    circuit = stim.Circuit()
+
+    # initialization error
+    r_start = []
+    for i in range(total_qubits):
+        r_start.append(i)
+
+    circuit.append("R", r_start)
+    if error_1q != None:
+        for idx in r_start:
+            pq_targ = initial_layout[idx]
+            error_rate = error_1q[pq_targ] * p_error
+            circuit.append("X_ERROR", idx, error_rate)    
+    else:
+        circuit.append("X_ERROR", r_start, p_error)
+
+    for level in range(1, n+1):
+
+        # print(level, "-", meas_type[level - 1])
+        
+        num_loops = 2**(n - level)
+        start_idx_mult = 2**(level) + 2**(level - 1)
+
+        if sim_type in ["m1", "m2"] and level == x_ind + 1:
+            x_first = True
+        else:
+            x_first = False
+
+        if level <= x_ind:
+            # skip the beginning of zz measurement
+            # print("skip :" , level, x_ind)
+            pass
+        else:
+            
+            start_idx_list = []
+
+            for loop_idx in range(num_loops):
+                start_idx = loop_idx * start_idx_mult
+                start_idx_list.append(start_idx)
+            
+            # print("meas_type:", meas_type, level-1)
+
+            generate_circuit_extraction_syndrome_stim_normal(circuit, level, meas_type[level - 1], x_first, p_error=p_error, start_idx_list=start_idx_list,
+                                                        error_1q=error_1q, error_2q=error_2q, readout_error=readout_error, initial_layout=initial_layout, cm=cm)
+        
+    # Final measurements
+    h_last = []
+    m_last = []
+    for qb_idx in (j for j in range(total_qubits) if j % 3 != 2):
+        if lstate.lower() == "x":
+            h_last.append(qb_idx)
+        m_last.append(qb_idx)
+        
+    circuit.append("H", h_last)
+    if error_1q != None:
+        for idx in h_last:
+            pq_targ = initial_layout[idx]
+            error_rate = error_1q[pq_targ] * p_error
+            circuit.append("X_ERROR", idx, error_rate)    
+    else:
+        circuit.append("X_ERROR", h_last, p_error)
+
+    circuit.append("M", m_last) 
+    if error_1q != None:
+        for idx in m_last:
+            pq_targ = initial_layout[idx]
+            error_rate = error_1q[pq_targ] * p_error
+            circuit.append("X_ERROR", idx, error_rate)    
+    else:
+        circuit.append("X_ERROR", m_last, p_error)
+
+    # circuit = add_stim_error(circuit, p_error)
+    # circuit.diagram("timeline-svg")
+
+    return circuit
+
+def simulate_stim_polar_code_normal(n, lstate, sim_type, i, p_error, shots, seed, backend = None, initial_layout = None):
+    """
+    Simulates a quantum circuit for stabilizer code, simplified and optimized.
+
+    Args:
+        n (int): code length for polar code
+        lstate (str): z for logical |0>, z for logical |+>
+        sim_type: normal, m1, m2, m3
+        p_error (float): The probability of an error occurring.
+        shots (int): The number of simulation runs.
+        seeds (list): A list of seeds for the simulator.
+        i (int): An index used to determine measurement types (message location)
+
+    Returns:
+        dict: A dictionary of measurement outcome counts.
+    """
+    #m1 circuit simplify
+    #m2 m1 + error detection
+    #m3 m1 + error correction
+    
+    if backend != None:
+        t1, t2, error_1q, readout_error, error_2q = get_backend_information(backend)
+        cm = backend.coupling_map
+    else:
+        t1, t2, error_1q, readout_error, error_2q = None, None, None, None, None
+        cm = None
+
+    meas_type = convert_i_to_meas_type(i, n, lstate)
+    N = 2**n
+    ancilla_qubits = 2**(n - 1)
+    total_qubits = N + ancilla_qubits
+
+    x_ind = 0
+    for idx, m_type in enumerate(meas_type):
+        if m_type == "x":
+            x_ind = idx
+            break
+
+    circuit = create_circuit_polar_stim_normal(n, lstate, sim_type, p_error, seed, shots, 
+                           error_1q, readout_error, error_2q,
+                           meas_type, total_qubits, x_ind,
+                           cm = cm, initial_layout = initial_layout
+                            )
+    
+    sampler = circuit.compile_sampler(seed=seed)
+    results = sampler.sample(shots=int(shots) )
+
+    counts = {}
+    for res in results:
+        bit_string = ""
+        for i in res:
+            if i:
+                bit_string = "1" + bit_string 
+            else:
+                bit_string = "0" + bit_string
+
+        if sim_type in ["m1", "m2"]:
+            bit_string = bit_string + "0"*(2**(n - 1))
+
+        if bit_string in counts:
+            counts[bit_string] = counts[bit_string] + 1
+        else:
+            counts[bit_string] = 1   
+    
+    return counts
