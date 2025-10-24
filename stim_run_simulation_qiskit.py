@@ -62,7 +62,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 
 
 
-    max_workers = 1  # Adjust to your CPU
+    max_workers = 10  # Adjust to your CPU
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(run_simulation, param_grid))
 
@@ -70,24 +70,25 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 
     for hw_name in hw_name_values:
         for sim_type in sim_type_values:
+            for p_error in p_error_values:
 
-            param_grid = list(itertools.product(
-                n_values,
-                lstate_values,
-                i_values,
-                p_error_values,
-                [sim_type],
-                hw_name_values
-            ))
+                param_grid = list(itertools.product(
+                    n_values,
+                    lstate_values,
+                    i_values,
+                    [p_error],
+                    [sim_type],
+                    hw_name_values
+                ))
 
-            results = []
-            with ProcessPoolExecutor(max_workers=1) as executor:
-                for res in executor.map(wrapper, param_grid):
-                    if res is not None:
-                        results.append(res)
+                results = []
+                with ProcessPoolExecutor(max_workers=10) as executor:
+                    for res in executor.map(wrapper, param_grid):
+                        if res is not None:
+                            results.append(res)
 
-            save_results_to_csv(results, filename=f"./output/STIM/qiskit/{hw_name}_polar_results_json_qiskit.csv")
-            print(f"✅ Results saved to polar_results_json_qiskit.csv")
+                save_results_to_csv(results, filename=f"./output/STIM/qiskit/{hw_name}_polar_results_json_qiskit.csv")
+                print(f"✅ Results saved to polar_results_json_qiskit.csv")
 # -----------------------------
 # Parallel execution
 # -----------------------------
@@ -98,43 +99,42 @@ if __name__ == "__main__":
     sim_type_values = ["normal", "m1"]
     n_values = [3]
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    p_error_values = [1]
+    p_error_values = [1, 0.1, 0.5, 0.05, 0.01]
     # i_values = [4, 5]
     i_values = range(2, (2**n_values[0]))
-    shots_values = [int(1e5)]
+    shots_values = [int(1e7)]
     hw_name_values = ["ibm_torino"]
+
+    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
+
+    lstate_values = ["x"]
+    n_values = [4]
+    p_error_values = [1, 0.1, 0.5, 0.05, 0.01]
+    i_values = range(2, (2**n_values[0]))
+    shots_values = [int(1e7)]
+
+    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
+
+    lstate_values = ["z"]
+    n_values = [4]
+    p_error_values = [1, 0.1, 0.5, 0.05, 0.01]
+    i_values = range(2, (2**n_values[0]))
+    shots_values = [int(1e7)]
 
     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    # n_values = [4]
-    # i_values = [4, 6, 7, 13]
-    # shots_values = [int(2e6)]
-    # accepted_target_count_values = [int(2e6)]
+    lstate_values = ["x"]
+    n_values = [5]
+    p_error_values = [1]
+    i_values = range(2, (2**n_values[0]))
+    shots_values = [int(1e6)]
 
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    # n_values = [5]
-    # i_values = [8, 21]
-    # shots_values = [int(5e6)]
-    # accepted_target_count_values = [int(5e6)]
+    lstate_values = ["z"]
+    n_values = [5]
+    p_error_values = [1]
+    i_values = range(2, (2**n_values[0]))
+    shots_values = [int(1e6)]
 
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # n_values = [6]
-    # i_values = [8, 25]
-    # shots_values = [int(1e6)]
-    # accepted_target_count_values = [1e6]
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # lstate_values = ["x","z"]
-    # sim_type_values = ["normal", "m1"]
-    # n_values = [4]
-    # p_error_values = [1, 0.1]
-    # # i_values = [4, 5]
-    # i_values = range(2, (2**n_values[0])+1)
-    # shots_values = [int(1e6)]
-    # hw_name_values = ["ibm_torino"]
-    # accepted_target_count_values = [int(1e6)]
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
