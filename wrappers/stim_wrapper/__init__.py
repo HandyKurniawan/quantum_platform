@@ -4,7 +4,12 @@ from .stim_wrapper import (simulate_stim_polar_code, generate_circuit_extraction
                            generate_qiskit_polar_code, compiled_to_qiskit_hardware, get_backend_information,
                            generate_circuit_extraction_syndrome_stim_normal, 
                            create_circuit_polar_stim_normal,
-                           simulate_stim_polar_code_normal
+                           simulate_stim_polar_code_normal,
+                           simulate_batch_and_save_result_polar_normal,
+                           calculate_logical_error_result_polar_normal,
+                           compile_circuit_qiskit_to_stim,
+                           create_circuit_polar_stim_from_qiskit,
+                           simulate_stim_polar_code_normal_from_qiskit_circuit
                            
                            
 )
@@ -26,6 +31,12 @@ __all__ = [
     "get_backend_information",
     "generate_circuit_extraction_syndrome_stim_normal",
     "create_circuit_polar_stim_normal",
-    "simulate_stim_polar_code_normal"
+    "simulate_stim_polar_code_normal",
+    "simulate_batch_and_save_result_polar_normal",
+    "calculate_logical_error_result_polar_normal",
+    "compile_circuit_qiskit_to_stim",
+    "create_circuit_polar_stim_from_qiskit",
+    "simulate_stim_polar_code_normal_from_qiskit_circuit"
+
 
 ]

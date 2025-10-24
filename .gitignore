@@ -28,6 +28,24 @@ output/STIM/n6/*polar_n*.json
 output/STIM/n7/*polar_n*.json
 output/STIM/n8/*polar_n*.json
 
+output/STIM/normal/n3/*polar_n*.json
+output/STIM/normal/n3/1m/*polar_n*.json
+output/STIM/normal/n4/*polar_n*.json
+output/STIM/normal/n5/*polar_n*.json
+output/STIM/normal/n6/*polar_n*.json
+output/STIM/normal/n7/*polar_n*.json
+output/STIM/normal/n8/*polar_n*.json
+
+output/STIM/qiskit/n3/*polar_n*.json
+output/STIM/qiskit/n3/1m/*polar_n*.json
+output/STIM/qiskit/n4/*polar_n*.json
+output/STIM/qiskit/n5/*polar_n*.json
+output/STIM/qiskit/n6/*polar_n*.json
+output/STIM/qiskit/n7/*polar_n*.json
+output/STIM/qiskit/n8/*polar_n*.json
+
+output/STIM/*.png
+
 
 # C extensions
 *.so
