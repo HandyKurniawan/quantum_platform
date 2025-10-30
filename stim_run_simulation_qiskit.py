@@ -103,8 +103,8 @@ if __name__ == "__main__":
     # i_values = [4, 5]
     i_values = range(2, (2**n_values[0]))
     shots_values = [int(1e7)]
-    # hw_name_values = ["ibm_brisbane"]
-    hw_name_values = ["ibm_torino"]
+    hw_name_values = ["ibm_brisbane"]
+    # hw_name_values = ["ibm_torino"]
 
     # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
@@ -132,10 +132,10 @@ if __name__ == "__main__":
 
     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    lstate_values = ["z"]
-    n_values = [5]
-    p_error_values = [1, 0.1, 0.01]
-    i_values = [16, 24, 28, 31]
-    shots_values = [int(5e6)]
+    # lstate_values = ["z"]
+    # n_values = [5]
+    # p_error_values = [1, 0.1, 0.01]
+    # i_values = [16, 24, 28, 31]
+    # shots_values = [int(5e6)]
 
-    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
+    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
