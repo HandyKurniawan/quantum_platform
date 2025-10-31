@@ -92,7 +92,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
                 save_results_to_csv(results, filename=f"./output/STIM/qiskit/{hw_name}_polar_results_json_qiskit_{seed_values[0]}.csv")
                 print(f"✅ Results saved to polar_results_json_qiskit.csv")
 
-    find_and_delete_files(f"./output/STIM/normal/n{n_values[0]}/*{seed_values[0]}.json")
+    find_and_delete_files(f"./output/STIM/qiskit/n{n_values[0]}/*{seed_values[0]}.json")
 # -----------------------------
 # Parallel execution
 # -----------------------------
