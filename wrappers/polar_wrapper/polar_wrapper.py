@@ -5,6 +5,11 @@ from . import __polarcodec as codec
 from .__qpolarprep import q1prep as q1prep
 import time
 from qiskit import QuantumCircuit
+import pandas as pd
+import glob
+import numpy as np
+import sys
+import os
 
 def get_q1prep_accepted_states(n, lstate, results):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
@@ -157,32 +162,35 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
     count_logerror = 0 
     count_undecided = 0
 
-    # This is repeating just for calculating the detection time
-    tmp_start_time  = time.perf_counter()
-    for line, meas_counts in results.items():
-        # print(line)
-        # remove spaces at beginning and end of line
-        mstr = line.strip()
+    # to save the decoding time, this should be remarked
+    # # This is repeating just for calculating the detection time
+    # tmp_start_time  = time.perf_counter()
+    # for line, meas_counts in results.items():
+    #     # print(line)
+    #     # remove spaces at beginning and end of line
+    #     mstr = line.strip()
 
-        # init the measurement results array -- of length len(mstr)
-        meas = np.zeros((len(mstr),), dtype=int) 
+    #     # init the measurement results array -- of length len(mstr)
+    #     meas = np.zeros((len(mstr),), dtype=int) 
 
-        # convert from string to np array
-        for i in range(0, len(mstr)):
-            meas[i] = ord(mstr[i]) - ord('0')	
-            if meas[i] != 0 and meas[i] != 1:
-                raise TypeError("Illegal measurement result: must be 0 or 1")
+    #     # convert from string to np array
+    #     for i in range(0, len(mstr)):
+    #         meas[i] = ord(mstr[i]) - ord('0')	
+    #         if meas[i] != 0 and meas[i] != 1:
+    #             raise TypeError("Illegal measurement result: must be 0 or 1")
 
 
-        # check if 'meas' are valid measurement results
-        success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
-        if success == 1:
-            pass
-        else:
-            pass
+    #     # check if 'meas' are valid measurement results
+    #     success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
+    #     if success == 1:
+    #         pass
+    #     else:
+    #         pass
 
-    tmp_end_time = time.perf_counter()
-    detection_time = tmp_end_time - tmp_start_time
+    # tmp_end_time = time.perf_counter()
+    # detection_time = tmp_end_time - tmp_start_time
+
+    detection_time = 0
 
     total_shots = sum(results.values())
 
@@ -572,4 +580,6 @@ def polar_code_p2(n, meas_data=False, base="z", add_barrier=False):
             m.pop(0)
 
     return qc
+
+
 

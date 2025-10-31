@@ -1,7 +1,7 @@
 import stim
 # import random
 # import csv
-# import pandas as pd
+import pandas as pd
 import collections
 import os
 from wrappers.polar_wrapper import (divide_half_list, get_logical_error_on_accepted_states, get_q1prep_sr)
@@ -10,6 +10,10 @@ import json
 from qiskit import QuantumCircuit
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit.converters import circuit_to_dag, dag_to_circuit  
+
+import glob
+import sys
+import numpy as np
 
 def convert_i_to_meas_type(i, n, lstate = "z"):
     bit_format = "0:0{}b".format(n)
@@ -1056,7 +1060,7 @@ def simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i,
     # with open(file_path, "a") as f:  # "a" means append mode
     #     f.write("\n".join(results) + "\n")
 
-    file_path = f"./output/STIM/normal/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+    file_path = f"./output/STIM/normal/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
 
     try:
         with open(file_path, "r") as f:  # "a" means append mode
@@ -1072,10 +1076,10 @@ def simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i,
     with open(file_path, "w") as f:  # "a" means append mode
         json.dump(dict(current_counter), f)
 
-def calculate_logical_error_result_polar_normal(n, lstate, i, p_error, sim_type):
+def calculate_logical_error_result_polar_normal(n, lstate, i, p_error, sim_type, seed):
     meas_type = convert_i_to_meas_type(i, n, lstate)
 
-    file_path = f"./output/STIM/normal/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"    
+    file_path = f"./output/STIM/normal/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"    
          
     try:
         with open(file_path, "r") as f:  # "a" means append mode
@@ -1281,7 +1285,7 @@ def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i,
     
     print(n, lstate, sim_type, p_error, i, shots)
 
-    file_path = f"./output/STIM/qiskit/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+    file_path = f"./output/STIM/qiskit/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
 
     try:
         with open(file_path, "r") as f:  
@@ -1297,13 +1301,13 @@ def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i,
     with open(file_path, "w") as f:  
         json.dump(dict(current_counter), f)
 
-def calculate_logical_error_result_polar_qiskit(n, lstate, i, p_error, sim_type, hw_name):
+def calculate_logical_error_result_polar_qiskit(n, lstate, i, p_error, sim_type, hw_name, seed):
     #m1 circuit simplify
     #m2 m1 + error detection
 
     meas_type = convert_i_to_meas_type(i, n, lstate)
 
-    file_path = f"./output/STIM/qiskit/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.json"
+    file_path = f"./output/STIM/qiskit/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
 
     try:
         with open(file_path, "r") as f:  # "a" means append mode
@@ -1346,3 +1350,151 @@ def calculate_logical_error_result_polar_qiskit(n, lstate, i, p_error, sim_type,
         "detect_normal": detect_normal,
         "decoding_normal": decoding_normal,
     }
+
+def combine_data(file_pattern, output_filename):
+    """
+    Finds, combines, and aggregates CSV files based on specified keys.
+    """
+    print(f"Looking for files matching: {file_pattern}")
+    
+    # 1. Find all files matching the pattern
+    all_files = glob.glob(file_pattern)
+    
+    # Exclude the output file itself if it matches the pattern
+    if output_filename in all_files:
+        all_files.remove(output_filename)
+
+    if not all_files:
+        print("Error: No files found to combine. Check your FILE_PATTERN.")
+        sys.exit()
+
+    print(f"Found {len(all_files)} files. Reading and concatenating...")
+
+    # 2. Load all files into a list of DataFrames
+    df_list = []
+    for f in all_files:
+        try:
+            df_list.append(pd.read_csv(f))
+        except Exception as e:
+            print(f"Warning: Could not read {f}. Error: {e}")
+
+    if not df_list:
+        print("Error: No files were successfully read.")
+        sys.exit()
+
+    # 3. Combine all DataFrames into one
+    full_df = pd.concat(df_list, ignore_index=True)
+    print("All files concatenated.")
+
+    # 4. Define grouping keys and columns for aggregation
+    grouping_keys = ['n', 'lstate', 'i', 'meas_type', 'p_error', 'sim_type']
+    
+    # These columns represent raw counts and should be SUMMED
+    count_columns = [
+        'total_meta_shots',
+        'shots',
+        'count_accept',
+        'count_logerror',
+        'count_undecided',
+        'count_detect_discard',
+        'detect_normal',
+        'decoding_normal'
+    ]
+    
+    # These columns are rates. We will calculate the MEAN for those
+    # whose formula isn't obvious.
+    rate_columns = [
+        'LER',
+    ]
+
+    # Filter lists to only include columns that actually exist in the DataFrame
+    present_keys = [col for col in grouping_keys if col in full_df.columns]
+    present_counts = [col for col in count_columns if col in full_df.columns]
+    present_rates = [col for col in rate_columns if col in full_df.columns]
+
+    print(f"Grouping by: {present_keys}")
+
+    # 5. Perform the aggregation
+    
+    # First, aggregate counts using sum()
+    agg_df_counts = full_df.groupby(present_keys)[present_counts].sum()
+    
+    # Second, aggregate unknown rates using mean()
+    agg_df_rates = full_df.groupby(present_keys)[present_rates].mean()
+    
+    # Join the two aggregated DataFrames back together
+    agg_df = agg_df_counts.join(agg_df_rates).reset_index()
+
+    # 6. Recalculate rates based on the new sums
+    # From your example, prep_rate = count_accept / shots
+    # We use np.where for safe division (avoids dividing by zero)
+    
+    if 'count_accept' in agg_df.columns and 'shots' in agg_df.columns:
+        print("Recalculating 'prep_rate'...")
+        agg_df['prep_rate'] = np.where(
+            agg_df['shots'] > 0,              # Condition
+            agg_df['count_accept'] / agg_df['shots'], # If true
+            0                                 # If false
+        )
+    
+    # Re-order columns to match the original input format
+    original_order = [
+        'n','lstate','i','meas_type','p_error','sim_type',
+        'total_meta_shots','shots','count_accept','count_logerror',
+        'count_undecided','count_detect_discard','prep_rate','LER',
+        'detect_normal','decoding_normal'
+    ]
+    
+    final_columns = [col for col in original_order if col in agg_df.columns]
+    agg_df = agg_df[final_columns]
+
+    # 7. Save the final DataFrame to a new CSV
+    try:
+        agg_df.to_csv(output_filename, index=False)
+        print(f"\nSuccess! Combined data saved to: {output_filename}")
+        
+        # print("\n--- Head of new combined DataFrame ---")
+        # print(agg_df.head())
+        # print("--------------------------------------")
+
+    except Exception as e:
+        print(f"Error saving file: {e}")
+
+def find_and_delete_files(pattern):
+    """
+    Finds files matching a pattern, asks for confirmation,
+    and then deletes them.
+    """
+    print(f"Searching for files matching pattern: {pattern}\n")
+    
+    # 1. Find all files matching the pattern
+    files_to_delete = glob.glob(pattern)
+    
+    if not files_to_delete:
+        print("No files found matching that key. Exiting.")
+        sys.exit()
+
+    # # 2. List all files found and ask for confirmation
+    # print("--- Files Found for Deletion ---")
+    # for f in files_to_delete:
+    #     # print(f)
+    # print("----------------------------------")
+    
+    print("Deleting files...")
+    deleted_count = 0
+    error_count = 0
+    
+    for f in files_to_delete:
+        try:
+            os.remove(f)
+            # print(f"Deleted: {f}")
+            deleted_count += 1
+        except OSError as e:
+            print(f"Error deleting {f}: {e}")
+            error_count += 1
+            
+    print(f"\nOperation complete. {deleted_count} file(s) deleted.")
+    if error_count > 0:
+        print(f"{error_count} file(s) could not be deleted.")
+            
+   

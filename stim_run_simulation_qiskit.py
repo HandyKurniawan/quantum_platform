@@ -8,7 +8,8 @@ from wrappers.polar_wrapper import (
 from wrappers.stim_wrapper import (
     calculate_logical_error_result_polar_qiskit,
     simulate_batch_and_save_result_polar_qiskit,
-    generate_qiskit_polar_code, compiled_to_qiskit_hardware
+    generate_qiskit_polar_code, compiled_to_qiskit_hardware,
+    find_and_delete_files
 )
 
 import pandas as pd
@@ -78,7 +79,8 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
                     i_values,
                     [p_error],
                     [sim_type],
-                    hw_name_values
+                    hw_name_values,
+                    seed_values,
                 ))
 
                 results = []
@@ -87,8 +89,10 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
                         if res is not None:
                             results.append(res)
 
-                save_results_to_csv(results, filename=f"./output/STIM/qiskit/{hw_name}_polar_results_json_qiskit.csv")
+                save_results_to_csv(results, filename=f"./output/STIM/qiskit/{hw_name}_polar_results_json_qiskit_{seed_values[0]}.csv")
                 print(f"✅ Results saved to polar_results_json_qiskit.csv")
+
+    find_and_delete_files(f"./output/STIM/normal/n{n_values[0]}/*{seed_values[0]}.json")
 # -----------------------------
 # Parallel execution
 # -----------------------------
@@ -102,11 +106,11 @@ if __name__ == "__main__":
     p_error_values = [1, 0.1, 0.5, 0.05, 0.01]
     # i_values = [4, 5]
     i_values = range(2, (2**n_values[0]))
-    shots_values = [int(1e7)]
+    shots_values = [int(1e3)]
     hw_name_values = ["ibm_brisbane"]
     # hw_name_values = ["ibm_torino"]
 
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
+    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
     # lstate_values = ["x"]
     # n_values = [4]
@@ -124,13 +128,13 @@ if __name__ == "__main__":
 
     # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
-    lstate_values = ["x"]
-    n_values = [5]
-    p_error_values = [1, 0.1, 0.01]
-    i_values = [2, 5, 6, 7, 9, 13, 17]
-    shots_values = [int(5e6)]
+    # lstate_values = ["x"]
+    # n_values = [5]
+    # p_error_values = [1, 0.1, 0.01]
+    # i_values = [2, 5, 6, 7, 9, 13, 17]
+    # shots_values = [int(5e6)]
 
-    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
+    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values)
 
     # lstate_values = ["z"]
     # n_values = [5]

@@ -8,11 +8,14 @@ from wrappers.polar_wrapper import (
 from wrappers.stim_wrapper import (
     calculate_logical_error_result_polar_normal,
     simulate_batch_and_save_result_polar_normal,
-    generate_qiskit_polar_code, compiled_to_qiskit_hardware
+    generate_qiskit_polar_code, compiled_to_qiskit_hardware,
+    find_and_delete_files
 )
 
 import pandas as pd
 import os
+import glob
+import sys
 
 from qiskit_ibm_runtime import QiskitRuntimeService
 
@@ -96,7 +99,8 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
                 lstate_values,
                 i_values,
                 [p_error],
-                [sim_type]
+                [sim_type],
+                seed_values,
             ))
 
             results = []
@@ -105,8 +109,10 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
                     if res is not None:
                         results.append(res)
 
-            save_results_to_csv(results, filename=f"./output/STIM/normal/polar_results_json_normal.csv")
+            save_results_to_csv(results, filename=f"./output/STIM/normal/polar_results_json_normal_{seed_values[0]}.csv")
             print(f"✅ Results saved to polar_results_json_normal.csv")
+
+    find_and_delete_files(f"./output/STIM/normal/n{n_values[0]}/*{seed_values[0]}.json")
 # -----------------------------
 # Parallel execution
 # -----------------------------
@@ -115,12 +121,12 @@ if __name__ == "__main__":
 
     lstate_values = ["x", "z"]
     sim_type_values = ["normal", "m1"]
-    n_values = [5]
+    n_values = [3]
     p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
     # p_error_values = [0.01]
     # i_values = [4, 5]
     i_values = range(2, (2**n_values[0]))
-    shots_values = [int(1e7)]
+    shots_values = [int(1e3)]
 
     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
 
