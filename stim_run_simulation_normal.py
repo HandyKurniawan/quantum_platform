@@ -85,32 +85,34 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         seed_values,
     ))
 
-    max_workers = 1  # Adjust to your CPU
+    max_workers = 6  # Adjust to your CPU
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(run_simulation, param_grid))
 
     print("✅ All simulations finished!")
 
-    for sim_type in sim_type_values:
-        for p_error in p_error_values:
+    # for sim_type in sim_type_values:
+    #     for p_error in p_error_values:
 
-            param_grid = list(itertools.product(
-                n_values,
-                lstate_values,
-                i_values,
-                [p_error],
-                [sim_type],
-                seed_values,
-            ))
+    param_grid = list(itertools.product(
+        n_values,
+        lstate_values,
+        i_values,
+        # [p_error],
+        p_error_values,
+        # [sim_type],
+        sim_type_values,
+        seed_values,
+    ))
 
-            results = []
-            with ProcessPoolExecutor(max_workers=1) as executor:
-                for res in executor.map(wrapper, param_grid):
-                    if res is not None:
-                        results.append(res)
+    results = []
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        for res in executor.map(wrapper, param_grid):
+            if res is not None:
+                results.append(res)
 
-            save_results_to_csv(results, filename=f"./output/STIM/normal/polar_results_json_normal_{seed_values[0]}.csv")
-            print(f"✅ Results saved to polar_results_json_normal.csv")
+    save_results_to_csv(results, filename=f"./output/STIM/normal/polar_results_json_normal_{seed_values[0]}.csv")
+    print(f"✅ Results saved to polar_results_json_normal.csv")
 
     find_and_delete_files(f"./output/STIM/normal/n{n_values[0]}/*{seed_values[0]}.json")
 # -----------------------------
@@ -118,16 +120,23 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 # -----------------------------
 if __name__ == "__main__":
     pass
-
-    lstate_values = ["x", "z"]
-    sim_type_values = ["normal", "m1"]
-    n_values = [3]
-    p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    # p_error_values = [0.01]
-    # i_values = [4, 5]
-    i_values = range(2, (2**n_values[0]))
-    shots_values = [int(1e3)]
-
-    run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
-
     
+    for i in range(20):
+        lstate_values = ["x"]
+        sim_type_values = ["normal", "m1"]
+        n_values = [4]
+        p_error_values = [0.005]
+        i_values = [2, 3, 5]
+        shots_values = [int(2e6)]
+
+        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
+
+    for i in range(40):
+        lstate_values = ["x"]
+        sim_type_values = ["normal", "m1"]
+        n_values = [4]
+        p_error_values = [0.001]
+        i_values = [2, 3, 5]
+        shots_values = [int(2e6)]
+
+        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
