@@ -967,7 +967,6 @@ def create_circuit_polar_stim_normal(n, lstate, sim_type, p_error, seed, shots,
     else:
         circuit.append("X_ERROR", h_last, p_error)
 
-    circuit.append("M", m_last) 
     if error_1q != None:
         for idx in m_last:
             pq_targ = initial_layout[idx]
@@ -975,6 +974,8 @@ def create_circuit_polar_stim_normal(n, lstate, sim_type, p_error, seed, shots,
             circuit.append("X_ERROR", idx, error_rate)    
     else:
         circuit.append("X_ERROR", m_last, p_error)
+    circuit.append("M", m_last) 
+    
 
     # circuit = add_stim_error(circuit, p_error)
     # circuit.diagram("timeline-svg")
