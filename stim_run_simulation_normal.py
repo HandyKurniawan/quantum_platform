@@ -131,42 +131,54 @@ if __name__ == "__main__":
 
     #     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
 
-    for i in range(30):
-        lstate_values = ["z"]
-        sim_type_values = ["normal", "m1"]
-        n_values = [4]
-        p_error_values = [0.05]
-        i_values = [12, 14, 15]
-        shots_values = [int(2e6)]
-
-        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
-
-    # for i in range(30):
+    # for i in range(50):
     #     lstate_values = ["z"]
     #     sim_type_values = ["normal", "m1"]
     #     n_values = [4]
-    #     p_error_values = [0.05]
-    #     i_values = [14, 15]
+    #     p_error_values = [0.005]
+    #     i_values = [12, 14, 15]
     #     shots_values = [int(2e6)]
 
     #     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
 
     # for i in range(50):
-    #     lstate_values = ["x"]
+    #     lstate_values = ["z"]
     #     sim_type_values = ["normal", "m1"]
     #     n_values = [4]
-    #     p_error_values = [0.005]
-    #     i_values = [2, 3, 5]
-    #     shots_values = [int(5e6)]
+    #     p_error_values = [0.001]
+    #     i_values = [8, 12, 14, 15]
+    #     shots_values = [int(2e6)]
 
     #     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
 
-    # for i in range(10):
+    for i in range(100):
+        lstate_values = ["x"]
+        sim_type_values = ["normal", "m1"]
+        n_values = [5]
+        p_error_values = [0.01]
+        i_values = [2, 3, 5, 9, 17]
+        shots_values = [int(1e6)]
+
+        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
+
+    for i in range(100):
+        lstate_values = ["x"]
+        sim_type_values = ["normal", "m1"]
+        n_values = [5]
+        p_error_values = [0.005]
+        i_values = [2, 3, 5, 9, 17]
+        shots_values = [int(1e6)]
+
+        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
+
+    # for i in range(50):
     #     lstate_values = ["x"]
     #     sim_type_values = ["normal", "m1"]
     #     n_values = [4]
     #     p_error_values = [0.001]
-    #     i_values = [2, 3, 5]
-    #     shots_values = [int(5e6)]
+    #     i_values = [2, 3, 5, 9, 17]
+    #     shots_values = [int(1e6)]
 
     #     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
+
+    

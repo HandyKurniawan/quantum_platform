@@ -622,7 +622,7 @@ def generate_circuit_extraction_syndrome(k, meas_type, x_first = False):
     
     return qc
 
-def generate_qiskit_polar_code(n, lstate, sim_type, i):
+def generate_qiskit_polar_code(n, lstate, sim_type, i, skip_reset=False):
     """
     Simulates a quantum circuit for stabilizer code, simplified and optimized.
 
@@ -664,9 +664,10 @@ def generate_qiskit_polar_code(n, lstate, sim_type, i):
     qc = QuantumCircuit(total_qubits, cbits)
     error_detected_this_shot = False
 
-    # initialization
-    for i in range(total_qubits):
-        qc.reset(i)
+    if not skip_reset:
+        # initialization
+        for i in range(total_qubits):
+            qc.reset(i)
 
     m_idx = 0
     for level in range(1, n+1):
