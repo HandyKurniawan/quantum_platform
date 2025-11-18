@@ -563,7 +563,8 @@ def get_backend_information(backend):
         gate_error_x[i] = properties.gate_error(gate="x", qubits=i)
         readout_error[i] = properties.readout_error(i)
 
-    if backend.name == "ibm_torino":
+    # if backend.name == "ibm_torino":
+    if backend.name in (["ibm_fez", "ibm_marrakesh", "ibm_torino"]):
         for pair in coupling_map:
             gate_error_cz[pair] = properties.gate_error(gate="cz", qubits=pair)
     elif backend.name == "ibm_brisbane":
@@ -1056,27 +1057,67 @@ def simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i,
 
     results = simulate_stim_polar_code_normal(n, lstate, sim_type, i, p_error, shots, seed)
     
-    print(n, lstate, sim_type, p_error, i, shots)
+    # print(n, lstate, sim_type, p_error, i, shots)
 
     # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
     # with open(file_path, "a") as f:  # "a" means append mode
     #     f.write("\n".join(results) + "\n")
 
-    file_path = f"./output/STIM/normal/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
+    # file_path = f"./output/STIM/normal/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
 
-    try:
-        with open(file_path, "r") as f:  # "a" means append mode
-            loaded_dict = json.load(f)
-            current_counter = collections.Counter(loaded_dict)
+    # try:
+    #     with open(file_path, "r") as f:  # "a" means append mode
+    #         loaded_dict = json.load(f)
+    #         current_counter = collections.Counter(loaded_dict)
 
-    except FileNotFoundError:
-        current_counter = collections.Counter()
+    # except FileNotFoundError:
+    #     current_counter = collections.Counter()
 
     # updating the counter with the new results
+    current_counter = collections.Counter()
     current_counter.update(results)
 
-    with open(file_path, "w") as f:  # "a" means append mode
-        json.dump(dict(current_counter), f)
+    # skip the save and directly just write the result
+    # with open(file_path, "w") as f:  # "a" means append mode
+    #     json.dump(dict(current_counter), f)
+
+    # return current_counter
+
+    # this is for decoding the result
+    meas_type = convert_i_to_meas_type(i, n, lstate)
+   
+    counts = dict(current_counter)
+    total_shots = sum(counts.values())
+
+    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    zpos_list[n] = i - 1
+
+    count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
+        get_logical_error_on_accepted_states(
+            n, lstate.upper(), counts, zpos_list
+        )
+
+    # print(n, lstate, i, p_error, sim_type, count_accept)
+    # Return structured result
+    return {
+        "n": n,
+        "lstate": lstate,
+        "i": i,
+        "meas_type": meas_type,
+        "p_error": p_error,
+        "sim_type": sim_type,
+        "total_meta_shots": 0,
+        "shots": total_shots,
+        "count_accept": count_accept,
+        "count_logerror": count_logerror,
+        "count_undecided": count_undecided,
+        "count_detect_discard": 0,
+        "prep_rate": count_accept / (total_shots - 0),
+        "LER": 1 - ler,
+        "detect_normal": detect_normal,
+        "decoding_normal": decoding_normal,
+    }
+
 
 def calculate_logical_error_result_polar_normal(n, lstate, i, p_error, sim_type, seed):
     meas_type = convert_i_to_meas_type(i, n, lstate)
@@ -1103,7 +1144,7 @@ def calculate_logical_error_result_polar_normal(n, lstate, i, p_error, sim_type,
             n, lstate.upper(), counts, zpos_list
         )
 
-    print(n, lstate, i, p_error, sim_type, count_accept)
+    # print(n, lstate, i, p_error, sim_type, count_accept)
     # Return structured result
     return {
         "n": n,
@@ -1285,23 +1326,73 @@ def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i,
   
     results = simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend)
     
-    print(n, lstate, sim_type, p_error, i, shots)
+    # print(n, lstate, sim_type, p_error, i, shots)
 
-    file_path = f"./output/STIM/qiskit/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
+    # file_path = f"./output/STIM/qiskit/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
 
-    try:
-        with open(file_path, "r") as f:  
-            loaded_dict = json.load(f)
-            current_counter = collections.Counter(loaded_dict)
+    # try:
+    #     with open(file_path, "r") as f:  
+    #         loaded_dict = json.load(f)
+    #         current_counter = collections.Counter(loaded_dict)
 
-    except FileNotFoundError:
-        current_counter = collections.Counter()
+    # except FileNotFoundError:
+    #     current_counter = collections.Counter()
 
+    current_counter = collections.Counter()
     # updating the counter with the new results
     current_counter.update(results)
 
-    with open(file_path, "w") as f:  
-        json.dump(dict(current_counter), f)
+    # with open(file_path, "w") as f:  
+    #     json.dump(dict(current_counter), f)
+
+    # hw_name = backend.name
+    meas_type = convert_i_to_meas_type(i, n, lstate)
+
+    # file_path = f"./output/STIM/qiskit/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
+
+    # try:
+    #     with open(file_path, "r") as f:  # "a" means append mode
+    #         loaded_dict = json.load(f)
+    #         current_counter = collections.Counter(loaded_dict)
+    #         shots_remained = sum(current_counter.values())
+
+    # except FileNotFoundError:
+    #     return None
+    
+    counts = dict(current_counter)
+    total_shots = sum(counts.values())
+
+    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    zpos_list[n] = i - 1
+
+    count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
+        get_logical_error_on_accepted_states(
+            n, lstate.upper(), counts, zpos_list
+        )
+    
+
+    # print(n, lstate, i, meas_type, p_error, sim_type, count_accept, total_shots)
+    # Return structured result
+    return {
+        "n": n,
+        "lstate": lstate,
+        "i": i,
+        "meas_type": meas_type,
+        "p_error": p_error,
+        "sim_type": sim_type,
+        "total_meta_shots": 0,
+        "shots": total_shots,
+        "count_accept": count_accept,
+        "count_logerror": count_logerror,
+        "count_undecided": count_undecided,
+        "count_detect_discard": 0,
+        "prep_rate": count_accept / (total_shots - 0),
+        "LER": 1 - ler,
+        "detect_normal": detect_normal,
+        "decoding_normal": decoding_normal,
+    }
+
+
 
 def calculate_logical_error_result_polar_qiskit(n, lstate, i, p_error, sim_type, hw_name, seed):
     #m1 circuit simplify
