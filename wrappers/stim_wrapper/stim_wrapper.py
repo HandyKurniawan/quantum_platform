@@ -1346,7 +1346,7 @@ def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i,
     #     json.dump(dict(current_counter), f)
 
     # hw_name = backend.name
-    meas_type = convert_i_to_meas_type(i, n, lstate)
+    meas_type = convert_i_to_meas_type(i, n, lstate.lower())
 
     # file_path = f"./output/STIM/qiskit/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
 
@@ -1370,6 +1370,11 @@ def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i,
             n, lstate.upper(), counts, zpos_list
         )
     
+    # print(str(meas_type))
+    # delimiter_space = ","
+    # meas_type = delimiter_space.join(meas_type)
+    meas_type = str(meas_type)
+    # print(meas_type)
 
     # print(n, lstate, i, meas_type, p_error, sim_type, count_accept, total_shots)
     # Return structured result

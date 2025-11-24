@@ -21,7 +21,7 @@ from qiskit_ibm_runtime import QiskitRuntimeService
 
 
 def save_results_to_csv(results, filename="polar_results.csv"):
-    df = pd.DataFrame(results)
+    df = pd.DataFrame([results])
     if os.path.exists(filename):
         # Append without rewriting header
         df.to_csv(filename, mode="a", header=False, index=False)
@@ -69,7 +69,7 @@ def run_simulation(args):
     print(f"Starting: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}")
     result = simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i, shots, seed)
 
-    save_results_to_csv(result, filename=f"./output/STIM/normal/polar_results_json_normal_{seed}.csv")
+    save_results_to_csv(result, filename=f"./output/STIM/normal/n{n}_result/polar_results_json_normal_{seed}.csv")
     # print(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}")
     # return result
 
@@ -126,17 +126,17 @@ if __name__ == "__main__":
 
     lstate_values = ["x", "z"]
     sim_type_values = ["normal", "m1"]
-    n_values = [3]
-    p_error_values = [0.01, 0.005]
-    # i_values = [4]
-    i_values = range(2, (2**n_values[0]))
-    shots_values = [int(1e5)]
-
-    # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
+    n_values = [4]
+    # p_error_values = [0.01, 0.005]
+    # # i_values = [4]
     # i_values = range(2, (2**n_values[0]))
     # shots_values = [int(1e5)]
+
+    p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
+    i_values = range(2, (2**n_values[0]))
+    shots_values = [int(1e5)]
     
-    for _ in range(1):
+    for _ in range(1000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
     
     # for i in range(1000):
