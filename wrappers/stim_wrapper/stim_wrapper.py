@@ -11,6 +11,12 @@ from qiskit import QuantumCircuit
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit.converters import circuit_to_dag, dag_to_circuit  
 
+from qiskit.transpiler import InstructionProperties
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+from qiskit.circuit.library import HGate, CXGate
+import copy
+
+
 import glob
 import sys
 import numpy as np
@@ -723,7 +729,8 @@ def compiled_to_qiskit_hardware(qc, backend, optimization_level = 3, seed_transp
     # Compile first to get the initial layout with the noise-aware
     pm = generate_preset_pass_manager(
         optimization_level=optimization_level, backend=backend,
-        seed_transpiler=seed_transpiler)
+        # seed_transpiler=seed_transpiler
+        )
     tqc = pm.run(qc)
 
     initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
@@ -733,11 +740,11 @@ def compiled_to_qiskit_hardware(qc, backend, optimization_level = 3, seed_transp
     if 'cx' not in basis_gates:
             basis_gates = basis_gates + ['cx']
             basis_gates = basis_gates + ['h']
-            basis_gates = basis_gates + ['swap']
+            # basis_gates = basis_gates + ['swap']
 
     pm = generate_preset_pass_manager(
             optimization_level=3, backend=backend,        
-            seed_transpiler=seed_transpiler,
+            # seed_transpiler=seed_transpiler,
             initial_layout=initial_layout,
             basis_gates=basis_gates
             )
@@ -1226,13 +1233,55 @@ def compile_circuit_qiskit_to_stim(tqc, backend, p_error):
 
     return circuit, m_order
                     
-def create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed, backend
+def create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed, backend, comp_type
                             ):
 
     circuit = stim.Circuit()
 
     qc = generate_qiskit_polar_code(n, lstate.lower(), sim_type, i)
-    tqc = compiled_to_qiskit_hardware(qc, backend, 3, seed)
+
+    if comp_type == "na":
+        pm_na = create_sabre_na_pm(backend, 3, seed)
+
+        best_cx = 9999
+        best_tqc = None
+        best_layout = None
+        best_idx = 999
+
+        for i in range(3):
+            tqc = pm_na.run(qc)
+            tmp_cx = tqc.count_ops()["cx"]
+            initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
+
+            if best_cx > tmp_cx:
+                best_cx = tmp_cx
+                best_tqc = tqc
+                best_layout = initial_layout
+                best_idx = i
+                
+
+        print("best_idx = ", best_idx, ", best cx = ", best_cx, ", layout =", best_layout)
+        tqc = best_tqc
+    else:
+        best_cx = 9999
+        best_tqc = None
+        best_layout = None
+        best_idx = 999
+
+        for i in range(3):
+            tqc = compiled_to_qiskit_hardware(qc, backend, 3, seed)
+            tmp_cx = tqc.count_ops()["cx"]
+            initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
+
+            if best_cx > tmp_cx:
+                best_cx = tmp_cx
+                best_tqc = tqc
+                best_layout = initial_layout
+                best_idx = i
+                
+
+        print("best_idx = ", best_idx, ", best cx = ", best_cx, ", layout =", best_layout)
+        tqc = best_tqc
 
     circuit, m_order = compile_circuit_qiskit_to_stim(tqc, backend, p_error)
     
@@ -1248,7 +1297,7 @@ def create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed,
 
     return circuit, new_m_order    
 
-def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend):
+def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend, comp_type):
     """
     Simulates a quantum circuit for stabilizer code, simplified and optimized.
 
@@ -1279,7 +1328,7 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
             x_ind = idx
             break
 
-    circuit, m_order = create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed, backend)
+    circuit, m_order = create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed, backend, comp_type)
     
     sampler = circuit.compile_sampler(seed=seed)
     results = sampler.sample(shots=int(shots) )
@@ -1322,9 +1371,9 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
 
     return res_bit_string
 
-def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i, shots, seed, backend):
+def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i, shots, seed, backend, comp_type):
   
-    results = simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend)
+    results = simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend, comp_type)
     
     # print(n, lstate, sim_type, p_error, i, shots)
 
@@ -1386,6 +1435,7 @@ def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i,
         "p_error": p_error,
         "sim_type": sim_type,
         "total_meta_shots": 0,
+        "comp_type": comp_type,
         "shots": total_shots,
         "count_accept": count_accept,
         "count_logerror": count_logerror,
@@ -1595,4 +1645,65 @@ def find_and_delete_files(pattern):
     if error_count > 0:
         print(f"{error_count} file(s) could not be deleted.")
             
-   
+   # Helper to find the best source instruction properties
+def get_source_props(tgt, names, qubits):
+    for name in names:
+        if name in tgt.operation_names and qubits in tgt[name]:
+            return tgt[name][qubits]
+    return None
+
+def create_sabre_na_pm(backend, optimization_level, seed_transpiler, penalized_edges = []):
+
+    target = copy.deepcopy(backend.target)
+
+    # penalized_edges = [
+    #     (0, 1), (1, 0),
+    # ]
+
+    src_1q_gates = ['sx'] # Prioritize sx for error mapping
+    new_h_props = {}
+    for q in range(backend.num_qubits):
+        props = get_source_props(backend.target, src_1q_gates, (q,))
+        if props:
+            new_h_props[(q,)] = props
+    target.add_instruction(HGate(), new_h_props)
+
+    src_2q_gates = ['cz', 'ecr'] 
+    found_2q_gate = None
+    for name in src_2q_gates:
+        if name in backend.target.operation_names:
+            found_2q_gate = name
+            break
+
+    new_cx_props = {}
+    if found_2q_gate:
+        print(f"Mapping properties from native '{found_2q_gate}' to 'cx'...")
+        
+        # Iterate over all defined edges for the native gate
+        for qubits, old_props in backend.target[found_2q_gate].items():
+            
+            # Check if we need to penalize this specific edge
+            if qubits in penalized_edges:
+                print(f"  - Penalizing cx on {qubits} (mapped from {found_2q_gate})")
+                new_props = InstructionProperties(
+                    duration=old_props.duration,
+                    error=1.0 # 100% error rate penalty
+                )
+                # target.add_instruction(CXGate(), {qubits: new_props})
+                new_cx_props[qubits] = new_props
+            else:
+                # Copy original properties exactly
+                # target.add_instruction(CXGate(), {qubits: old_props})
+                new_cx_props[qubits] = old_props
+    else:
+        print("Warning: No suitable 2-qubit gate found in backend to map from.")
+
+    target.add_instruction(CXGate(), new_cx_props)
+
+    pm_3_new_na = generate_preset_pass_manager(
+        optimization_level=optimization_level,
+        target=target, 
+        # seed_transpiler=seed_transpiler
+    )
+
+    return pm_3_new_na

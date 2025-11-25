@@ -12,7 +12,8 @@ from .stim_wrapper import (simulate_stim_polar_code, generate_circuit_extraction
                            simulate_stim_polar_code_normal_from_qiskit_circuit,
                            simulate_batch_and_save_result_polar_qiskit,
                            calculate_logical_error_result_polar_qiskit,
-                           combine_data, find_and_delete_files
+                           combine_data, find_and_delete_files,
+                           create_sabre_na_pm
                            
                            
 )
@@ -44,5 +45,5 @@ __all__ = [
     "calculate_logical_error_result_polar_qiskit",
     "combine_data",
     "find_and_delete_files",
-
+    "create_sabre_na_pm"
 ]
