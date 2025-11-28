@@ -13,7 +13,7 @@ from qiskit.converters import circuit_to_dag, dag_to_circuit
 
 from qiskit.transpiler import InstructionProperties
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-from qiskit.circuit.library import HGate, CXGate
+from qiskit.circuit.library import HGate, CXGate, SwapGate
 import copy
 
 
@@ -727,29 +727,29 @@ def generate_qiskit_polar_code(n, lstate, sim_type, i, skip_reset=False):
 
 def compiled_to_qiskit_hardware(qc, backend, optimization_level = 3, seed_transpiler = 12345):
     # Compile first to get the initial layout with the noise-aware
-    pm = generate_preset_pass_manager(
+    pm_1 = generate_preset_pass_manager(
         optimization_level=optimization_level, backend=backend,
         # seed_transpiler=seed_transpiler
         )
-    tqc = pm.run(qc)
+    tqc = pm_1.run(qc)
 
     initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
     # print(hw_name, seed_transpiler, initial_layout)
 
-    basis_gates = backend.configuration().basis_gates
+    basis_gates = copy.deepcopy(backend.configuration().basis_gates)
     if 'cx' not in basis_gates:
             basis_gates = basis_gates + ['cx']
             basis_gates = basis_gates + ['h']
-            # basis_gates = basis_gates + ['swap']
+            basis_gates = basis_gates + ['swap']
 
-    pm = generate_preset_pass_manager(
+    pm_2 = generate_preset_pass_manager(
             optimization_level=3, backend=backend,        
             # seed_transpiler=seed_transpiler,
             initial_layout=initial_layout,
             basis_gates=basis_gates
             )
         
-    tqc_new = pm.run(qc)
+    tqc_new = pm_2.run(qc)
 
     return tqc_new
 
@@ -1041,8 +1041,8 @@ def simulate_stim_polar_code_normal(n, lstate, sim_type, i, p_error, shots, seed
     counts = {}
     for res in results:
         bit_string = ""
-        for i in res:
-            if i:
+        for j in res:
+            if j:
                 bit_string = "1" + bit_string 
             else:
                 bit_string = "0" + bit_string
@@ -1239,50 +1239,49 @@ def create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed,
     circuit = stim.Circuit()
 
     qc = generate_qiskit_polar_code(n, lstate.lower(), sim_type, i)
-
+    tqc = None
     if comp_type == "na":
         pm_na = create_sabre_na_pm(backend, 3, seed)
 
         best_cx = 9999
         best_tqc = None
         best_layout = None
-        best_idx = 999
+        best_idx = 9999
 
-        for i in range(3):
-            tqc = pm_na.run(qc)
-            tmp_cx = tqc.count_ops()["cx"]
-            initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
+        for j in range(2):
+            tmp_tqc = pm_na.run(qc)
+            tmp_cx = tmp_tqc.count_ops()["cx"]
+            initial_layout = tmp_tqc.layout.initial_index_layout(filter_ancillas=True)
 
             if best_cx > tmp_cx:
                 best_cx = tmp_cx
-                best_tqc = tqc
+                best_tqc = tmp_tqc
                 best_layout = initial_layout
-                best_idx = i
+                best_idx = j
                 
-
-        print("best_idx = ", best_idx, ", best cx = ", best_cx, ", layout =", best_layout)
         tqc = best_tqc
+        print(f"[NA-{i}] best_idx = ", best_idx, ", best cx = ", best_cx)
     else:
         best_cx = 9999
         best_tqc = None
         best_layout = None
-        best_idx = 999
+        best_idx = 9999
 
-        for i in range(3):
-            tqc = compiled_to_qiskit_hardware(qc, backend, 3, seed)
-            tmp_cx = tqc.count_ops()["cx"]
-            initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
+        for j in range(2):
+            tmp_tqc = compiled_to_qiskit_hardware(qc, backend, 3, seed)
+            tmp_cx = tmp_tqc.count_ops()["cx"]
+            initial_layout = tmp_tqc.layout.initial_index_layout(filter_ancillas=True)
 
             if best_cx > tmp_cx:
                 best_cx = tmp_cx
-                best_tqc = tqc
+                best_tqc = tmp_tqc
                 best_layout = initial_layout
-                best_idx = i
+                best_idx = j
                 
-
-        print("best_idx = ", best_idx, ", best cx = ", best_cx, ", layout =", best_layout)
         tqc = best_tqc
-
+        print(f"[init-{i}] best_idx = ", best_idx, ", best cx = ", best_cx)
+    
+    
     circuit, m_order = compile_circuit_qiskit_to_stim(tqc, backend, p_error)
     
     new_m_order = []
@@ -1298,6 +1297,7 @@ def create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed,
     return circuit, new_m_order    
 
 def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend, comp_type):
+    # n, lstate, sim_type, i, p_error, shots, seed, backend, comp_type
     """
     Simulates a quantum circuit for stabilizer code, simplified and optimized.
 
@@ -1340,8 +1340,8 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
         if sim_type in ["m1", "m2"]:
             bit_string = bit_string + "0"*(2**(n - 1))
 
-        for i in res:
-            if i:
+        for j in res:
+            if j:
                 bit_string = bit_string + "1" 
             else:
                 bit_string = bit_string + "0"
@@ -1351,12 +1351,12 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
         new_bits = [''] * len(bit_string)
 
         # Loop through each bit in the original string
-        for i in range(len(bit_string)):
+        for j in range(len(bit_string)):
             # Get the bit from the original string
-            original_bit = bit_string[i]
+            original_bit = bit_string[j]
             
             # Get the new position for this bit from the order list
-            new_position = m_order[i]
+            new_position = m_order[j]
             
             # Place the bit in its new position
             new_bits[new_position] = original_bit
@@ -1372,61 +1372,21 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
     return res_bit_string
 
 def simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i, shots, seed, backend, comp_type):
-  
-    results = simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend, comp_type)
-    
-    # print(n, lstate, sim_type, p_error, i, shots)
+    # print(n, lstate, sim_type, p_error, i, shots, seed, backend, comp_type)
 
-    # file_path = f"./output/STIM/qiskit/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
+    meas_type = str(convert_i_to_meas_type(i, n, lstate.lower()))
 
-    # try:
-    #     with open(file_path, "r") as f:  
-    #         loaded_dict = json.load(f)
-    #         current_counter = collections.Counter(loaded_dict)
-
-    # except FileNotFoundError:
-    #     current_counter = collections.Counter()
-
-    current_counter = collections.Counter()
-    # updating the counter with the new results
-    current_counter.update(results)
-
-    # with open(file_path, "w") as f:  
-    #     json.dump(dict(current_counter), f)
-
-    # hw_name = backend.name
-    meas_type = convert_i_to_meas_type(i, n, lstate.lower())
-
-    # file_path = f"./output/STIM/qiskit/n{n}/{hw_name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}_{seed}.json"
-
-    # try:
-    #     with open(file_path, "r") as f:  # "a" means append mode
-    #         loaded_dict = json.load(f)
-    #         current_counter = collections.Counter(loaded_dict)
-    #         shots_remained = sum(current_counter.values())
-
-    # except FileNotFoundError:
-    #     return None
-    
-    counts = dict(current_counter)
+    counts = simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend, comp_type)
     total_shots = sum(counts.values())
 
+    # print(n, lstate, sim_type, p_error, i, shots, seed, backend, comp_type)
+
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
-    zpos_list[n] = i - 1
+    zpos_list[n] = i-1
 
     count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
-        get_logical_error_on_accepted_states(
-            n, lstate.upper(), counts, zpos_list
-        )
-    
-    # print(str(meas_type))
-    # delimiter_space = ","
-    # meas_type = delimiter_space.join(meas_type)
-    meas_type = str(meas_type)
-    # print(meas_type)
+        get_logical_error_on_accepted_states(n, lstate.upper(), counts, zpos_list=zpos_list)
 
-    # print(n, lstate, i, meas_type, p_error, sim_type, count_accept, total_shots)
-    # Return structured result
     return {
         "n": n,
         "lstate": lstate,
@@ -1676,6 +1636,7 @@ def create_sabre_na_pm(backend, optimization_level, seed_transpiler, penalized_e
             break
 
     new_cx_props = {}
+    new_swap_props = {}
     if found_2q_gate:
         print(f"Mapping properties from native '{found_2q_gate}' to 'cx'...")
         
@@ -1691,14 +1652,22 @@ def create_sabre_na_pm(backend, optimization_level, seed_transpiler, penalized_e
                 )
                 # target.add_instruction(CXGate(), {qubits: new_props})
                 new_cx_props[qubits] = new_props
+                new_swap_props[qubits] = new_props
             else:
                 # Copy original properties exactly
                 # target.add_instruction(CXGate(), {qubits: old_props})
                 new_cx_props[qubits] = old_props
+                
+                new_props = InstructionProperties(
+                    duration=old_props.duration,
+                    error=old_props.error * 3
+                )
+                new_swap_props[qubits] = new_props
     else:
         print("Warning: No suitable 2-qubit gate found in backend to map from.")
 
     target.add_instruction(CXGate(), new_cx_props)
+    target.add_instruction(SwapGate(), new_cx_props)
 
     pm_3_new_na = generate_preset_pass_manager(
         optimization_level=optimization_level,
