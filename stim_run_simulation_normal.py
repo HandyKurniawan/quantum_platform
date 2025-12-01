@@ -75,7 +75,7 @@ def run_simulation(args):
 
 def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values):
     
-    seed_values = [random.randint(1, 9999999)]
+    seed_values = [random.randint(1, 99999999)]
 
     param_grid = list(itertools.product(
         n_values,
@@ -125,7 +125,8 @@ if __name__ == "__main__":
     pass
 
     lstate_values = ["x"]
-    sim_type_values = ["normal", "m1"]
+    sim_type_values = ["normal"]
+    # sim_type_values = ["normal", "m1"]
     n_values = [4]
     # p_error_values = [0.01, 0.005]
     # # i_values = [4]
@@ -135,10 +136,10 @@ if __name__ == "__main__":
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
     p_error_values = [0.001]
     # i_values = range(2, (2**n_values[0]))
-    i_values = [9]
+    i_values = [2]
     shots_values = [int(1e7)]
     
-    for _ in range(1000):
+    for _ in range(10000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
     
     # for i in range(1000):

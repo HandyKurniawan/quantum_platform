@@ -359,7 +359,7 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots
 
     # counts = collections.Counter(bitstrings)
     
-    return counts, total_real_shot
+    return counts, total_real_shot, count_detect_discard
     # return bitstrings
 
 def get_processed_shots(n, lstate, p_error, i, sim_type, hw_name = None, target_accept_count = None):
@@ -406,7 +406,7 @@ def get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name = None, target
 
     return total_shots
 
-def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots, seed_starts, backend = None, initial_layout = None,
+def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots, seed, backend = None, initial_layout = None,
                                          target_accept_count = None):
 
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
@@ -417,59 +417,105 @@ def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots,
     if backend != None:
         hw_name = backend.name
 
-    total_shots = get_processed_shots(n, lstate, p_error, i, sim_type, hw_name=hw_name, target_accept_count=target_accept_count)
-    total_meta_shots = get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name=hw_name, target_accept_count=target_accept_count)
-    seed_list = range(total_shots, total_shots + shots + 1)
+    # total_shots = get_processed_shots(n, lstate, p_error, i, sim_type, hw_name=hw_name, target_accept_count=target_accept_count)
+    # total_meta_shots = get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name=hw_name, target_accept_count=target_accept_count)
+    total_shots = 0
+    total_meta_shots = 0
+    seed_list = range(seed + total_shots, seed + total_shots + shots + 1)
+    print("Range :", seed_list)
     
     # print(existing_data, seed_list[0], seed_list[-1])
-    results, total_real_shots = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seed_list, backend=backend, initial_layout=initial_layout,
+    results, total_real_shots, count_detect_discard = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seed_list, backend=backend, initial_layout=initial_layout,
                                        target_accept_count=target_accept_count)
     
-    print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots, "real shot:", total_real_shots)
+    # print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots, "real shot:", total_real_shots)
 
-    # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
-    # with open(file_path, "a") as f:  # "a" means append mode
-    #     f.write("\n".join(results) + "\n")
+    # # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
+    # # with open(file_path, "a") as f:  # "a" means append mode
+    # #     f.write("\n".join(results) + "\n")
 
-    if target_accept_count != None:
-        suffix_path = "_accepted"
+    # if target_accept_count != None:
+    #     suffix_path = "_accepted"
 
-    if backend != None:
-        file_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
-    else:
-        file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
+    # if backend != None:
+    #     file_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
+    # else:
+    #     file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
 
-    if backend != None:
-        meta_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
-    else:
-        meta_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
+    # if backend != None:
+    #     meta_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
+    # else:
+    #     meta_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
 
-    try:
-        with open(file_path, "r") as f:  # "a" means append mode
-            loaded_dict = json.load(f)
-            current_counter = collections.Counter(loaded_dict)
+    # try:
+    #     with open(file_path, "r") as f:  # "a" means append mode
+    #         loaded_dict = json.load(f)
+    #         current_counter = collections.Counter(loaded_dict)
 
-    except FileNotFoundError:
-        current_counter = collections.Counter()
+    # except FileNotFoundError:
+    #     current_counter = collections.Counter()
 
     # updating the counter with the new results
+    current_counter = collections.Counter()
     current_counter.update(results)
 
-    with open(file_path, "w") as f:  # "a" means append mode
-        json.dump(dict(current_counter), f)
+    # with open(file_path, "w") as f:  # "a" means append mode
+    #     json.dump(dict(current_counter), f)
 
 
-    meta_dict = {
-        "total_shots": total_shots,
-        "shots": shots,
-        "total_real_shots": total_real_shots,
-        "lstate": lstate,
-        "p_error": p_error,
-        "sim_type": sim_type
-        }
+    # meta_dict = {
+    #     "total_shots": total_shots,
+    #     "shots": shots,
+    #     "total_real_shots": total_real_shots,
+    #     "lstate": lstate,
+    #     "p_error": p_error,
+    #     "sim_type": sim_type
+    #     }
     
-    with open(meta_path, "w") as f:  # "a" means append mode
-        json.dump(meta_dict, f)
+    # with open(meta_path, "w") as f:  # "a" means append mode
+    #     json.dump(meta_dict, f)
+
+    meas_type = convert_i_to_meas_type(i, n, lstate)
+    # print(n, lstate, i, p_error, sim_type, meas_type, shots, target_accept_count)
+
+
+    # print("shots :", shots, total_shots, shots_remained, file_path)
+    counts = dict(current_counter)
+
+    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    zpos_list[n] = i - 1
+
+    # for key, value in counts.items():
+    #     print(key, len(key), value)
+    #     break
+
+    count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
+        get_logical_error_on_accepted_states(
+            n, lstate.upper(), counts, zpos_list
+        )
+    
+    # print(file_path, shots_remained, sum(counts.values()), count_accept, 1-ler)
+
+    
+    # Return structured result
+    return {
+        "n": n,
+        "lstate": lstate,
+        "i": i,
+        "meas_type": meas_type,
+        "p_error": p_error,
+        "sim_type": sim_type,
+        "total_meta_shots": total_meta_shots,
+        "shots": shots,
+        "count_accept": count_accept,
+        "count_logerror": count_logerror,
+        "count_undecided": count_undecided,
+        "count_detect_discard": count_detect_discard,
+        "prep_rate": count_accept / (shots - count_detect_discard),
+        "LER": 1 - ler,
+        "detect_normal": detect_normal,
+        "decoding_normal": decoding_normal,
+    }
 
 
 def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots, hw_name, target_accept_count):
