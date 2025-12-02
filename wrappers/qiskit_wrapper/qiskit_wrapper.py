@@ -1232,6 +1232,28 @@ def replace_delay_with_rzz(tqc: QuantumCircuit,
 
 #endregion
 
+def used_qubits(qc):
+    """
+    Parameter: 
+    circuit (QuantumCircuit)
+        
+    Returns: list: indices of the qubits used in the circuit
+    """
+    L=qc.num_qubits
+    used_qb=[]
+    qct=transpile(qc,optimization_level=0,basis_gates=['cx','rx','rz','x'])
+    for gate in qct:
+        if gate.name=='rx' or gate.name=='rz' or gate.name=='x':
+            if gate.qubits[0]._index not in used_qb:
+                used_qb.append(gate.qubits[0]._index)
+        if gate.name=='cx':
+            if gate.qubits[0]._index not in used_qb:
+                used_qb.append(gate.qubits[0]._index)
+            if gate.qubits[1]._index not in used_qb:
+                used_qb.append(gate.qubits[1]._index)
+    return used_qb
+
+
 #region Scheduler
 
 #endregion

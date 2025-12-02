@@ -5,6 +5,7 @@ import pandas as pd
 import collections
 import os
 from wrappers.polar_wrapper import (divide_half_list, get_logical_error_on_accepted_states, get_q1prep_sr)
+from wrappers.qiskit_wrapper import (used_qubits)
 import json
 
 from qiskit import QuantumCircuit
@@ -1227,6 +1228,12 @@ def compile_circuit_qiskit_to_stim(tqc, backend, p_error):
     m_order = []
 
     t1, t2, error_1q, readout_error, error_2q = get_backend_information(backend)
+
+    # Initialize Error
+    used_qbs = used_qubits(tqc)
+    for qb1 in used_qbs:
+        error_rate = error_1q[qb1] * p_error
+        circuit.append("DEPOLARIZE1", qb1, error_rate)
 
     for idx, layer in enumerate(dag.layers()):
         layer_as_circuit = dag_to_circuit(layer['graph']) 
