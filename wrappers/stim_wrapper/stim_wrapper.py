@@ -119,12 +119,12 @@ def generate_circuit_extraction_syndrome_stim(sim: stim.TableauSimulator, k, mea
 
     data_qubits = []
     ancillas = []
-    for i in range(2**(k-1)):
-        ancillas.append(i * 3 + 2 + start_idx) 
+    for idx in range(2**(k-1)):
+        ancillas.append(idx * 3 + 2 + start_idx) 
 
-    for i in range(start_idx, num_qbits + start_idx):
-        if i not in ancillas:
-            data_qubits.append(i) 
+    for idx in range(start_idx, num_qbits + start_idx):
+        if idx not in ancillas:
+            data_qubits.append(idx) 
 
     d1, d2 = divide_half_list(data_qubits)
 
@@ -166,10 +166,10 @@ def check_for_mismatch(syndrome_bits, n, x_ind, detection_layer = 1):
 
     # print(len(full_bitstring), full_bitstring, syndrome_to_check, expected_length, bit_gap, x_ind)
     
-    for i in range(expected_length):
-        if (i % (2 * bit_gap)) < bit_gap:
-            j = i + bit_gap
-            if syndrome_to_check[i] != syndrome_to_check[j]:
+    for idx in range(expected_length):
+        if (idx % (2 * bit_gap)) < bit_gap:
+            j = idx + bit_gap
+            if syndrome_to_check[idx] != syndrome_to_check[j]:
                 # print(f"Mismatch found at indices ({i}, {j}) for string {syndrome_to_check}.")
                 return True
             
@@ -363,6 +363,186 @@ def simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots
     return counts, total_real_shot, count_detect_discard
     # return bitstrings
 
+def rearrange_bits(bit_string, m_order):
+    
+    new_bits = [''] * len(bit_string)
+
+    # Loop through each bit in the original string
+    for j in range(len(bit_string)):
+        # Get the bit from the original string
+        original_bit = bit_string[j]
+        
+        # Get the new position for this bit from the order list
+        new_position = m_order[j]
+        
+        # Place the bit in its new position
+        new_bits[new_position] = original_bit
+
+    reordered_string = "".join(new_bits)[::-1]
+
+    return reordered_string
+
+def simulate_stim_one_shot_qiskit(tqc, n, sim_type, backend, p_error, x_ind, seed):
+    dag = circuit_to_dag(tqc)
+    
+    sim = stim.TableauSimulator(seed=seed)
+    m_order = []
+
+    if sim_type in ["m1", "m2"]:
+        for idx in range(2**(n - 1)):
+            m_order.append(idx)
+            sim.measure(idx)
+
+    t1, t2, error_1q, readout_error, error_2q = get_backend_information(backend)
+
+    # Initialize Error
+    used_qbs = used_qubits(tqc)
+    for qb in used_qbs:
+        error_rate = error_1q[qb] * p_error
+        sim.x_error(qb, p=error_rate)
+
+    for idx, layer in enumerate(dag.layers()):
+        layer_as_circuit = dag_to_circuit(layer['graph']) 
+
+        for g in layer_as_circuit:
+            
+            op = g.operation
+            qbits = g.qubits
+            cbits = g.clbits
+            qb1 = qbits[0]._index
+            
+            if op.num_qubits == 1:
+                # print(op.name, op.num_qubits, qbits[0]._index)
+                if op.name == "h":
+                    error_rate = error_1q[qb1] * p_error
+                    sim.h(qb1)
+                    sim.depolarize1(qb1, p=error_rate)
+                    
+                    
+                elif op.name == "reset":
+                    error_rate = error_1q[qb1] * p_error
+                    sim.reset(qb1)
+                    sim.x_error(qb1, p=error_rate)
+
+                elif op.name == "measure":
+                    error_rate = readout_error[qb1] * p_error
+
+                    sim.x_error(qb1, p=error_rate)
+                    sim.measure(qb1)
+                    m_order.append(cbits[0]._index)
+                    
+            elif op.name == "barrier":
+                # Here is the error detection
+                cms = sim.current_measurement_record()
+                # print(cms)
+
+                detection_layer = 1
+                if sim_type == "m2":
+                    detection_layer -=1
+
+                bit_string = ''.join(['1' if b else '0' for b in cms])
+                reordered_string = rearrange_bits(bit_string, m_order)
+                cms = [char == '1' for char in reordered_string]
+
+                if check_for_mismatch(cms, n, x_ind, detection_layer):
+                    return "", ""
+            
+                # print(op, op.name)
+            else:
+                qb2 = qbits[1]._index
+                error_rate = error_2q[(qb1, qb2)] * p_error
+
+                if op.name == "cx":
+                    sim.cx(qb1, qb2)
+                    sim.depolarize2(qb1,qb2, p=error_rate)
+                elif op.name == "swap":
+                    sim.cx(qb1, qb2)
+                    sim.depolarize2(qb1,qb2, p=error_rate)
+                    sim.cx(qb2, qb1)
+                    sim.depolarize2(qb1,qb2, p=error_rate)
+                    sim.cx(qb1, qb2)
+                    sim.depolarize2(qb1,qb2, p=error_rate)
+
+    final_measurements = sim.current_measurement_record()
+
+    # Generate the bit string, reverse it, and update the counts.
+    bit_string = ''.join(['1' if b else '0' for b in final_measurements])
+
+    return bit_string, m_order
+
+def simulate_circuit_polar_stim_tableau_from_qiskit(n, lstate, sim_type, i, p_error, seed, shots, backend, comp_type
+                            ):
+
+    count_detect_discard = 0
+    count = collections.Counter()
+
+    meas_type = convert_i_to_meas_type(i, n, lstate)
+    
+    x_ind = 0
+    for idx, m_type in enumerate(meas_type):
+        if m_type == "x":
+            x_ind = idx
+            break
+
+    # qc = generate_qiskit_polar_code(n, lstate.lower(), sim_type, i)
+    qc = generate_qiskit_polar_code(n, lstate.lower(), sim_type, i)
+    tqc = None
+    if comp_type == "na":
+        pm_na = create_sabre_na_pm(backend, 3, seed)
+
+        best_cx = 9999
+        best_tqc = None
+        best_layout = None
+        best_idx = 9999
+
+        for j in range(2):
+            tmp_tqc = pm_na.run(qc)
+            tmp_cx = tmp_tqc.count_ops()["cx"]
+            initial_layout = tmp_tqc.layout.initial_index_layout(filter_ancillas=True)
+
+            if best_cx > tmp_cx:
+                best_cx = tmp_cx
+                best_tqc = tmp_tqc
+                best_layout = initial_layout
+                best_idx = j
+                
+        tqc = best_tqc
+        print(f"[NA-{i}] best_idx = ", best_idx, ", best cx = ", best_cx)
+    else:
+        best_cx = 9999
+        best_tqc = None
+        best_layout = None
+        best_idx = 9999
+
+        for j in range(2):
+            tmp_tqc = compiled_to_qiskit_hardware(qc, backend, 3, seed)
+            tmp_cx = tmp_tqc.count_ops()["cx"]
+            initial_layout = tmp_tqc.layout.initial_index_layout(filter_ancillas=True)
+
+            if best_cx > tmp_cx:
+                best_cx = tmp_cx
+                best_tqc = tmp_tqc
+                best_layout = initial_layout
+                best_idx = j
+                
+        tqc = best_tqc
+        print(f"[init-{i}] best_idx = ", best_idx, ", best cx = ", best_cx)
+    
+    seeds = range(seed, seed + shots)
+    for s in seeds:
+        res, m_order = simulate_stim_one_shot_qiskit(tqc, n, sim_type, backend, p_error, x_ind, s)
+
+        if res == "":
+            count_detect_discard += 1
+            continue
+
+        reordered_string = rearrange_bits(res, m_order)
+        count.update([reordered_string])
+    
+    
+
+    return count, count_detect_discard
+
 def get_processed_shots(n, lstate, p_error, i, sim_type, hw_name = None, target_accept_count = None):
     total_shots = 0
 
@@ -408,7 +588,7 @@ def get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name = None, target
     return total_shots
 
 def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots, seed, backend = None, initial_layout = None,
-                                         target_accept_count = None):
+                                         target_accept_count = None, comp_type = "init"):
 
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     zpos_list[n] = i-1
@@ -422,80 +602,27 @@ def simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots,
     # total_meta_shots = get_meta_total_shots(n, lstate, p_error, i, sim_type, hw_name=hw_name, target_accept_count=target_accept_count)
     total_shots = 0
     total_meta_shots = 0
+    total_real_shots = 0
     seed_list = range(seed + total_shots, seed + total_shots + shots + 1)
     print("Range :", seed_list)
     
-    # print(existing_data, seed_list[0], seed_list[-1])
-    results, total_real_shots, count_detect_discard = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seed_list, backend=backend, initial_layout=initial_layout,
-                                       target_accept_count=target_accept_count)
+    if sim_type == "m2" and hw_name != None:
+        counts, count_detect_discard = simulate_circuit_polar_stim_tableau_from_qiskit(n, lstate, sim_type, i, p_error, seed, shots, backend, comp_type)
+    else:
     
-    # print(n, lstate, sim_type, p_error, i, shots, total_shots, total_shots + shots, "real shot:", total_real_shots)
-
-    # # file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}.txt"
-    # # with open(file_path, "a") as f:  # "a" means append mode
-    # #     f.write("\n".join(results) + "\n")
-
-    # if target_accept_count != None:
-    #     suffix_path = "_accepted"
-
-    # if backend != None:
-    #     file_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
-    # else:
-    #     file_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}.json"
-
-    # if backend != None:
-    #     meta_path = f"./output/STIM/n{n}/{backend.name}_polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
-    # else:
-    #     meta_path = f"./output/STIM/n{n}/polar_n{n}_{lstate}_{i}_{p_error}_{sim_type}{suffix_path}_meta.json"
-
-    # try:
-    #     with open(file_path, "r") as f:  # "a" means append mode
-    #         loaded_dict = json.load(f)
-    #         current_counter = collections.Counter(loaded_dict)
-
-    # except FileNotFoundError:
-    #     current_counter = collections.Counter()
-
-    # updating the counter with the new results
-    current_counter = collections.Counter()
-    current_counter.update(results)
-
-    # with open(file_path, "w") as f:  # "a" means append mode
-    #     json.dump(dict(current_counter), f)
-
-
-    # meta_dict = {
-    #     "total_shots": total_shots,
-    #     "shots": shots,
-    #     "total_real_shots": total_real_shots,
-    #     "lstate": lstate,
-    #     "p_error": p_error,
-    #     "sim_type": sim_type
-    #     }
+        counts, total_real_shots, count_detect_discard = simulate_stim_polar_code(n, lstate, sim_type, i, p_error, shots, total_shots, total_meta_shots, seed_list, backend=backend, initial_layout=initial_layout,
+                                        target_accept_count=target_accept_count)
     
-    # with open(meta_path, "w") as f:  # "a" means append mode
-    #     json.dump(meta_dict, f)
 
     meas_type = convert_i_to_meas_type(i, n, lstate)
-    # print(n, lstate, i, p_error, sim_type, meas_type, shots, target_accept_count)
-
-
-    # print("shots :", shots, total_shots, shots_remained, file_path)
-    counts = dict(current_counter)
-
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     zpos_list[n] = i - 1
-
-    # for key, value in counts.items():
-    #     print(key, len(key), value)
-    #     break
 
     count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
         get_logical_error_on_accepted_states(
             n, lstate.upper(), counts, zpos_list
         )
-    
-    # print(file_path, shots_remained, sum(counts.values()), count_accept, 1-ler)
+
 
     
     # Return structured result
@@ -606,15 +733,15 @@ def get_backend_information(backend):
 
     # We define various lists of metrics for all the qubits of the backend
     t1, t2, gate_error_x, readout_error, gate_error_cz = {}, {}, {}, {}, {}
-    for i in range(num_qubits):
+    for idx in range(num_qubits):
         # t1.append(properties.t1(i))
         # t2.append(properties.t2(i))
         # gate_error_x.append(properties.gate_error(gate="x", qubits=i))
         # readout_error.append(properties.readout_error(i))
-        t1[i] = properties.t1(i)
-        t2[i] = properties.t2(i)
-        gate_error_x[i] = properties.gate_error(gate="x", qubits=i)
-        readout_error[i] = properties.readout_error(i)
+        t1[idx] = properties.t1(idx)
+        t2[idx] = properties.t2(idx)
+        gate_error_x[idx] = properties.gate_error(gate="x", qubits=idx)
+        readout_error[idx] = properties.readout_error(idx)
 
     # if backend.name == "ibm_torino":
     if backend.name in (["ibm_fez", "ibm_marrakesh", "ibm_torino"]):
@@ -636,12 +763,12 @@ def generate_circuit_extraction_syndrome(k, meas_type, x_first = False):
 
     data_qubits = []
     ancillas = []
-    for i in range(2**(k-1)):
-        ancillas.append(i *3 + 2)
+    for idx in range(2**(k-1)):
+        ancillas.append(idx *3 + 2)
 
-    for i in range(num_qbits):
-        if i not in ancillas:
-            data_qubits.append(i)
+    for idx in range(num_qbits):
+        if idx not in ancillas:
+            data_qubits.append(idx)
 
     d1, d2 = divide_half_list(data_qubits)
     #print(d1,d2, ancillas)
@@ -720,8 +847,8 @@ def generate_qiskit_polar_code(n, lstate, sim_type, i, skip_reset=False):
 
     if not skip_reset:
         # initialization
-        for i in range(total_qubits):
-            qc.reset(i)
+        for idx in range(total_qubits):
+            qc.reset(idx)
 
     m_idx = 0
     for level in range(1, n+1):
@@ -739,11 +866,29 @@ def generate_qiskit_polar_code(n, lstate, sim_type, i, skip_reset=False):
             x_first = False
 
         if level <= x_ind:
-            # skip the beginning of zz measurement
-            # print("skip :" , level, x_ind)
-            # m_idx += ancilla_qubits
-            # print("m_idx =", m_idx)
             pass
+
+        # add error detection
+        # first error detection
+        elif sim_type in ["m2"] and level - x_ind == 3:
+
+            # adding barrier to set a sign for the error detection part later
+            qc.barrier(range(total_qubits) )
+
+            for loop_idx in range(num_loops):
+                start_idx = loop_idx * start_idx_mult
+                circ = generate_circuit_extraction_syndrome(level, meas_type[level - 1], x_first)
+                clbits = range(2**(level-1)) 
+
+                # print(start_idx, level, clbits, total_qubits, cbits, start_idx_mult)
+                qc.append(circ, range(start_idx, start_idx + start_idx_mult), clbits)
+        
+            # with the simplification, the first measurement will be always 0
+            if not x_first:
+                for qb in range(2, total_qubits, 3): 
+                    qc.measure(qb, m_idx)
+                    qc.reset(qb)
+                    m_idx += 1
         else:
             # print("num_loops :", num_loops)
             for loop_idx in range(num_loops):
@@ -771,6 +916,8 @@ def generate_qiskit_polar_code(n, lstate, sim_type, i, skip_reset=False):
         m_idx += 1
     
     return qc
+
+
 
 def compiled_to_qiskit_hardware(qc, backend, optimization_level = 3, seed_transpiler = 12345):
     # Compile first to get the initial layout with the noise-aware
@@ -831,12 +978,12 @@ def generate_circuit_extraction_syndrome_stim_normal(circuit: stim.Circuit, k, m
         data_qubits = []
         ancillas = []
     
-        for i in range(2**(k-1)):
-            ancillas.append(i * 3 + 2 + start_idx) 
+        for idx in range(2**(k-1)):
+            ancillas.append(idx * 3 + 2 + start_idx) 
 
-        for i in range(start_idx, num_qbits + start_idx):
-            if i not in ancillas:
-                data_qubits.append(i) 
+        for idx in range(start_idx, num_qbits + start_idx):
+            if idx not in ancillas:
+                data_qubits.append(idx) 
 
         d1, d2 = divide_half_list(data_qubits)
 
@@ -965,8 +1112,8 @@ def create_circuit_polar_stim_normal(n, lstate, sim_type, p_error, seed, shots,
 
     # initialization error
     r_start = []
-    for i in range(total_qubits):
-        r_start.append(i)
+    for idx in range(total_qubits):
+        r_start.append(idx)
 
     circuit.append("R", r_start)
     if error_1q != None:
@@ -1229,11 +1376,11 @@ def compile_circuit_qiskit_to_stim(tqc, backend, p_error):
 
     t1, t2, error_1q, readout_error, error_2q = get_backend_information(backend)
 
-    # Initialize Error
-    used_qbs = used_qubits(tqc)
-    for qb1 in used_qbs:
-        error_rate = error_1q[qb1] * p_error
-        circuit.append("DEPOLARIZE1", qb1, error_rate)
+    # # Initialize Error
+    # used_qbs = used_qubits(tqc)
+    # for qb1 in used_qbs:
+    #     error_rate = error_1q[qb1] * p_error
+    #     circuit.append("X_ERROR", qb1, error_rate)
 
     for idx, layer in enumerate(dag.layers()):
         layer_as_circuit = dag_to_circuit(layer['graph']) 
@@ -1381,46 +1528,47 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
             x_ind = idx
             break
 
-    circuit, m_order = create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed, backend, comp_type)
-    
-    sampler = circuit.compile_sampler(seed=seed)
-    results = sampler.sample(shots=int(shots) )
+    if sim_type in ["normal", "m1"]:
+        circuit, m_order = create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed, backend, comp_type)
+        
+        sampler = circuit.compile_sampler(seed=seed)
+        results = sampler.sample(shots=int(shots) )
 
-    res_bit_string = {}
-    for res in results:
-        bit_string = ""
+        res_bit_string = {}
+        for res in results:
+            bit_string = ""
 
-        if sim_type in ["m1", "m2"]:
-            bit_string = bit_string + "0"*(2**(n - 1))
+            if sim_type in ["m1", "m2"]:
+                bit_string = bit_string + "0"*(2**(n - 1))
 
-        for j in res:
-            if j:
-                bit_string = bit_string + "1" 
+            for j in res:
+                if j:
+                    bit_string = bit_string + "1" 
+                else:
+                    bit_string = bit_string + "0"
+
+            # print(len(bit_string), bit_string, m_order)
+
+            new_bits = [''] * len(bit_string)
+
+            # Loop through each bit in the original string
+            for j in range(len(bit_string)):
+                # Get the bit from the original string
+                original_bit = bit_string[j]
+                
+                # Get the new position for this bit from the order list
+                new_position = m_order[j]
+                
+                # Place the bit in its new position
+                new_bits[new_position] = original_bit
+
+            reordered_string = "".join(new_bits)[::-1]
+
+
+            if reordered_string in res_bit_string:
+                res_bit_string[reordered_string] = res_bit_string[reordered_string] + 1
             else:
-                bit_string = bit_string + "0"
-
-        # print(len(bit_string), bit_string, m_order)
-
-        new_bits = [''] * len(bit_string)
-
-        # Loop through each bit in the original string
-        for j in range(len(bit_string)):
-            # Get the bit from the original string
-            original_bit = bit_string[j]
-            
-            # Get the new position for this bit from the order list
-            new_position = m_order[j]
-            
-            # Place the bit in its new position
-            new_bits[new_position] = original_bit
-
-        reordered_string = "".join(new_bits)[::-1]
-
-
-        if reordered_string in res_bit_string:
-            res_bit_string[reordered_string] = res_bit_string[reordered_string] + 1
-        else:
-            res_bit_string[reordered_string] = 1
+                res_bit_string[reordered_string] = 1
 
     return res_bit_string
 

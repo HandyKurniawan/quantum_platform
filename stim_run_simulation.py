@@ -62,24 +62,30 @@ service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token, inst
 # Worker function
 # -----------------------------
 def run_simulation(args):
-    n, lstate, sim_type, p_error, i, shots, seed, hw_name, seed_transpiler, target_accept_count = args
-    print(f"Starting: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, seed_starts={seed}, hw_name={hw_name}, seed_transpiler={seed_transpiler}, target_accept_count={target_accept_count}")
+    n, lstate, sim_type, p_error, i, shots, seed, hw_name, seed_transpiler, target_accept_count, comp_type = args
+    print(f"Starting: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, seed_starts={seed}, hw_name={hw_name}, seed_transpiler={seed_transpiler}, target_accept_count={target_accept_count}, comp_type={comp_type}")
 
     if hw_name != None:
         backend = service.backend(hw_name)
-        qc = generate_qiskit_polar_code(n, lstate, sim_type, i)
-        tqc = compiled_to_qiskit_hardware(qc, backend, 3, seed_transpiler)
-        initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
-        print(hw_name, seed_transpiler, initial_layout)
+        # qc = generate_qiskit_polar_code(n, lstate, sim_type, i)
+        # tqc = compiled_to_qiskit_hardware(qc, backend, 3, seed_transpiler)
+        # initial_layout = tqc.layout.initial_index_layout(filter_ancillas=True)
+        # print(hw_name, seed_transpiler, initial_layout)
+
+        initial_layout = None
     else:
         backend = None
         initial_layout = None
 
     result = simulate_batch_and_save_result_polar(n, lstate, sim_type, p_error, i, shots, seed, backend=backend, initial_layout=initial_layout,
-                                                  target_accept_count=target_accept_count)
+                                                  target_accept_count=target_accept_count, comp_type=comp_type)
     suffix_path = ""
     # if target_accept_count != None:
     #     suffix_path = "_accepted"
+
+    hardware_path = ""
+    if hw_name != None:
+        hardware_path = f"{hw_name}_"
 
     # if hw_name != None:
     #     save_results_to_csv(result, filename=f"./output/STIM/{hw_name}_polar_results_json{suffix_path}.csv")
@@ -90,12 +96,12 @@ def run_simulation(args):
     #     # print(f"✅ Results saved to polar_results_json{suffix_path}.csv")
 
     print(f"✅ Results saved to polar_results_json.csv")
-    save_results_to_csv(result, filename=f"./output/STIM/prop-3_result/polar_results_json_{seed}.csv")
+    save_results_to_csv(result, filename=f"./output/STIM/{hardware_path}prop-3_result/{hardware_path}polar_results_json_{seed}.csv")
 
     # logging.info(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, seed_starts={seed_starts}, hw_name={hw_name}, seed_transpiler={seed_transpiler}, target_accept_count={target_accept_count}")
     # return result
 
-def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values):
+def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values, comp_type_values):
     
     # shots_values = [int(1e3)]
     seed_starts_values = [random.randint(1, 99999999)]
@@ -112,44 +118,15 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         seed_starts_values,
         hw_name_values,
         seed_transpiler_values,
-        accepted_target_count_values
+        accepted_target_count_values,
+        comp_type_values
     ))
 
-    max_workers = 10  # Adjust to your CPU
+    max_workers = 1  # Adjust to your CPU
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(run_simulation, param_grid))
 
     logging.info("✅ All simulations finished!")
-
-    # for hw_name in hw_name_values:
-    #     for sim_type in sim_type_values:
-
-    #         param_grid = list(itertools.product(
-    #             n_values,
-    #             lstate_values,
-    #             i_values,
-    #             p_error_values,
-    #             [sim_type],
-    #             shots_values,
-    #             hw_name_values,
-    #             accepted_target_count_values
-    #         ))
-
-    #         results = []
-    #         with ProcessPoolExecutor(max_workers=11) as executor:
-    #             for res in executor.map(wrapper, param_grid):
-    #                 if res is not None:
-    #                     results.append(res)
-
-    #         if accepted_target_count_values[0] != None:
-    #             suffix_path = "_accepted"
-
-    #         if hw_name != None:
-    #             save_results_to_csv(results, filename=f"./output/STIM/{hw_name}_polar_results_json{suffix_path}.csv")
-    #             print(f"✅ Results saved to {hw_name}_polar_results_json{suffix_path}.csv")
-    #         else:
-    #             save_results_to_csv(results, filename=f"./output/STIM/polar_results_json{suffix_path}.csv")
-    #             print(f"✅ Results saved to polar_results_json{suffix_path}.csv")
 
 # -----------------------------
 # Parallel execution
@@ -157,49 +134,18 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x"]
-    sim_type_values = ["normal", "m1", "m2"]
+    lstate_values = ["x", "z"]
+    sim_type_values = ["m2"]
     n_values = [4]
-    p_error_values = [0.01]
-    i_values = [2, 3, 5, 9]
-    # i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(1e5)]
-    hw_name_values = [None]
-    # accepted_target_count_values = [int(1e6)]
+    p_error_values = [0]
+    # i_values = [2, 3, 5, 9]
+    i_values = range(2, (2**n_values[0])+1)
+    shots_values = [int(1e2)]
+    hw_name_values = ["ibm_torino"]
+    # hw_name_values = [None]
     accepted_target_count_values = [None]
+    comp_type_values = ["na"]
 
-    for _ in range(10000):
-        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
+    for _ in range(1):
+        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values, comp_type_values)
 
-    # n_values = [4]
-    # i_values = [4, 6, 7, 13]
-    # shots_values = [int(2e6)]
-    # accepted_target_count_values = [int(2e6)]
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # n_values = [5]
-    # i_values = [8, 21]
-    # shots_values = [int(5e6)]
-    # accepted_target_count_values = [int(5e6)]
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # n_values = [6]
-    # i_values = [8, 25]
-    # shots_values = [int(1e6)]
-    # accepted_target_count_values = [1e6]
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
-
-    # lstate_values = ["x","z"]
-    # sim_type_values = ["normal", "m1"]
-    # n_values = [4]
-    # p_error_values = [1, 0.1]
-    # # i_values = [4, 5]
-    # i_values = range(2, (2**n_values[0])+1)
-    # shots_values = [int(1e6)]
-    # hw_name_values = ["ibm_torino"]
-    # accepted_target_count_values = [int(1e6)]
-
-    # run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values)
