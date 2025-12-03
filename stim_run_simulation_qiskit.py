@@ -50,13 +50,15 @@ def run_simulation(args):
     # print(result, f"./output/STIM/qiskit/n5_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
     # print(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, hw_name={hw_name}")
 
-    if comp_type == "na":
-        save_results_to_csv(result, filename=f"./output/STIM/qiskit/na_result/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
-    elif comp_type == "init":
-        save_results_to_csv(result, filename=f"./output/STIM/qiskit/init_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
-    else:
-        save_results_to_csv(result, filename=f"./output/STIM/qiskit/n5_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
-    # return result
+    save_results_to_csv(result, filename=f"./output/STIM/qiskit/marrakesh_with_init_error/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
+
+    # if comp_type == "na":
+    #     save_results_to_csv(result, filename=f"./output/STIM/qiskit/na_result/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
+    # elif comp_type == "init":
+    #     save_results_to_csv(result, filename=f"./output/STIM/qiskit/init_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
+    # else:
+    #     save_results_to_csv(result, filename=f"./output/STIM/qiskit/n5_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
+    # # return result
 
 def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, comp_values):
     
@@ -111,33 +113,33 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x", "z"]
-    sim_type_values = ["m1"]
+    lstate_values = ["x"]
+    sim_type_values = ["normal", "m1"]
     n_values = [4]
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
     # p_error_values = [1, 0.1, 0.5, 0.05, 0.01]
-    p_error_values = [1, 0.8, 0.5, 0.3, 0.1]
+    p_error_values = [1]
     # p_error_values = [1]
-    # i_values = [2,3,5,9]
+    i_values = [2,3,5,9]
     # i_values = range(2, (2**n_values[0]))
     shots_values = [int(1e6)]
-    hw_name_values = ["ibm_torino"]
+    hw_name_values = ["ibm_marrakesh"]
 
-    comp_values = ["init", "na"]
+    comp_values = ["na"]
     # hw_name_values = ["ibm_torino"]
 
-    # for _ in range(20):
-    #     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, comp_values)
+    for _ in range(1000):
+        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, comp_values)
 
     # lstate_values = ["x"]
     # i_values = [2,3,5,9]
 
-    lstate_values = ["z"]
-    i_values = [8, 12, 14, 15]
+    # lstate_values = ["z"]
+    # i_values = [8, 12, 14, 15]
     
 
-    for _ in range(10000):
-        run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, comp_values)
+    # for _ in range(10000):
+    #     run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, comp_values)
 
     # lstate_values = ["x"]
     # n_values = [4]
