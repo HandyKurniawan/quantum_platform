@@ -1,5 +1,5 @@
-n,lstate,i,meas_type,p_error,sim_type,total_meta_shots,shots,count_accept,count_logerror,count_undecided,count_detect_discard,prep_rate,LER,detect_normal,decoding_normal
-4,z,16,"['z', 'z', 'z', 'z']",0.01,normal,0,1000000,281942,0,0,0,0.281942,0.0,0,4.089464375996613
-4,z,16,"['z', 'z', 'z', 'z']",0.005,normal,0,1000000,531268,0,0,0,0.531268,0.0,0,1.470707415996003
-4,z,16,"['z', 'z', 'z', 'z']",0.001,normal,0,1000000,881180,0,0,0,0.88118,0.0,0,0.21307277600863017
-4,z,16,"['z', 'z', 'z', 'z']",0.0005,normal,0,1000000,938155,0,0,0,0.938155,0.0,0,0.11593149599502794
+n,lstate,i,p_error,sim_type,total_meta_shots,shots,count_accept,count_logerror,count_undecided,count_detect_discard,prep_rate,LER,detect_normal,decoding_normal,meas_type
+4,z,16,0.01,normal,0,1000000,281942,0,0,0,0.281942,0.0,0,4.089464375996613,"['z', 'z', 'z', 'z']"
+4,z,16,0.005,normal,0,1000000,531268,0,0,0,0.531268,0.0,0,1.470707415996003,"['z', 'z', 'z', 'z']"
+4,z,16,0.001,normal,0,1000000,881180,0,0,0,0.88118,0.0,0,0.2130727760086301,"['z', 'z', 'z', 'z']"
+4,z,16,0.0005,normal,0,1000000,938155,0,0,0,0.938155,0.0,0,0.1159314959950279,"['z', 'z', 'z', 'z']"
