@@ -122,7 +122,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         comp_type_values
     ))
 
-    max_workers = 1  # Adjust to your CPU
+    max_workers = 10  # Adjust to your CPU
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(run_simulation, param_grid))
 
@@ -134,18 +134,20 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x", "z"]
+    lstate_values = ["x"]
     sim_type_values = ["m2"]
     n_values = [4]
-    p_error_values = [0]
-    # i_values = [2, 3, 5, 9]
-    i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(1e2)]
-    hw_name_values = ["ibm_torino"]
+    p_error_values = [1, 0.8, 0.5, 0.3, 0.1]
+    # p_error_values = [0]
+    i_values = [2, 3]
+    # i_values = [9]
+    # i_values = range(2, (2**n_values[0])+1)
+    shots_values = [int(5e4)]
+    hw_name_values = ["ibm_marrakesh"]
     # hw_name_values = [None]
     accepted_target_count_values = [None]
     comp_type_values = ["na"]
 
-    for _ in range(1):
+    for _ in range(100000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values, comp_type_values)
 
