@@ -126,7 +126,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(run_simulation, param_grid))
 
-    logging.info("✅ All simulations finished!")
+    # logging.info("✅ All simulations finished!")
 
 # -----------------------------
 # Parallel execution
