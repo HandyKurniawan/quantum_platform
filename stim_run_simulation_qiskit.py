@@ -50,15 +50,15 @@ def run_simulation(args):
     # print(result, f"./output/STIM/qiskit/n5_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
     # print(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, hw_name={hw_name}")
 
-    save_results_to_csv(result, filename=f"./output/STIM/qiskit/marrakesh_with_init_error/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
+    # save_results_to_csv(result, filename=f"./output/STIM/qiskit/marrakesh_with_init_error/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
 
-    # if comp_type == "na":
-    #     save_results_to_csv(result, filename=f"./output/STIM/qiskit/na_result/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
-    # elif comp_type == "init":
-    #     save_results_to_csv(result, filename=f"./output/STIM/qiskit/init_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
-    # else:
-    #     save_results_to_csv(result, filename=f"./output/STIM/qiskit/n5_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
-    # # return result
+    if comp_type == "na":
+        save_results_to_csv(result, filename=f"./output/STIM/qiskit/na_result/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
+    elif comp_type == "init":
+        save_results_to_csv(result, filename=f"./output/STIM/qiskit/init_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
+    else:
+        save_results_to_csv(result, filename=f"./output/STIM/qiskit/n5_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
+    # return result
 
 def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, comp_values):
     
