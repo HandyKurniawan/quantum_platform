@@ -118,11 +118,11 @@ if __name__ == "__main__":
     n_values = [4]
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
     # p_error_values = [1, 0.1, 0.5, 0.05, 0.01]
-    p_error_values = [1, 0.8, 0.5, 0.3, 0.1]
-    # p_error_values = [1]
-    i_values = [2,3,5,9]
+    # p_error_values = [1, 0.8, 0.5, 0.3, 0.1]
+    p_error_values = [0.1]
+    # i_values = [2,3,5,9]
     # i_values = range(2, (2**n_values[0]))
-    shots_values = [int(1e6)]
+    shots_values = [int(1e7)]
     hw_name_values = ["ibm_marrakesh"]
 
     comp_values = ["na"]
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     # i_values = [2,3,5,9]
 
     lstate_values = ["z"]
-    i_values = [8, 12, 14, 15]
+    i_values = [8, 15]
     
 
     for _ in range(10000):
