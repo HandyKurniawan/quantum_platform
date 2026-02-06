@@ -54,7 +54,7 @@ logging.basicConfig(
 # shots_values = [int(1e6)]
 # seed_starts_values = [100]
 
-token = "23OwipXqZzd8plKZR2LDMK-peWuU74UQAyjAhMIaFHCM"
+token = "9zsMDJr2D381yK6A2fmx2Aqq4mnVaD9RA0Uh49It39UF"
 QiskitRuntimeService.save_account(channel="ibm_quantum_platform", token=token, instance="free", overwrite=True)
 service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token, instance="free")
 
@@ -136,14 +136,14 @@ if __name__ == "__main__":
 
     lstate_values = ["x"]
     sim_type_values = ["m2"]
-    n_values = [4]
+    n_values = [5]
     p_error_values = [1, 0.8, 0.5, 0.3, 0.1]
     # p_error_values = [0]
-    i_values = [2, 3]
-    # i_values = [9]
+    # i_values = [2, 3]
+    i_values = [9, 17]
     # i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(5e4)]
-    hw_name_values = ["ibm_marrakesh"]
+    shots_values = [int(1e3)]
+    hw_name_values = ["ibm_torino"]
     # hw_name_values = [None]
     accepted_target_count_values = [None]
     comp_type_values = ["na"]
