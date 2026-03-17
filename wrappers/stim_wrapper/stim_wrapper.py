@@ -1045,7 +1045,8 @@ def generate_circuit_extraction_syndrome_stim_normal(circuit: stim.Circuit, k, m
 
                 circuit.append("DEPOLARIZE2", [ctrl, targ], error_rate)
         else:
-            circuit.append("DEPOLARIZE2", cnot_1, p_error)
+            # circuit.append("DEPOLARIZE2", cnot_1, p_error)
+            circuit.append("DEPOLARIZE2", cnot_1, 0.01)
 
     
     if len(cnot_2) > 0: 

@@ -11,7 +11,7 @@ import numpy as np
 import sys
 import os
 
-def get_q1prep_accepted_states(n, lstate, results):
+def get_q1prep_accepted_states(n, lstate, results, zpos_list=None):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
     # lstate = "X" # prepared logical state: may be "Z" (|0>) or "X" (|+>)
     
@@ -22,7 +22,9 @@ def get_q1prep_accepted_states(n, lstate, results):
     # zpos: last position frozen in zero, counting from zero! (0 <= zpos < N-1)
     # list of zpos values, assuming that logical |0> is prepared (lstate = "Z")
     #       n =   0   1   2  3  4  5   6   7   8   9   10 
-    zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    if zpos_list == None:
+        zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+    
 
     if lstate == "Z":
         # |0> is prepared: take zpos value from the list above
@@ -37,6 +39,7 @@ def get_q1prep_accepted_states(n, lstate, results):
     mnum  = n*(N//2) # number of measurement results for each state preparation
 
     success_states = {}
+    data_qubit_states = {}
     for line, meas_counts in results.items():
         # print(line)
         # remove spaces at beginning and end of line
@@ -55,8 +58,17 @@ def get_q1prep_accepted_states(n, lstate, results):
         success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
         if success == 1:
             success_states[mstr] = meas_counts 
+
+            # Extract the first N bits
+            data_qubits_str = mstr[:N]
+            
+            # Aggregate counts for the same data qubit outcomes
+            if data_qubits_str in data_qubit_states:
+                data_qubit_states[data_qubits_str] += meas_counts
+            else:
+                data_qubit_states[data_qubits_str] = meas_counts
    
-    return success_states
+    return success_states, data_qubit_states
 
 
 # from here is to calculate the preparation rate and logical error rate

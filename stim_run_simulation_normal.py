@@ -69,7 +69,8 @@ def run_simulation(args):
     print(f"Starting: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}")
     result = simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i, shots, seed)
 
-    save_results_to_csv(result, filename=f"./output/STIM/normal/n{n}_result/polar_results_json_normal_{seed}.csv")
+    # save_results_to_csv(result, filename=f"./output/STIM/normal/n{n}_result/polar_results_json_normal_{seed}.csv")
+    save_results_to_csv(result, filename=f"./output/STIM/normal/n{n}_result/polar_results_json_normal_fix_cx_{seed}.csv")
     # print(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}")
     # return result
 
@@ -134,15 +135,17 @@ if __name__ == "__main__":
     # shots_values = [int(1e5)]
 
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    p_error_values = [0.001]
+    p_error_values = [0]
     # i_values = range(2, (2**n_values[0]))
     # i_values = [2]
-    shots_values = [int(1e7)]
+    shots_values = [int(1e3)]
 
-    lstate_values = ["z"]
-    i_values = [8, 12, 14, 15]
+    # lstate_values = ["z"]
+    # i_values = [8, 12, 14, 15]
+    lstate_values = ["x"]
+    i_values = [2, 3, 5, 9]
     
-    for _ in range(10000):
+    for _ in range(1):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
     
     # for i in range(1000):
