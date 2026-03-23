@@ -125,25 +125,28 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x"]
+    lstate_values = ["z"]
     # sim_type_values = ["normal"]
     sim_type_values = ["normal", "m1"]
-    n_values = [4]
+    n_values = [3]
     # p_error_values = [0.01, 0.005]
     # # i_values = [4]
     # i_values = range(2, (2**n_values[0]))
     # shots_values = [int(1e5)]
 
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    p_error_values = [0]
+    p_error_values = [0.01]
     # i_values = range(2, (2**n_values[0]))
     # i_values = [2]
     shots_values = [int(1e3)]
 
     # lstate_values = ["z"]
+    # i_values = [4, 6, 7]
+
+    # lstate_values = ["z"]
     # i_values = [8, 12, 14, 15]
     lstate_values = ["x"]
-    i_values = [2, 3, 5, 9]
+    i_values = [2]
     
     for _ in range(1):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)

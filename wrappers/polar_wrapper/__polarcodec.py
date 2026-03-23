@@ -74,27 +74,30 @@ def polardec(llr_list, ipos):
 	N  = len(llr_list)   # code length
 	ip = ipos  # copy of ipos (information position)
 	
-	# print(llr_list)
+	# print(llr_list, ip)
 	while N > 1:
+		# print("----------")
 		h = N//2
-		# print(llr_list)
+		# print(llr_list, ip, h)
 
 		llr_list1 = llr_list[0:h]
 		llr_list2 = llr_list[h:N]
 		
 		if ip < h: # decoding bad channel
 			llr_list = np.sign(llr_list1)*np.sign(llr_list2)*np.minimum(abs(llr_list1), abs(llr_list2)) # min-sum decoding rule
+			# print("fplus :", np.sign(llr_list1)*np.sign(llr_list2), np.minimum(abs(llr_list1), abs(llr_list2)), llr_list) 
 			# + np.log(np.divide(1.0+np.exp(-abs(llr_list1+llr_list2)),  1.0+np.exp(-abs(llr_list1-llr_list2))))  # sum-product
 		
 		else: # ip >= h: decoding good channel
 			llr_list = llr_list1 + llr_list2
+			# print("fminus :", llr_list1, llr_list2, llr_list)
 			ip = ip - h
 		
 		# update N
 		N = h
 	
 	# print("===================")
-	# print(llr_list)
+	# print("llr_list = ", llr_list)
 	# print("===================")
 	llr_ipos = llr_list[0]
 	if llr_ipos > 0:

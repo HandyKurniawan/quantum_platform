@@ -26,10 +26,10 @@ def get_q1prep_accepted_states(n, lstate, results, zpos_list=None):
         zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     
 
-    if lstate == "Z":
+    if lstate.upper() == "Z":
         # |0> is prepared: take zpos value from the list above
         zpos = zpos_list[n]
-    elif lstate == "X":
+    elif lstate.upper() == "X":
         # |+> is prepared: zpos value from the list above -1
         zpos = zpos_list[n] -1
     else:
@@ -253,12 +253,16 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
                 codec.polarenc(qstate_U)
                 
                 # add measurement resuts (data qubits, measured after state preparation)
-                # print(meas[N-1::-1], meas[N-1:])
+                # print(meas[N-1::-1], qstate_U, np.mod(qstate_U + meas[N-1::-1], 2))
                 qstate_U = np.mod(qstate_U + meas[N-1::-1], 2)
                 
                 # run polar decoder (logical information encoded at position zpos)
                 # print(1-2*qstate_U, qstate_U)
+                
                 u_ipos = codec.polardec(1-2*qstate_U, zpos)
+
+                # if u_ipos == 0:
+                #     print(1-2*qstate_U, zpos, u_ipos, qstate_UV[zpos], qstate_UV, meas[N-1::-1])
                 
                 if u_ipos == -1:
                     # undecided value (llr = 0): we count half an error, since a 
@@ -287,6 +291,7 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
                 
                 # run polar decoder (logical information encoded at position zpos+1)
                 # print(1-2*qstate_V, qstate_V)
+                # u_ipos = codec.polardec(1-2*qstate_U, zpos)
                 v_ipos = codec.revpolardec(1-2*qstate_V, zpos+1)
                 
                 if v_ipos == -1:
@@ -593,5 +598,146 @@ def polar_code_p2(n, meas_data=False, base="z", add_barrier=False):
 
     return qc
 
+# update
 
+import numpy as np
+import time
+
+def get_logical_error_on_accepted_states_SCL(n, lstate, results, decoder, p_error, zpos_list=None):
+    if zpos_list is None:
+        zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+
+    if lstate == "Z":
+        zpos = zpos_list[n]
+    elif lstate == "X":
+        zpos = zpos_list[n] - 1
+    else:
+        raise TypeError("Illegal 'lstate' value")
+    
+    N = 2**n
+    
+    # Define LLR Magnitude based on the error rate
+    if p_error == 0:
+        llr_mag = 10.0  # Arbitrary high confidence for noiseless
+    else:
+        llr_mag = np.log((1 - p_error) / p_error)
+        # llr_mag = -10
+
+    count_accept = 0
+    count_discard = 0
+    count_logerror = 0 
+    count_undecided = 0
+    detection_time = 0
+
+    total_shots = sum(results.values())
+    tmp_start_time = time.perf_counter()
+
+    for line, meas_counts in results.items():
+        mstr = line.strip()
+        meas = np.zeros((len(mstr),), dtype=int) 
+
+        for i in range(0, len(mstr)):
+            meas[i] = ord(mstr[i]) - ord('0')   
+            if meas[i] != 0 and meas[i] != 1:
+                raise TypeError("Illegal measurement result: must be 0 or 1")
+
+        # Check if 'meas' are valid measurement results
+        success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
+        
+        if success == 1:
+            count_accept += meas_counts
+        else:
+            count_discard += meas_counts
+
+        if success == 1:
+            if lstate.lower() == "z":    
+                qstate_U = np.zeros((N,), dtype=int)
+                qstate_U[:zpos] = qstate_UV[:zpos]
+
+                # print("setup:", zpos, qstate_U, qstate_UV[:zpos])
+
+                # qstate_U[zpos-1] = 0
+                
+                # 1. Encode using original Python function
+                codec.polarenc(qstate_U)
+
+                # qstate_U[zpos-1] = 0
+                
+                # 2. Add measurement results to find the error/syndrome vector
+                # print("---", qstate_U, meas[N-1::-1], zpos, qstate_U, qstate_UV[zpos])
+                # print(meas[N-1::-1], qstate_U, np.mod(qstate_U + meas[N-1::-1], 2))
+                qstate_U = np.mod(qstate_U + meas[N-1::-1], 2)
+                # qstate_U = meas[N-1::-1]
+
+                # qstate_U = np.bitwise_xor(qstate_U, meas[N-1::-1])
+                
+                # 3. Map hard syndrome bits to Soft LLRs for SCL Decoder
+                # 0 becomes +llr_mag, 1 becomes -llr_mag
+                Y_N_LLRs = ((1 - 2 * qstate_U)).astype(np.float64)
+                # Y_N_LLRs = ((1 - 2 * qstate_U) * llr_mag).astype(np.float64)
+                # Y_N_LLRs = ((2 * qstate_U - 1) * llr_mag).astype(np.float64)
+                
+                # 4. Run the C++ SCL Decoder
+                V_K_hat = np.zeros(1, dtype=np.int32) # Assuming K=1
+
+                # print("LLR: :", Y_N_LLRs, Y_N_LLRs[::-1])
+                # Y_N_LLRs = Y_N_LLRs[::-1]
+
+                # Y_N_LLRs = np.array([-1.,1.,-1.,1.,-1.,1.,-1.,1.])
+                decoder.decode(Y_N_LLRs, V_K_hat, 0)
+                # print(meas[N-1::-1], Y_N_LLRs, qstate_U, qstate_UV, V_K_hat, qstate_UV[zpos])
+
+                u_ipos = V_K_hat[0]
+                
+                # SCL rarely returns an "undecided" state like standard SC might, 
+                # but we keep this logic intact just in case.
+                if u_ipos == -1:
+                    count_logerror += (0.5 * meas_counts)
+                    count_undecided += (1 * meas_counts)
+                elif u_ipos != qstate_UV[zpos]:
+                    count_logerror += (1 * meas_counts)
+                
+            elif lstate.lower() == "x":  
+                qstate_V = np.zeros((N,), dtype=int)
+                qstate_V[zpos+2:] = qstate_UV[zpos+2:]
+                
+                # 1. Encode using original reverse polar encoder
+                codec.revpolarenc(qstate_V)
+                
+                # 2. Add measurement results
+                logical_bit = meas[N-1::-1]
+                
+                # print(qstate_V, meas[N-1::-1], zpos, qstate_V[zpos+2:], qstate_UV, logical_bit)
+                qstate_V = np.mod(qstate_V + logical_bit, 2)
+                
+                # 3. Map hard syndrome bits to Soft LLRs
+                Y_N_LLRs = ((1 - 2 * qstate_V) * llr_mag).astype(np.float64)
+                
+                # 4. Run the C++ SCL Decoder
+                V_K_hat = np.zeros(1, dtype=np.int32)
+                
+                # WARNING: Standard C++ SCL is built for forward CNOTs, not reversed!
+                # If your C++ library doesn't support reversed polar codes, this might fail.
+                decoder.decode(Y_N_LLRs, V_K_hat, 0) 
+                v_ipos = V_K_hat[0]
+
+                print(qstate_V, meas[N-1::-1], zpos, qstate_V[zpos+2:], qstate_UV, logical_bit, v_ipos, qstate_UV[zpos+1])
+                
+                if v_ipos == -1:
+                    count_logerror += (0.5 * meas_counts)
+                    count_undecided += (1 * meas_counts)
+                elif v_ipos != qstate_UV[zpos+1]:
+                    count_logerror += (1 * meas_counts)
+            
+            else:
+                raise TypeError("Illegal 'lstate' value")
+            
+    tmp_end_time = time.perf_counter()
+    decoding_time = tmp_end_time - tmp_start_time - detection_time
+
+    fidelity = 0
+    if count_accept > 0:
+        fidelity = ((count_accept - round(count_logerror)) / count_accept)
+
+    return count_accept, round(count_logerror), count_undecided, fidelity, detection_time, decoding_time
 
