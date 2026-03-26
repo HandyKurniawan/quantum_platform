@@ -88,7 +88,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         seed_values,
     ))
 
-    max_workers = 10  # Adjust to your CPU
+    max_workers = 3 # Adjust to your CPU
     # results = []
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         executor.map(run_simulation, param_grid)
@@ -128,27 +128,28 @@ if __name__ == "__main__":
     lstate_values = ["z"]
     # sim_type_values = ["normal"]
     sim_type_values = ["normal", "m1"]
-    n_values = [3]
+    n_values = [5]
     # p_error_values = [0.01, 0.005]
     # # i_values = [4]
     # i_values = range(2, (2**n_values[0]))
     # shots_values = [int(1e5)]
 
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    p_error_values = [0.01]
+    p_error_values = [0.001, 0.0005, 0.0001]
+    # p_error_values = [0]
     # i_values = range(2, (2**n_values[0]))
     # i_values = [2]
-    shots_values = [int(1e3)]
+    shots_values = [int(1e6)]
 
     # lstate_values = ["z"]
     # i_values = [4, 6, 7]
 
     # lstate_values = ["z"]
     # i_values = [8, 12, 14, 15]
-    lstate_values = ["x"]
-    i_values = [2]
+    lstate_values = ["z"]
+    i_values = [8]
     
-    for _ in range(1):
+    for _ in range(10000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values)
     
     # for i in range(1000):

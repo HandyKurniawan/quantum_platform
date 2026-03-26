@@ -4,11 +4,11 @@ import random
 from concurrent.futures import ProcessPoolExecutor
 from wrappers.polar_wrapper import (
     polar_code_p2, get_logical_error_on_accepted_states, divide_half_list,
-    get_q1prep_accepted_states, get_logical_error_on_accepted_states_SCL
+    get_q1prep_accepted_states, get_logical_error_on_accepted_states_SCL,
 )
 from wrappers.stim_wrapper import (
     simulate_stim_polar_code_normal,
-    
+    simulate_stim_polar_code_normal_from_qiskit_circuit,
     calculate_logical_error_result_polar_normal,
     simulate_batch_and_save_result_polar_normal,
     generate_qiskit_polar_code, compiled_to_qiskit_hardware,
@@ -42,7 +42,15 @@ from Decoders.SCL import PyDecoderPolarSCL
 # K = 1
 # L = 4
 
-def call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L, p_zpos = None):
+token = "9zsMDJr2D381yK6A2fmx2Aqq4mnVaD9RA0Uh49It39UF"
+QiskitRuntimeService.save_account(channel="ibm_quantum_platform", token=token, instance="free", overwrite=True)
+service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token, instance="free")
+
+
+
+def call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L, hw_name, comp_type = "na"):
+
+    backend = service.backend(hw_name)
 
     N = 2**n  
 
@@ -57,9 +65,6 @@ def call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L, p_zpos =
     # else:
     #     zpos = p_zpos
 
-    if p_zpos != None:
-        zpos = p_zpos
-
     # 2. Create a mask of ALL Trues (all frozen)
     frozen_bits_mask = np.ones(N, dtype=np.int32)
 
@@ -71,25 +76,28 @@ def call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L, p_zpos =
 
     print(frozen_bits_mask)
 
-    results = simulate_stim_polar_code_normal(n, lstate, sim_type, i, p_error, shots, seed)
+    
+
+    
     # accepted_states, data_qubit_states = get_q1prep_accepted_states(n, lstate, results, zpos_list)
 
     # Initialize the decoder
     decoder = PyDecoderPolarSCL(K, N, L, frozen_bits_mask)
 
-    count_accept, count_logerror, count_undecided, ler, detection_time, decoding_time = get_logical_error_on_accepted_states(n, lstate.upper(), results, zpos_list)
-    count_accept_m1, count_logerror_m1, count_undecided_m1, ler_m1, detection_time_m1, decoding_time_m1 = get_logical_error_on_accepted_states_SCL(n, lstate.upper(), results, decoder, p_error, zpos_list)
+    results = simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, p_error, shots, seed, backend, comp_type)
+    count_accept, count_logerror, count_undecided, ler, _, _ = get_logical_error_on_accepted_states(n, lstate.upper(), results, zpos_list)
+    count_accept_m1, count_logerror_m1, count_undecided_m1, ler_m1, _, _ = get_logical_error_on_accepted_states_SCL(n, lstate.upper(), results, decoder, p_error, zpos_list)
 
-    print(count_accept, count_logerror, count_undecided, 1-ler, detection_time, decoding_time)
-    print(count_accept_m1, count_logerror_m1, count_undecided_m1, 1-ler_m1, detection_time_m1, decoding_time_m1)
+    print(count_accept, count_logerror, count_undecided, 1-ler)
+    print(count_accept_m1, count_logerror_m1, count_undecided_m1, 1-ler_m1)
 
 n = 4
 lstate = 'x'
-i = 5
+i = 3
 # i = 7
 # i = 15
-p_error = 0.02
-shots = 100000
+p_error = 1
+shots = 50000
 # seed = 10000
 seed = random.randint(1, 99999999)
 K = 1
@@ -97,8 +105,8 @@ L = 1
 
 sim_type = "normal"
 print("Normal")
-call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L)
+call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L, "ibm_marrakesh")
 
 sim_type = "m1"
 print("M1")
-call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L)
+call_experiment(n, lstate, sim_type, i, p_error, shots, seed, K, L, "ibm_marrakesh")

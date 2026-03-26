@@ -616,12 +616,12 @@ def get_logical_error_on_accepted_states_SCL(n, lstate, results, decoder, p_erro
     
     N = 2**n
     
-    # Define LLR Magnitude based on the error rate
-    if p_error == 0:
-        llr_mag = 10.0  # Arbitrary high confidence for noiseless
-    else:
-        llr_mag = np.log((1 - p_error) / p_error)
-        # llr_mag = -10
+    # # Define LLR Magnitude based on the error rate
+    # if p_error == 0:
+    #     llr_mag = 10.0  # Arbitrary high confidence for noiseless
+    # else:
+    #     llr_mag = np.log((1 - p_error) / p_error)
+    #     # llr_mag = -10
 
     count_accept = 0
     count_discard = 0
@@ -684,7 +684,7 @@ def get_logical_error_on_accepted_states_SCL(n, lstate, results, decoder, p_erro
                 # Y_N_LLRs = Y_N_LLRs[::-1]
 
                 # Y_N_LLRs = np.array([-1.,1.,-1.,1.,-1.,1.,-1.,1.])
-                decoder.decode(Y_N_LLRs, V_K_hat, 0)
+                decoder.decode(Y_N_LLRs, V_K_hat, 0, ord(lstate.upper()))
                 # print(meas[N-1::-1], Y_N_LLRs, qstate_U, qstate_UV, V_K_hat, qstate_UV[zpos])
 
                 u_ipos = V_K_hat[0]
@@ -711,17 +711,19 @@ def get_logical_error_on_accepted_states_SCL(n, lstate, results, decoder, p_erro
                 qstate_V = np.mod(qstate_V + logical_bit, 2)
                 
                 # 3. Map hard syndrome bits to Soft LLRs
-                Y_N_LLRs = ((1 - 2 * qstate_V) * llr_mag).astype(np.float64)
+                # Y_N_LLRs = ((1 - 2 * qstate_V) * llr_mag).astype(np.float64)
+                Y_N_LLRs = ((1 - 2 * qstate_V)).astype(np.float64)
                 
                 # 4. Run the C++ SCL Decoder
                 V_K_hat = np.zeros(1, dtype=np.int32)
                 
                 # WARNING: Standard C++ SCL is built for forward CNOTs, not reversed!
                 # If your C++ library doesn't support reversed polar codes, this might fail.
-                decoder.decode(Y_N_LLRs, V_K_hat, 0) 
+                decoder.decode(Y_N_LLRs, V_K_hat, 0, ord(lstate.upper())) 
                 v_ipos = V_K_hat[0]
 
-                print(qstate_V, meas[N-1::-1], zpos, qstate_V[zpos+2:], qstate_UV, logical_bit, v_ipos, qstate_UV[zpos+1])
+                # print(qstate_V, meas[N-1::-1], zpos, qstate_V[zpos+2:], qstate_UV, logical_bit, v_ipos, qstate_UV[zpos+1])
+                # print("-------------")
                 
                 if v_ipos == -1:
                     count_logerror += (0.5 * meas_counts)
