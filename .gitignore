@@ -48,7 +48,6 @@ output/STIM/*.png
 
 
 # C extensions
-*.so
 
 # Distribution / packaging
 .Python
