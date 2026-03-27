@@ -135,7 +135,7 @@ if __name__ == "__main__":
     # shots_values = [int(1e5)]
 
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    p_error_values = [0.001, 0.0005, 0.0001]
+    p_error_values = [0.001]
     # p_error_values = [0]
     # i_values = range(2, (2**n_values[0]))
     # i_values = [2]
