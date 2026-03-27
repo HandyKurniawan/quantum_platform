@@ -4,7 +4,7 @@ import stim
 import pandas as pd
 import collections
 import os
-from wrappers.polar_wrapper import (divide_half_list, get_logical_error_on_accepted_states, get_q1prep_sr)
+from wrappers.polar_wrapper import (divide_half_list, get_logical_error_on_accepted_states, get_logical_error_on_accepted_states_SCL, get_q1prep_sr)
 from wrappers.qiskit_wrapper import (used_qubits)
 import json
 
@@ -17,6 +17,15 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit.circuit.library import HGate, CXGate, SwapGate
 import copy
 
+import sys
+from pathlib import Path
+
+# Get the path 3 levels up
+# .parent is 1 up, .parents[2] is 3 up
+three_up = Path(__file__).resolve().parents[2]
+sys.path.append(str(three_up))
+
+from Decoders.SCL import PyDecoderPolarSCL 
 
 import glob
 import sys
@@ -1251,7 +1260,7 @@ def simulate_stim_polar_code_normal(n, lstate, sim_type, i, p_error, shots, seed
     
     return counts
 
-def simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i, shots, seed):
+def simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i, shots, seed, decoder_type="val"):
 
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     zpos_list[n] = i-1
@@ -1293,10 +1302,22 @@ def simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i,
     zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
     zpos_list[n] = i - 1
 
-    count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
-        get_logical_error_on_accepted_states(
-            n, lstate.upper(), counts, zpos_list
-        )
+    if decoder_type == "val":
+        count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
+            get_logical_error_on_accepted_states(
+                n, lstate.upper(), counts, zpos_list
+            )
+    else:
+
+        frozen_bits_mask = np.ones(2**n, dtype=np.int32)
+        frozen_bits_mask[i-1] = 0
+        frozen_bits_mask = list(frozen_bits_mask)
+        decoder = PyDecoderPolarSCL(1, 2**n, 1, frozen_bits_mask)
+
+        count_accept, count_logerror, count_undecided, ler, detect_normal, decoding_normal = \
+            get_logical_error_on_accepted_states_SCL(
+                n, lstate.upper(), counts, decoder, p_error,zpos_list, 
+            )
 
     # print(n, lstate, i, p_error, sim_type, count_accept)
     # Return structured result
@@ -1307,6 +1328,7 @@ def simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i,
         "meas_type": meas_type,
         "p_error": p_error,
         "sim_type": sim_type,
+        "decoder_type": decoder_type,
         "total_meta_shots": 0,
         "shots": total_shots,
         "count_accept": count_accept,
