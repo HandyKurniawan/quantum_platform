@@ -98,11 +98,19 @@ n = 4
 lstate = 'z'
 # i = 2
 # i = 7
+<<<<<<< HEAD
 i = 12
 p_error = 0.05
 shots = 20000
 seed = 10000
 # seed = random.randint(1, 99999999)
+=======
+# i = 15
+p_error = 0
+shots = 10000
+# seed = 10000
+seed = random.randint(1, 99999999)
+>>>>>>> origin/main
 K = 1
 L = 1
 
