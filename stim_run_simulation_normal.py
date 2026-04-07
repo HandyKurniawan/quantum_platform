@@ -89,7 +89,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         decoder_values
     ))
 
-    max_workers = 10 # Adjust to your CPU
+    max_workers = 6 # Adjust to your CPU
     # results = []
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         executor.map(run_simulation, param_grid)
@@ -126,32 +126,52 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x","z"]
+    lstate_values = ["x"]
     # sim_type_values = ["normal"]
     sim_type_values = ["normal", "m1"]
-    n_values = [3]
+    # n_values = [3]
     # p_error_values = [0.01, 0.005]
     # # i_values = [4]
     # i_values = range(2, (2**n_values[0]))
     # shots_values = [int(1e5)]
 
     # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    p_error_values = [0.1, 0.05, 0.01, 0.005, 0.0001]
-    # p_error_values = [0]
-    i_values = range(2, (2**n_values[0]))
+    # p_error_values = [0.1, 0.05, 0.01, 0.005, 0.001]
+    # p_error_values = [0.01, 0.005, 0.001]
+    
+    # i_values = range(2, (2**n_values[0]))
     # i_values = [2]
     shots_values = [int(1e6)]
 
+    # # 3
+    # n_values = [3]
+    # # lstate_values = ["x"]
+    # # i_values = [2, 3, 4, 5]
     # lstate_values = ["z"]
-    # i_values = [4, 6, 7]
+    # i_values = [3, 4, 6, 7]
+    
+    # 4X
+    n_values = [4]
+    p_error_values = [0.005]
+    lstate_values = ["x"]
+    # i_values = [2, 3, 5, 9]
+    i_values = [2, 3]
+
+    # 4Z
+    lstate_values = ["z"]
+    # p_error_values = [0.001]
+    # i_values = [8, 12, 14, 15]
+    
+    p_error_values = [0.005]
+    i_values = [14, 15]
 
     # lstate_values = ["z"]
     # i_values = [8, 12, 14, 15]
     # lstate_values = ["z"]
     # i_values = [8]
-    decoder_values = ["val", "anqi"]
+    decoder_values = ["anqi"]
     
-    for _ in range(2):
+    for _ in range(100000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, decoder_values)
     
     # for i in range(1000):
