@@ -150,28 +150,30 @@ if __name__ == "__main__":
     # lstate_values = ["z"]
     # i_values = [3, 4, 6, 7]
     
+    sim_type_values = ["normal", "m1"]
+
     # 4X
     n_values = [4]
-    p_error_values = [0.005]
+    p_error_values = [0.001]
     lstate_values = ["x"]
     # i_values = [2, 3, 5, 9]
-    i_values = [2, 3]
+    i_values = [4]
 
-    # 4Z
-    lstate_values = ["z"]
+    # # 4Z
+    # lstate_values = ["z"]
     # p_error_values = [0.001]
-    # i_values = [8, 12, 14, 15]
+    # i_values = [7]
     
-    p_error_values = [0.005]
-    i_values = [14, 15]
+    # p_error_values = [0.01]
+    # i_values = [14, 15]
 
     # lstate_values = ["z"]
     # i_values = [8, 12, 14, 15]
     # lstate_values = ["z"]
     # i_values = [8]
-    decoder_values = ["anqi"]
+    decoder_values = ["val"]
     
-    for _ in range(100000):
+    for _ in range(10000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, decoder_values)
     
     # for i in range(1000):
