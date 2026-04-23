@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     lstate_values = ["x"]
     # sim_type_values = ["normal"]
-    sim_type_values = ["normal", "m1"]
+    sim_type_values = ["m1"]
     # n_values = [3]
     # p_error_values = [0.01, 0.005]
     # # i_values = [4]
@@ -150,19 +150,20 @@ if __name__ == "__main__":
     # lstate_values = ["z"]
     # i_values = [3, 4, 6, 7]
     
-    sim_type_values = ["m1"]
+    sim_type_values = ["normal"]
 
     # 4X
     n_values = [4]
     p_error_values = [0.001]
     lstate_values = ["x"]
     # i_values = [2, 3, 5, 9]
-    i_values = [2]
+    i_values = [5]
 
-    # # 4Z
+    # # # 4Z
+    # n_values = [4]
     # lstate_values = ["z"]
     # p_error_values = [0.001]
-    # i_values = [7]
+    # i_values = [14]
     
     # p_error_values = [0.01]
     # i_values = [14, 15]
