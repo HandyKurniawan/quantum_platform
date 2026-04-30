@@ -89,7 +89,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         decoder_values
     ))
 
-    max_workers = 6 # Adjust to your CPU
+    max_workers = 12 # Adjust to your CPU
     # results = []
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         executor.map(run_simulation, param_grid)
@@ -126,9 +126,9 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x"]
-    # sim_type_values = ["normal"]
-    sim_type_values = ["m1"]
+    # lstate_values = ["x"]
+    # # sim_type_values = ["normal"]
+    # sim_type_values = ["m1"]
     # n_values = [3]
     # p_error_values = [0.01, 0.005]
     # # i_values = [4]
@@ -150,14 +150,14 @@ if __name__ == "__main__":
     # lstate_values = ["z"]
     # i_values = [3, 4, 6, 7]
     
-    sim_type_values = ["normal"]
+    sim_type_values = ["m1"]
 
     # 4X
     n_values = [4]
-    p_error_values = [0.001]
+    p_error_values = [0.0025]
     lstate_values = ["x"]
-    # i_values = [2, 3, 5, 9]
-    i_values = [9]
+    i_values = [2, 3, 5, 9]
+    # i_values = [9]
 
     # # # 4Z
     # n_values = [4]
