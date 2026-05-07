@@ -154,9 +154,9 @@ if __name__ == "__main__":
 
     # 4X
     n_values = [4]
-    p_error_values = [0.0025]
-    lstate_values = ["x"]
-    i_values = [2, 3, 5, 9]
+    p_error_values = [0.001]
+    # lstate_values = ["x"]
+    # i_values = [2, 3, 5, 9]
     # i_values = [9]
 
     # # # 4Z
@@ -168,8 +168,8 @@ if __name__ == "__main__":
     # p_error_values = [0.01]
     # i_values = [14, 15]
 
-    # lstate_values = ["z"]
-    # i_values = [8, 12, 14, 15]
+    lstate_values = ["z"]
+    i_values = [8, 12]
     # lstate_values = ["z"]
     # i_values = [8]
     decoder_values = ["anqi"]
