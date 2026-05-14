@@ -70,7 +70,7 @@ def run_simulation(args):
     result = simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i, shots, seed, decoder)
 
     # save_results_to_csv(result, filename=f"./output/STIM/normal/n{n}_result/polar_results_json_normal_{seed}.csv")
-    save_results_to_csv(result, filename=f"./output/STIM/normal/n{n}_result/polar_results_json_normal_{seed}.csv")
+    save_results_to_csv(result, filename=f"./output/STIM/clean/n{n}_result/polar_results_json_normal_{seed}.csv")
     # print(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}")
     # return result
 
@@ -126,55 +126,17 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    # lstate_values = ["x"]
-    # # sim_type_values = ["normal"]
-    # sim_type_values = ["m1"]
-    # n_values = [3]
-    # p_error_values = [0.01, 0.005]
-    # # i_values = [4]
-    # i_values = range(2, (2**n_values[0]))
-    # shots_values = [int(1e5)]
-
-    # p_error_values = [0.01, 0.005, 0.001, 0.0005, 0.0001]
-    # p_error_values = [0.1, 0.05, 0.01, 0.005, 0.001]
-    # p_error_values = [0.01, 0.005, 0.001]
-    
-    # i_values = range(2, (2**n_values[0]))
-    # i_values = [2]
     shots_values = [int(1e6)]
-
-    # # 3
-    # n_values = [3]
-    # # lstate_values = ["x"]
-    # # i_values = [2, 3, 4, 5]
-    # lstate_values = ["z"]
-    # i_values = [3, 4, 6, 7]
-    
-    sim_type_values = ["m1"]
-
-    # 4X
+    sim_type_values = ["normal", "m1"]
     n_values = [4]
-    p_error_values = [0.001]
-    # lstate_values = ["x"]
-    # i_values = [2, 3, 5, 9]
+    p_error_values = [0.001, 0.00075, 0.0005, 0.00025, 0.0001]
+    lstate_values = ["x", "z"]
+    i_values = [6, 7]
     # i_values = [9]
 
-    # # # 4Z
-    # n_values = [4]
-    # lstate_values = ["z"]
-    # p_error_values = [0.001]
-    # i_values = [14]
+    decoder_values = ["val","anqi"]
     
-    # p_error_values = [0.01]
-    # i_values = [14, 15]
-
-    lstate_values = ["z"]
-    i_values = [8, 12]
-    # lstate_values = ["z"]
-    # i_values = [8]
-    decoder_values = ["anqi"]
-    
-    for _ in range(10000):
+    for _ in range(100000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, decoder_values)
     
     # for i in range(1000):

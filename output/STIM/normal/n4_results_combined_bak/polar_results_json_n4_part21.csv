@@ -1,0 +1,2 @@
+n,lstate,i,p_error,sim_type,decoder_type,shots,prep_rate,count_accept,LER,prep_rate_SEM,N_samples,prep_rate_SD,LER_SEM,LER_SD,eff,eff_SEM,eff_SD,skip,s_l,CNOT,hadamard,meas,cost,cost_SEM,count_accept.1,count_logerror,count_undecided,count_detect_discard,total_meta_shots,detect_normal,decoding_normal,meas_type
+4,z,14,0.001,normal,anqi,8760000000,0.9251503034246576,8104316658,0.0,5.5110251706849565e-06,8760,0.0002631651497624,0.0,0.0,0.9251503034246576,5.5110251706849565e-06,0.0002631651497624,1,1,48,16,48,1.0,0.0,8104316658,0.0,0,0,0,0,766029.4203662729,"['z', 'x', 'z', 'z']"

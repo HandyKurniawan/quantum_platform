@@ -76,7 +76,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         comp_values
     ))
 
-    max_workers = 10  # Adjust to your CPU
+    max_workers = 12  # Adjust to your CPU
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         executor.map(run_simulation, param_grid)
 
