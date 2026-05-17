@@ -46,13 +46,17 @@ def run_simulation(args):
     
     backend = service.backend(hw_name)
 
+    filename = f"./output/STIM/qiskit_clean/n{n}_result/{hw_name}_na_polar_results_json_qiskit_{seed}.csv"
+    # print(filename)
+
     result = simulate_batch_and_save_result_polar_qiskit(n, lstate, sim_type, p_error, i, shots, seed, backend, comp_type)
     # print(result, f"./output/STIM/qiskit/n5_result/{hw_name}_polar_results_json_qiskit_{seed}.csv")
     # print(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, hw_name={hw_name}")
 
     # save_results_to_csv(result, filename=f"./output/STIM/qiskit/marrakesh_with_init_error/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
 
-    save_results_to_csv(result, filename=f"./output/STIM/qiskit_clean/n{n}_result/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
+    
+    save_results_to_csv(result, filename=filename)
 
     # if comp_type == "na":
     #     save_results_to_csv(result, filename=f"./output/STIM/qiskit_clean/na_result/{hw_name}_na_polar_results_json_qiskit_{seed}.csv")
@@ -115,21 +119,22 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x"]
+    # lstate_values = ["x"]
     sim_type_values = ["normal", "m1"]
     n_values = [4]
     p_error_values = [1, 0.9, 0.7, 0.5, 0.3, 0.15, 0.1]
     # p_error_values = [1]
-    shots_values = [int(1e5)]
-    hw_name_values = ["ibm_marrakesh"]
-    # hw_name_values = ["ibm_fez"]
+    shots_values = [int(1e6)]
+    # hw_name_values = ["ibm_marrakesh"]
+    hw_name_values = ["ibm_kingston"]
 
     comp_values = ["na"]
     
     lstate_values = ["x", "z"]
-    i_values = [6,7,10,11]
+    # i_values = [4,6,7,10,11]
+    i_values = [4,6,7,10,11,13]
     # i_values = range(2, (2**n_values[0]))
     # i_values = [9]
 
-    for _ in range(1000000):
+    for _ in range(1000000000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, comp_values)
