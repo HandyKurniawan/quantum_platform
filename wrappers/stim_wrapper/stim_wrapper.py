@@ -735,7 +735,6 @@ def calculate_logical_error_result_polar(n, lstate, i, p_error, sim_type, shots,
 
 #Region Qiskit Region
 def get_backend_information(backend):
-
     properties = backend.properties()
     num_qubits = backend.num_qubits
     coupling_map = backend.coupling_map
@@ -747,13 +746,14 @@ def get_backend_information(backend):
         # t2.append(properties.t2(i))
         # gate_error_x.append(properties.gate_error(gate="x", qubits=i))
         # readout_error.append(properties.readout_error(i))
-        t1[idx] = properties.t1(idx)
-        t2[idx] = properties.t2(idx)
+        # t1[idx] = properties.t1(idx)
+        # t2[idx] = properties.t2(idx)
         gate_error_x[idx] = properties.gate_error(gate="x", qubits=idx)
         readout_error[idx] = properties.readout_error(idx)
 
+    # print(" ---------- get backend information ------------------", backend.name)
     # if backend.name == "ibm_torino":
-    if backend.name in (["ibm_fez", "ibm_marrakesh", "ibm_torino"]):
+    if backend.name in (["ibm_fez", "ibm_marrakesh", "ibm_torino", "ibm_kingston"]):
         for pair in coupling_map:
             gate_error_cz[pair] = properties.gate_error(gate="cz", qubits=pair)
     elif backend.name == "ibm_brisbane":
