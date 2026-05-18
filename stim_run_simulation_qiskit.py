@@ -34,7 +34,7 @@ def wrapper(args):
     return calculate_logical_error_result_polar_qiskit(*args)
 
 token = "9zsMDJr2D381yK6A2fmx2Aqq4mnVaD9RA0Uh49It39UF"
-QiskitRuntimeService.save_account(channel="ibm_quantum_platform", token=token, instance="free", overwrite=True)
+# QiskitRuntimeService.save_account(channel="ibm_quantum_platform", token=token, instance="free", overwrite=True)
 service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token, instance="free")
 
 # -----------------------------
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     n_values = [4]
     p_error_values = [1, 0.9, 0.7, 0.5, 0.3, 0.15, 0.1]
     # p_error_values = [1]
-    shots_values = [int(1e6)]
+    shots_values = [int(1e5)]
     # hw_name_values = ["ibm_marrakesh"]
     hw_name_values = ["ibm_kingston"]
 
