@@ -8,6 +8,7 @@ from wrappers.polar_wrapper import (
 from wrappers.stim_wrapper import (
     calculate_logical_error_result_polar_normal,
     simulate_batch_and_save_result_polar_normal,
+    simulate_batch_and_save_result_polar_normal_update,
     generate_qiskit_polar_code, compiled_to_qiskit_hardware,
     find_and_delete_files
 )
@@ -67,7 +68,11 @@ logging.basicConfig(
 def run_simulation(args):
     n, lstate, sim_type, p_error, i, shots, seed, decoder = args
     print(f"Starting: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, decoder={decoder}")
-    result = simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i, shots, seed, decoder)
+
+    if sim_type == "m3":
+        result = simulate_batch_and_save_result_polar_normal_update(n, lstate, sim_type, p_error, i, shots, seed, decoder)
+    else:
+        result = simulate_batch_and_save_result_polar_normal(n, lstate, sim_type, p_error, i, shots, seed, decoder)
 
     # save_results_to_csv(result, filename=f"./output/STIM/normal/n{n}_result/polar_results_json_normal_{seed}.csv")
     save_results_to_csv(result, filename=f"./output/STIM/clean/n{n}_result/polar_results_json_normal_{seed}.csv")

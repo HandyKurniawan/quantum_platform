@@ -15,7 +15,8 @@ from .stim_wrapper import (simulate_stim_polar_code, generate_circuit_extraction
                            combine_data, find_and_delete_files,
                            create_sabre_na_pm,
                            check_for_mismatch,
-                           simulate_circuit_polar_stim_tableau_from_qiskit
+                           simulate_circuit_polar_stim_tableau_from_qiskit,
+                           simulate_batch_and_save_result_polar_normal_update
                            
                            
 )
@@ -40,6 +41,7 @@ __all__ = [
     "create_circuit_polar_stim_normal",
     "simulate_stim_polar_code_normal",
     "simulate_batch_and_save_result_polar_normal",
+    "simulate_batch_and_save_result_polar_normal_update",
     "calculate_logical_error_result_polar_normal",
     "compile_circuit_qiskit_to_stim",
     "create_circuit_polar_stim_from_qiskit",
