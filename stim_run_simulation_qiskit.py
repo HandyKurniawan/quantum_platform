@@ -124,7 +124,7 @@ if __name__ == "__main__":
     n_values = [3]
     p_error_values = [1, 0.9, 0.7, 0.5, 0.3, 0.15, 0.1]
     # p_error_values = [1]
-    shots_values = [int(1e5)]
+    shots_values = [int(1e6)]
     # hw_name_values = ["ibm_marrakesh"]
     hw_name_values = ["ibm_kingston"]
 
