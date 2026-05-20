@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     # lstate_values = ["x"]
     sim_type_values = ["normal", "m1"]
-    n_values = [4]
+    n_values = [3]
     p_error_values = [1, 0.9, 0.7, 0.5, 0.3, 0.15, 0.1]
     # p_error_values = [1]
     shots_values = [int(1e6)]
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     comp_values = ["na"]
     
     lstate_values = ["x", "z"]
-    i_values = [6,7]
+    i_values = [4,5]
     # i_values = [4,6,7,10,11,13]
     # i_values = range(2, (2**n_values[0]))
     # i_values = [9]
