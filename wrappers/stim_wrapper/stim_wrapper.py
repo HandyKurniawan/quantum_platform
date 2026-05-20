@@ -206,7 +206,7 @@ def simulate_stim_one_shot(n, lstate, sim_type, p_error, seed,
         num_loops = 2**(n - level)
         start_idx_mult = 2**(level) + 2**(level - 1)
 
-        if sim_type in ["m1", "m2"] and level == x_ind + 1:
+        if sim_type in ["m1", "m2", "m3"] and level == x_ind + 1:
             x_first = True
         else:
             x_first = False
@@ -259,7 +259,7 @@ def simulate_stim_one_shot(n, lstate, sim_type, p_error, seed,
     # Generate the bit string, reverse it, and update the counts.
     bit_string = ''.join(['1' if b else '0' for b in final_measurements])[::-1]
 
-    if sim_type in ["m1", "m2"]:
+    if sim_type in ["m1", "m2", "m3"]:
         bit_string = bit_string + "0"*(2**(level - 1))
 
     return bit_string, False
@@ -397,7 +397,7 @@ def simulate_stim_one_shot_qiskit(tqc, n, sim_type, backend, p_error, x_ind, see
     sim = stim.TableauSimulator(seed=seed)
     m_order = []
 
-    if sim_type in ["m1", "m2"]:
+    if sim_type in ["m1", "m2", "m3"]:
         for idx in range(2**(n - 1)):
             m_order.append(idx)
             sim.measure(idx)
@@ -867,7 +867,7 @@ def generate_qiskit_polar_code(n, lstate, sim_type, i, skip_reset=False):
         num_loops = 2**(n - level)
         start_idx_mult = 2**(level) + 2**(level - 1)
 
-        if sim_type in ["m1", "m2"] and level == x_ind + 1:
+        if sim_type in ["m1", "m2", "m3"] and level == x_ind + 1:
             x_first = True
             m_idx += ancilla_qubits
             # print("m_idx =", m_idx)
@@ -1140,7 +1140,7 @@ def create_circuit_polar_stim_normal(n, lstate, sim_type, p_error, seed, shots,
         num_loops = 2**(n - level)
         start_idx_mult = 2**(level) + 2**(level - 1)
 
-        if sim_type in ["m1", "m2"] and level == x_ind + 1:
+        if sim_type in ["m1", "m2", "m3"] and level == x_ind + 1:
             x_first = True
         else:
             x_first = False
@@ -1250,7 +1250,7 @@ def simulate_stim_polar_code_normal(n, lstate, sim_type, i, p_error, shots, seed
             else:
                 bit_string = "0" + bit_string
 
-        if sim_type in ["m1", "m2"]:
+        if sim_type in ["m1", "m2", "m3"]:
             bit_string = bit_string + "0"*(2**(n - 1))
 
         if bit_string in counts:
@@ -1507,7 +1507,7 @@ def create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed,
     circuit, m_order = compile_circuit_qiskit_to_stim(tqc, backend, p_error)
     
     new_m_order = []
-    if sim_type in ["m1", "m2"]:
+    if sim_type in ["m1", "m2", "m3"]:
         for idx in range(2**(n - 1)):
             new_m_order.append(idx)
 
@@ -1550,7 +1550,7 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
             x_ind = idx
             break
 
-    if sim_type in ["normal", "m1"]:
+    if sim_type in ["normal", "m1", "m3"]:
         circuit, m_order = create_circuit_polar_stim_from_qiskit(n, lstate, sim_type, i, p_error, seed, backend, comp_type)
         
         sampler = circuit.compile_sampler(seed=seed)
@@ -1560,7 +1560,7 @@ def simulate_stim_polar_code_normal_from_qiskit_circuit(n, lstate, sim_type, i, 
         for res in results:
             bit_string = ""
 
-            if sim_type in ["m1", "m2"]:
+            if sim_type in ["m1", "m2", "m3"]:
                 bit_string = bit_string + "0"*(2**(n - 1))
 
             for j in res:
@@ -2124,7 +2124,7 @@ def create_circuit_polar_stim_normal_update(n, lstate, sim_type, p_error, seed, 
         num_loops = 2**(n - level)
         start_idx_mult = 2**(level) + 2**(level - 1)
 
-        if sim_type in ["m1", "m2"] and level == x_ind + 1:
+        if sim_type in ["m1", "m2", "m3"] and level == x_ind + 1:
             x_first = True
         else:
             x_first = False
@@ -2247,7 +2247,7 @@ def simulate_stim_polar_code_normal_update(n, lstate, sim_type, i, p_error, shot
             else:
                 bit_string = "0" + bit_string
 
-        if sim_type in ["m1", "m2"]:
+        if sim_type in ["m1", "m2", "m3"]:
             bit_string = bit_string + "0"*(2**(n - 1))
 
         if bit_string in counts:

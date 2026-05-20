@@ -101,30 +101,6 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 
     print(f"✅ All simulations finished data)!")
 
-    # for sim_type in sim_type_values:
-    #     for p_error in p_error_values:
-
-    # param_grid = list(itertools.product(
-    #     n_values,
-    #     lstate_values,
-    #     i_values,
-    #     # [p_error],
-    #     p_error_values,
-    #     # [sim_type],
-    #     sim_type_values,
-    #     seed_values,
-    # ))
-
-    # results = []
-    # with ProcessPoolExecutor(max_workers=max_workers) as executor:
-    #     for res in executor.map(wrapper, param_grid):
-    #         if res is not None:
-    #             results.append(res)
-
-    # save_results_to_csv(results, filename=f"./output/STIM/normal/polar_results_json_normal_{seed_values[0]}.csv")
-    # print(f"✅ Results saved to polar_results_json_normal.csv")
-
-    # find_and_delete_files(f"./output/STIM/normal/n{n_values[0]}/*{seed_values[0]}.json")
 # -----------------------------
 # Parallel execution
 # -----------------------------
@@ -132,16 +108,17 @@ if __name__ == "__main__":
     pass
 
     shots_values = [int(1e6)]
-    sim_type_values = ["normal", "m1"]
+    sim_type_values = ["m3"]
     n_values = [4]
-    p_error_values = [0.001, 0.00075, 0.0005, 0.00025, 0.0001]
-    lstate_values = ["x", "z"]
-    i_values = [6, 7]
+    p_error_values = [0.01, 0.0075, 0.005, 0.0025, 0.001]
+    # p_error_values = [0.01]
+    lstate_values = ["x"]
+    i_values = [6]
     # i_values = [9]
 
-    decoder_values = ["val","anqi"]
+    decoder_values = ["val", "anqi"]
     
-    for _ in range(100000):
+    for _ in range(100000000):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, decoder_values)
     
     # for i in range(1000):

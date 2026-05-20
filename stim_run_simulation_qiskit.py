@@ -33,9 +33,10 @@ def save_results_to_csv(results, filename="polar_results.csv"):
 def wrapper(args):
     return calculate_logical_error_result_polar_qiskit(*args)
 
-token = "9zsMDJr2D381yK6A2fmx2Aqq4mnVaD9RA0Uh49It39UF"
+# token = "9zsMDJr2D381yK6A2fmx2Aqq4mnVaD9RA0Uh49It39UF"
 # QiskitRuntimeService.save_account(channel="ibm_quantum_platform", token=token, instance="free", overwrite=True)
-service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token, instance="free")
+# service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token, instance="free")
+service = QiskitRuntimeService()
 
 # -----------------------------
 # Worker function
@@ -121,17 +122,18 @@ if __name__ == "__main__":
 
     # lstate_values = ["x"]
     sim_type_values = ["normal", "m1"]
-    n_values = [3]
+    n_values = [4]
     p_error_values = [1, 0.9, 0.7, 0.5, 0.3, 0.15, 0.1]
     # p_error_values = [1]
     shots_values = [int(1e6)]
     # hw_name_values = ["ibm_marrakesh"]
-    hw_name_values = ["ibm_kingston"]
+    # hw_name_values = ["ibm_kingston"]
+    hw_name_values = ["ibm_fez"]
 
     comp_values = ["na"]
     
     lstate_values = ["x", "z"]
-    i_values = [4,5]
+    i_values = [6,7]
     # i_values = [4,6,7,10,11,13]
     # i_values = range(2, (2**n_values[0]))
     # i_values = [9]
