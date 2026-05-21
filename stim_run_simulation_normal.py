@@ -107,18 +107,18 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    shots_values = [int(1e6)]
+    shots_values = [int(1e3)]
     sim_type_values = ["m3"]
     n_values = [4]
-    p_error_values = [0.01, 0.0075, 0.005, 0.0025, 0.001]
-    # p_error_values = [0.01]
-    lstate_values = ["x"]
-    i_values = [6]
+    # p_error_values = [0.01, 0.0075, 0.005, 0.0025, 0.001]
+    p_error_values = [0]
+    lstate_values = ["z"]
+    i_values = [5]
     # i_values = [9]
 
     decoder_values = ["val", "anqi"]
     
-    for _ in range(100000000):
+    for _ in range(1):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, decoder_values)
     
     # for i in range(1000):
