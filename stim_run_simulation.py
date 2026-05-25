@@ -54,9 +54,9 @@ logging.basicConfig(
 # shots_values = [int(1e6)]
 # seed_starts_values = [100]
 
-token = "9zsMDJr2D381yK6A2fmx2Aqq4mnVaD9RA0Uh49It39UF"
-QiskitRuntimeService.save_account(channel="ibm_quantum_platform", token=token, instance="free", overwrite=True)
-service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token, instance="free")
+# token = "9zsMDJr2D381yK6A2fmx2Aqq4mnVaD9RA0Uh49It39UF"
+# QiskitRuntimeService.save_account(channel="ibm_quantum_platform", token=token, instance="free", overwrite=True)
+service = QiskitRuntimeService()
 
 # -----------------------------
 # Worker function
@@ -96,7 +96,7 @@ def run_simulation(args):
     #     # print(f"✅ Results saved to polar_results_json{suffix_path}.csv")
 
     print(f"✅ Results saved to polar_results_json.csv")
-    save_results_to_csv(result, filename=f"./output/STIM/{hardware_path}prop-3_result/{hardware_path}polar_results_json_{seed}.csv")
+    save_results_to_csv(result, filename=f"./output/STIM/prop_3_clean/n{n}_result/{hardware_path}polar_results_json_{seed}.csv")
 
     # logging.info(f"Finished: n={n}, lstate={lstate}, sim_type={sim_type}, p_error={p_error}, i={i}, shots={shots}, seed_starts={seed_starts}, hw_name={hw_name}, seed_transpiler={seed_transpiler}, target_accept_count={target_accept_count}")
     # return result
@@ -104,8 +104,8 @@ def run_simulation(args):
 def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values, comp_type_values):
     
     # shots_values = [int(1e3)]
-    seed_starts_values = [random.randint(1, 99999999)]
-    seed_transpiler_values = [random.randint(1, 9999999)]
+    seed_starts_values = [random.randint(1, 9999999999)]
+    seed_transpiler_values = [random.randint(1, 999999999)]
     # hw_name_values = ["ibm_torino"]
 
     param_grid = list(itertools.product(
@@ -122,7 +122,7 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
         comp_type_values
     ))
 
-    max_workers = 10  # Adjust to your CPU
+    max_workers = 15  # Adjust to your CPU
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(run_simulation, param_grid))
 
@@ -134,20 +134,25 @@ def run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, 
 if __name__ == "__main__":
     pass
 
-    lstate_values = ["x"]
+    lstate_values = ["x","z"]
     sim_type_values = ["m2"]
-    n_values = [5]
-    p_error_values = [1, 0.8, 0.5, 0.3, 0.1]
+    n_values = [6]
+    # p_error_values = [1, 0.8, 0.5, 0.3, 0.1]
+    p_error_values = [0.01, 0.0075, 0.005, 0.0025, 0.001, 0.00075, 0.0005, 0.00025, 0.0001]
+    # p_error_values = [0.00075, 0.0005, 0.00025, 0.0001]
     # p_error_values = [0]
-    # i_values = [2, 3]
-    i_values = [9, 17]
+    # i_values = [4,5]
+    # i_values = [6,7]
+    i_values = [8,11,13]
+
+    # i_values = [6,7,13]
     # i_values = range(2, (2**n_values[0])+1)
-    shots_values = [int(1e3)]
-    hw_name_values = ["ibm_torino"]
-    # hw_name_values = [None]
+    shots_values = [int(1e4)]
+    # hw_name_values = ["ibm_kingston"]
+    hw_name_values = [None]
     accepted_target_count_values = [None]
     comp_type_values = ["na"]
 
-    for _ in range(100000):
+    for _ in range(200):
         run_all(lstate_values, sim_type_values, n_values, p_error_values, i_values, shots_values, hw_name_values, accepted_target_count_values, comp_type_values)
 
