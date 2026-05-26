@@ -122,12 +122,12 @@ if __name__ == "__main__":
 
     # lstate_values = ["x"]
     sim_type_values = ["normal", "m1"]
-    n_values = [5]
-    p_error_values = [1]
+    n_values = [4]
+    p_error_values = [0.5]
     # p_error_values = [1]
     shots_values = [int(1e4)]
-    hw_name_values = ["ibm_marrakesh"]
-    # hw_name_values = ["ibm_kingston"]
+    # hw_name_values = ["ibm_marrakesh"]
+    hw_name_values = ["ibm_kingston"]
     # hw_name_values = ["ibm_fez"]
 
     comp_values = ["na"]
