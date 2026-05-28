@@ -1,0 +1,5 @@
+n,lstate,i,meas_type,p_error,sim_type,total_meta_shots,comp_type,shots,count_accept,count_logerror,count_undecided,count_detect_discard,prep_rate,LER,detect_normal,decoding_normal
+4,z,13,"['x', 'x', 'z', 'z']",0.1,normal,0,na,10000,9204,0,0,0,0.9204,0.0,0,3.7171827479614876
+4,z,13,"['x', 'x', 'z', 'z']",0.1,m1,0,na,10000,9319,1,2,0,0.9319,0.00010730765103550421,0,6.42450463399291
+4,x,13,"['z', 'z', 'x', 'z']",0.1,m1,0,na,10000,9698,6,11,0,0.9698,0.0006186842647968316,0,2.549064835999161
+4,x,13,"['z', 'z', 'x', 'z']",0.1,normal,0,na,10000,9790,14,25,0,0.979,0.0014300306435137689,0,2.4326044620247558
