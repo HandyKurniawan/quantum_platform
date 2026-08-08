@@ -11,6 +11,21 @@ import numpy as np
 import sys
 import os
 
+def is_q1prep_accepted(n, lstate, zpos_list, result):
+
+    if lstate.upper() == "Z":
+        # |0> is prepared: take zpos value from the list above
+        zpos = zpos_list[n]
+    elif lstate.upper() == "X":
+        # |+> is prepared: zpos value from the list above -1
+        zpos = zpos_list[n] -1
+    else:
+        raise TypeError("Illegal 'lstate' value")
+
+    success, _ = q1prep(n, zpos, result)
+
+    return success
+
 def get_q1prep_accepted_states(n, lstate, results, zpos_list=None):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
     # lstate = "X" # prepared logical state: may be "Z" (|0>) or "X" (|+>)
