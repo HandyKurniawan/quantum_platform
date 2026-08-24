@@ -33,6 +33,7 @@ def main():
     adam_lr = 0.0001
     current_epochs = 0
     target_epochs = 10
+    num_train_generations = 5
 
     # Device Setup (CUDA GPU with fallback to CPU)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -91,6 +92,7 @@ def main():
                 model=model,
                 is_accepted_func=is_q1prep_accepted,  # Pass your classical check function
                 output_dir="NN_Model",
+                num_train_generations=num_train_generations,
                 device=device
             )
 

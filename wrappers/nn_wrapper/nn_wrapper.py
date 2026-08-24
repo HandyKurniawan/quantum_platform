@@ -397,9 +397,12 @@ def training_model(
     adam_lr,
     current_epochs,
     target_epochs,
+    num_train_generations=1,  # <--- NEW PARAMETER: How many distinct datasets to generate per p_error
     device="cpu"
 ):
-    train_seeds = generate_seeds(len(p_error_list))
+    # Generate enough distinct seeds for the multiple generations
+    total_train_seeds_needed = len(p_error_list) * num_train_generations
+    train_seeds = generate_seeds(total_train_seeds_needed)
     test_seeds = generate_seeds(len(p_error_list))
 
     # --- METRIC TRACKING 1: Model Size & Parameter Count ---
@@ -407,27 +410,39 @@ def training_model(
     model_mem_mb = (total_params * 4) / (1024 ** 2)  # 32-bit float = 4 bytes
 
     print("=" * 55)
-    print("      STEP 1: GENERATING MULTI-NOISE DATASETS     ")
+    print(f"      STEP 1: GENERATING MULTI-NOISE DATASETS     ")
+    print(f"      (Generations per noise level: {num_train_generations})")
     print("=" * 55)
 
     X_train_list = []
     Y_train_list = []
     test_datasets = {}
 
+    train_seed_idx = 0
+
     # Pool training data across all noise levels
-    for p_error, train_seed, test_seed in zip(p_error_list, train_seeds, test_seeds):
-        print(f"[DATA PREP] Generating data for p_error: {p_error}")
+    for p_idx, p_error in enumerate(p_error_list):
+        print(f"\n[DATA PREP] Generating data for p_error: {p_error}")
 
-        # 1. Training samples for this noise rate
-        X_tr, Y_tr, _, _, _ = generate_filtered_qed_dataset(
-            n, i, lstate, sim_type, p_error, is_accepted_func, num_shots=train_shots, seed=train_seed
-        )
-        X_train_list.append(X_tr)
-        Y_train_list.append(Y_tr)
+        # 1. Generate Training samples MULTIPLE times for this noise rate
+        for gen in range(num_train_generations):
+            current_seed = train_seeds[train_seed_idx]
+            train_seed_idx += 1
+            
+            print(f"  -> Train Generation {gen+1}/{num_train_generations} (Seed: {current_seed})")
+            
+            X_tr, Y_tr, _, _, _ = generate_filtered_qed_dataset(
+                n, i, lstate, sim_type, p_error, is_accepted_func, 
+                num_shots=train_shots, seed=current_seed
+            )
+            X_train_list.append(X_tr)
+            Y_train_list.append(Y_tr)
 
-        # 2. Test samples stored individually for evaluating each noise rate later
+        # 2. Test samples stored individually (we only need 1 test set per p_error to evaluate)
+        print(f"  -> Generating Test Set (Seed: {test_seeds[p_idx]})")
         _, _, X_te, Y_te, data_te = generate_filtered_qed_dataset(
-            n, i, lstate, sim_type, p_error, is_accepted_func, num_shots=test_shots, seed=test_seed
+            n, i, lstate, sim_type, p_error, is_accepted_func, 
+            num_shots=test_shots, seed=test_seeds[p_idx]
         )
         test_datasets[p_error] = (X_te, Y_te, data_te)
 
@@ -435,7 +450,7 @@ def training_model(
     X_train_pooled = torch.cat(X_train_list, dim=0).to(device)
     Y_train_pooled = torch.cat(Y_train_list, dim=0).to(device)
 
-    # DataLoader shuffles and mixes noise levels dynamically in every batch
+    # DataLoader shuffles and mixes noise levels & different generations dynamically
     train_loader = DataLoader(
         TensorDataset(X_train_pooled, Y_train_pooled),
         batch_size=batch_size,
@@ -448,8 +463,10 @@ def training_model(
     print(f"Total Pooled Training Samples : {len(X_train_pooled):,}")
     print(f"Model Complexity              : {total_params:,} Parameters ({model_mem_mb:.2f} MB)")
 
-    checkpoint_path = f"NN_Model/checkpoint_{lstate}_{n}_{i}_{sim_type}_multinoise_ep{target_epochs}.pt"
-
+    # Update checkpoint name to reflect the dataset multiplier
+    checkpoint_path = f"NN_Model/checkpoint_{lstate}_{n}_{i}_{sim_type}_multinoise_gen{num_train_generations}_ep{target_epochs}.pt"
+    existing_path = f"NN_Model/checkpoint_{lstate}_{n}_{i}_{sim_type}_multinoise_gen{num_train_generations}_ep{current_epochs}.pt"
+        
     model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=adam_lr)
 
@@ -460,17 +477,16 @@ def training_model(
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     start_epoch = 0
-    avg_loss = 0.0  # Initialize variable safely outside loop
-    os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+    avg_loss = 0.0  
+    os.makedirs(os.path.dirname(existing_path), exist_ok=True)
 
-    # Safely load checkpoint and restore previous loss if training skipped
-    if os.path.exists(checkpoint_path):
-        print(f"\n[INFO] Found checkpoint file: '{checkpoint_path}'")
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+    if os.path.exists(existing_path):
+        print(f"\n[INFO] Found checkpoint file: '{existing_path}'")
+        checkpoint = torch.load(existing_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         start_epoch = checkpoint["epoch"]
-        avg_loss = checkpoint.get("loss", 0.0)  # <-- Restores saved loss if epoch loop is skipped!
+        avg_loss = checkpoint.get("loss", 0.0)  
         print(f"[INFO] Resuming training from Epoch {start_epoch + 1}/{target_epochs}\n")
     else:
         print("\n[INFO] Starting fresh multi-noise training...\n")
@@ -512,36 +528,28 @@ def training_model(
     
     model.eval()
 
-    # Use first noise level's test tensor to measure real-time hardware execution speeds
     first_p = p_error_list[0]
     sample_X_test = test_datasets[first_p][0].to(device)
     single_sample = sample_X_test[:1]
 
-    # Warmup passes for GPU clock stability
     with torch.no_grad():
         for _ in range(50):
             _ = model(single_sample)
 
-    # Single-shot latency over 1,000 forward passes
-    if device == "cuda":
-        torch.cuda.synchronize()
+    if device == "cuda": torch.cuda.synchronize()
     lat_start = time.perf_counter()
     with torch.no_grad():
         for _ in range(1000):
             _ = model(single_sample)
-    if device == "cuda":
-        torch.cuda.synchronize()
+    if device == "cuda": torch.cuda.synchronize()
         
-    single_shot_latency_us = ((time.perf_counter() - lat_start) / 1000) * 1e6  # Microseconds
+    single_shot_latency_us = ((time.perf_counter() - lat_start) / 1000) * 1e6
 
-    # Batch Throughput (Shots evaluated per second)
-    if device == "cuda":
-        torch.cuda.synchronize()
+    if device == "cuda": torch.cuda.synchronize()
     tp_start = time.perf_counter()
     with torch.no_grad():
         _ = model(sample_X_test)
-    if device == "cuda":
-        torch.cuda.synchronize()
+    if device == "cuda": torch.cuda.synchronize()
         
     batch_inference_time = time.perf_counter() - tp_start
     throughput_shots_per_sec = len(sample_X_test) / batch_inference_time
@@ -557,7 +565,6 @@ def training_model(
     for p_error in p_error_list:
         X_test_all, Y_test_all, data_test_all = test_datasets[p_error]
         
-        # Calculate specific TEST BCE Loss for this exact p_error
         with torch.no_grad():
             X_test_dev = X_test_all.to(device)
             Y_test_dev = Y_test_all.to(device)
@@ -575,12 +582,13 @@ def training_model(
                 "train_time_sec": train_total_time,
                 "latency_us": single_shot_latency_us,
                 "throughput_shots_sec": throughput_shots_per_sec,
-                "train_pooled_loss": avg_loss,      # Overall training loss on pooled data
-                "test_bce_loss": test_bce_loss        # Specific test loss for this p_error
+                "train_pooled_loss": avg_loss,      
+                "test_bce_loss": test_bce_loss        
             }
         }
 
     return experiment_results
+
 
 def direct_nn_prediction(model, X_test_all, data_test_all, device="cpu", threshold = 0.5):
     """
@@ -660,6 +668,7 @@ def run_simulation(
     prob_thresholds=np.linspace(0.05, 1.0, 20),  # NN acceptance thresholds
     is_accepted_func=is_q1prep_accepted,
     output_dir="NN_Model",
+    num_train_generations=1,
     device="cpu"
 ):
     """
@@ -686,6 +695,7 @@ def run_simulation(
         adam_lr=adam_lr,
         current_epochs=current_epochs,
         target_epochs=target_epochs,
+        num_train_generations=num_train_generations,
         device=device
     )
 
@@ -804,5 +814,165 @@ def run_simulation(
     
     return experiment_results, output_file
     
+import os
+import torch
+import numpy as np
+import pandas as pd
 
+def evaluate_saved_model_chunked(
+    model,
+    checkpoint_path,
+    n,
+    i,
+    lstate,
+    sim_type,
+    p_error_list,
+    prob_thresholds,
+    test_shots,
+    is_accepted_func,
+    chunk_size=10240,  # <-- Set this based on your GPU VRAM (10k-20k is usually safe)
+    output_dir="NN_Model",
+    device="cpu"
+):
+    """
+    Loads a trained model and evaluates it on newly generated data using 
+    memory-safe chunking to prevent GPU OOM errors.
+    """
+    # ---------------------------------------------------------
+    # 1. LOAD THE SAVED MODEL
+    # ---------------------------------------------------------
+    print("=" * 65)
+    print(f"   LOADING MODEL FROM: {checkpoint_path}")
+    print("=" * 65)
+    
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"Checkpoint not found at {checkpoint_path}")
+
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.to(device)
+    model.eval()  # Set to evaluation mode (disables dropout/batchnorm updates)
+
+    # ---------------------------------------------------------
+    # 2. PREPARE CSV LOGGING
+    # ---------------------------------------------------------
+    N_code = 2 ** n
+    output_file = os.path.join(output_dir, f"evaluation_results_chunked_{lstate}_n{n}_i{i}_{sim_type}.csv")
+    os.makedirs(output_dir, exist_ok=True)
+
+    columns = [
+        "n", "N", "i", "lstate", "sim_type", 
+        "p_error", "prob_threshold", 
+        "count_accept", "total_data", 
+        "prep_rate", "ler_clean", "ler_all"
+    ]
+
+    # Initialize CSV if it doesn't exist
+    if not os.path.exists(output_file):
+        pd.DataFrame(columns=columns).to_csv(output_file, mode="w", index=False)
+
+    # Seeds for generating test data
+    test_seeds = generate_seeds(len(p_error_list))
+
+    # ---------------------------------------------------------
+    # 3. EVALUATION LOOP ACROSS NOISE RATES
+    # ---------------------------------------------------------
+    for p_idx, p_error in enumerate(p_error_list):
+        print(f"\n[DATA PREP] Generating {test_shots:,} shots for p_error = {p_error:.5f}")
+        
+        # Generate the test dataset
+        _, _, X_test_all, Y_test_all, data_test_all = generate_filtered_qed_dataset(
+            n, i, lstate, sim_type, p_error, is_accepted_func, 
+            num_shots=test_shots, seed=test_seeds[p_idx]
+        )
+        
+        total_data = len(X_test_all)
+        all_probs = []
+
+        # ---------------------------------------------------------
+        # 4. CHUNKED INFERENCE (Memory-Safe)
+        # ---------------------------------------------------------
+        print(f" -> Running neural network in chunks of {chunk_size}...")
+        
+        with torch.no_grad():
+            for start_idx in range(0, total_data, chunk_size):
+                # Define chunk boundaries
+                end_idx = min(start_idx + chunk_size, total_data)
+                
+                # Move only the small chunk to GPU
+                X_chunk = X_test_all[start_idx:end_idx].to(device)
+                
+                # Forward pass
+                logits = model(X_chunk)
+                probs = torch.sigmoid(logits).squeeze()
+                
+                # Edge case: If chunk size is 1, ensure it's still a 1D tensor
+                if probs.dim() == 0:
+                    probs = probs.unsqueeze(0)
+                    
+                # Move probabilities immediately back to CPU memory
+                all_probs.append(probs.cpu())
+
+        # Concatenate all CPU probabilities into a single NumPy array
+        all_probs_np = torch.cat(all_probs, dim=0).numpy()
+
+        # ---------------------------------------------------------
+        # 5. THRESHOLD SWEEP (Computed instantly on CPU)
+        # ---------------------------------------------------------
+        print(f" -> Sweeping {len(prob_thresholds)} thresholds...")
+        
+        # Ensure data_test_all is a tensor on the CPU for easy masking
+        if not torch.is_tensor(data_test_all):
+            data_test_all_cpu = torch.tensor(data_test_all).cpu()
+        else:
+            data_test_all_cpu = data_test_all.cpu()
+
+        for thresh_val in prob_thresholds:
+            
+            # 1. Create the acceptance mask (NN predicts probability of error is LESS than threshold)
+            nn_accepted_mask = all_probs_np < thresh_val
+            
+            # 2. Extract only the states the NN deemed safe
+            accepted_data_bits = data_test_all_cpu[nn_accepted_mask]
+            
+            # 3. Calculate your LER metrics
+            
+            zpos_list = [-1, -1, 1, 3, 6, 7, 22, 15, 90, 31, 362]
+            zpos_list[n] = i-1
+
+            count_accept, total_data, prep_rate, ler_clean, ler_all = verify_with_our_function(
+                n, 
+                lstate, 
+                zpos_list, 
+                accepted_data_bits
+            )
+
+            # 4. Save the results row
+            row = {
+                "n": n,
+                "N": N_code,
+                "i": i,
+                "lstate": lstate,
+                "sim_type": sim_type,
+                "p_error": float(p_error),
+                "prob_threshold": float(thresh_val),
+                "count_accept": count_accept,
+                "total_data": total_data,
+                "prep_rate": prep_rate,
+                "ler_clean": ler_clean,
+                "ler_all": ler_all,
+            }
+
+            pd.DataFrame([row]).to_csv(output_file, mode="a", header=False, index=False)
+
+        print(f" -> Completed evaluation for p_error = {p_error:.5f}. Logged to CSV.")
+        
+        # Free up CPU RAM before the next p_error iteration
+        del X_test_all, Y_test_all, data_test_all, all_probs, all_probs_np
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
+
+    print("\n" + "=" * 65)
+    print(f"[SUCCESS] All evaluations logged to: {output_file}")
+    print("=" * 65)
 
