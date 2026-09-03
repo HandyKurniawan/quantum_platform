@@ -28,6 +28,11 @@ def is_q1prep_accepted(n, lstate, zpos_list, result):
 
     return success
 
+def q1prep_func(n, zpos, aux_meas):
+
+    return q1prep(n, zpos, aux_meas)
+
+
 def get_q1prep_accepted_states(n, lstate, results, zpos_list=None):
     # n = 4       # number of polarization steps (polar code length N = 2^n)
     # lstate = "X" # prepared logical state: may be "Z" (|0>) or "X" (|+>)

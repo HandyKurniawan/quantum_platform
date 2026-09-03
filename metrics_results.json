@@ -1,0 +1,26 @@
+{
+    "experiment_config": {
+        "N": 16,
+        "info_idx": 7,
+        "p_error": 0.005,
+        "epochs": 10
+    },
+    "performance_metrics": {
+        "LER_X": 0.00024999999999997247,
+        "LER_Z": 0.0010000000000000009,
+        "LER_Total": 0.001,
+        "Precision_X": 1.0,
+        "Recall_X": 0.9767441860465116,
+        "F1_X": 0.9882352941176471,
+        "ROC_AUC_X": 0.9999911843010032,
+        "Precision_Z": 0.977491961414791,
+        "Recall_Z": 0.9967213114754099,
+        "F1_Z": 0.987012987012987,
+        "ROC_AUC_Z": 0.9997426474504416
+    },
+    "latency_metrics": {
+        "batch_latency_us": 29304.67480007792,
+        "per_shot_latency_us": 228.94277187560874,
+        "batch_size": 128
+    }
+}
