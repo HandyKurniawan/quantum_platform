@@ -22,6 +22,8 @@ def is_q1prep_accepted(n, lstate, zpos_list, result):
     else:
         raise TypeError("Illegal 'lstate' value")
 
+    # print(zpos_list, zpos)
+
     success, _ = q1prep(n, zpos, result)
 
     return success

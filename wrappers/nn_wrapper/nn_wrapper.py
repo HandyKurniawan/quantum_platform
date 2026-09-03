@@ -63,7 +63,6 @@ def generate_filtered_qed_dataset(n, i, lstate, sim_type, p_error, is_accepted_f
     sampler_noisy = circuit.compile_sampler(seed=seed)
     raw_measurements = sampler_noisy.sample(shots=num_shots).astype(int)
 
-
     if sim_type == "normal":
         pass
     elif sim_type == "m1":
@@ -86,6 +85,8 @@ def generate_filtered_qed_dataset(n, i, lstate, sim_type, p_error, is_accepted_f
     zpos_list[n] = i-1
     info_idx = i-1
     y_target = data_measurements[:, info_idx].reshape(-1, 1).astype(np.float32)
+
+    # print("nn_wrapper:", syndromes[0])
     
     # 4. Filter using your custom Classical Acceptance Function
     # Checks each syndrome vector against your classical error detection rules
