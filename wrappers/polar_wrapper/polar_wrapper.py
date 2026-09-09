@@ -196,40 +196,16 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
     count_logerror = 0 
     count_undecided = 0
 
-    # to save the decoding time, this should be remarked
-    # # This is repeating just for calculating the detection time
-    # tmp_start_time  = time.perf_counter()
-    # for line, meas_counts in results.items():
-    #     # print(line)
-    #     # remove spaces at beginning and end of line
-    #     mstr = line.strip()
-
-    #     # init the measurement results array -- of length len(mstr)
-    #     meas = np.zeros((len(mstr),), dtype=int) 
-
-    #     # convert from string to np array
-    #     for i in range(0, len(mstr)):
-    #         meas[i] = ord(mstr[i]) - ord('0')	
-    #         if meas[i] != 0 and meas[i] != 1:
-    #             raise TypeError("Illegal measurement result: must be 0 or 1")
-
-
-    #     # check if 'meas' are valid measurement results
-    #     success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
-    #     if success == 1:
-    #         pass
-    #     else:
-    #         pass
-
-    # tmp_end_time = time.perf_counter()
-    # detection_time = tmp_end_time - tmp_start_time
 
     detection_time = 0
 
     total_shots = sum(results.values())
 
 
-    tmp_start_time  = time.perf_counter()
+    # Accumulators for total execution time (weighted by shot counts)
+    detection_time = 0.0
+    decoding_time = 0.0
+
     # print("Total shots :", total_shots)
     # ##################################################################
     # read measurement results from file, and check which ones are valid
@@ -246,16 +222,20 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
         for i in range(0, len(mstr)):
             meas[i] = ord(mstr[i]) - ord('0')	
             if meas[i] != 0 and meas[i] != 1:
-                raise TypeError("Illegal measurement result: must be 0 or 1")
-
-
+                raise TypeError("Illegal measurement result: must be 0 or 1")    
+        
         # check if 'meas' are valid measurement results
+        t_qed_start = time.perf_counter()
         success, qstate_UV = q1prep(n, zpos, meas[:N-1:-1])
+        t_qed_end = time.perf_counter()
         if success == 1:
             count_accept = count_accept + meas_counts
             # print(meas)
         else:
             count_discard = count_discard + meas_counts
+        
+        # Scale detection time by the number of occurrences of this bitstring
+        detection_time += (t_qed_end - t_qed_start) * meas_counts
 
         if success == 1:
             # ###############################################################
@@ -263,6 +243,8 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
             # ###############################################################
             # we check whether the  undetected errors  that may have survived on 
             # the accepted (prepared) state can be successfully corrected or not 
+
+            t_qec_start = time.perf_counter()
             
             if lstate.lower() == "z":    
                 # |0> is prepared: logical information encoded at position zpos
@@ -282,6 +264,9 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
                 # print(1-2*qstate_U, qstate_U)
                 
                 u_ipos = codec.polardec(1-2*qstate_U, zpos)
+
+                t_qec_end = time.perf_counter()
+                decoding_time += (t_qec_end - t_qec_start) * meas_counts
 
                 # if u_ipos == 0:
                 #     print(1-2*qstate_U, zpos, u_ipos, qstate_UV[zpos], qstate_UV, meas[N-1::-1])
@@ -315,6 +300,9 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
                 # print(1-2*qstate_V, qstate_V)
                 # u_ipos = codec.polardec(1-2*qstate_U, zpos)
                 v_ipos = codec.revpolardec(1-2*qstate_V, zpos+1)
+
+                t_qec_end = time.perf_counter()
+                decoding_time += (t_qec_end - t_qec_start) * meas_counts
                 
                 if v_ipos == -1:
                     # undecided value (llr = 0): we count half an error, since a 
@@ -336,7 +324,7 @@ def get_logical_error_on_accepted_states(n, lstate, results, zpos_list = None):
                 raise TypeError("Illegal 'lstate' value")
             
     tmp_end_time = time.perf_counter()
-    decoding_time = tmp_end_time - tmp_start_time - detection_time
+    # decoding_time = tmp_end_time - tmp_start_time
 
     # print("number of discarded states (invalid measurement results) = ", count_discard)
     # print(" number of accepted states   (valid measurement results) = ", count_accept)
