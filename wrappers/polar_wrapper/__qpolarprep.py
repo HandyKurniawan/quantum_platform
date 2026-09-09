@@ -42,10 +42,13 @@ def q1prep(n, zpos, meas):
 		if xorz[i] == "0": # XX measurement
 			t_XX = i
 			break
+
+	
 	
 	# check the format of input 'meas' argument (see description above of input arguments)
 	if meas.ndim == 1:
 		# row vector: check that it contains the correct number of elements
+		# print(meas.size, (N//2)*n, (N//2)*(n-t_XX), n, zpos, xorz, t_XX)
 		if meas.size != (N//2)*n and meas.size != (N//2)*(n-t_XX):
 			raise TypeError("Incorrect number of entries in input argument 'meas'")
 		

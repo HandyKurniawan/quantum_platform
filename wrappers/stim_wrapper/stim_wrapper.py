@@ -47,6 +47,13 @@ def convert_i_to_meas_type(i, n, lstate = "z"):
 
     return meas_type
 
+def convert_i_to_zpos(i, n, lstate = "z"):
+    if lstate == "z":
+        zpos = i-1
+    else:
+        zpos = i-2
+
+    return zpos
 
 
 def noisy_cx(sim: stim.TableauSimulator, ctrl: int, targ: int, p: float, error_2q = None, initial_layout = None, cm = None):
