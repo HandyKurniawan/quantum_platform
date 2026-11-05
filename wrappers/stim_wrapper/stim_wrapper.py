@@ -31,7 +31,7 @@ import glob
 import sys
 import numpy as np
 
-def convert_i_to_meas_type(i, n, lstate = "z"):
+def convert_i_to_meas_type(i, n, lstate = "z", type="string"):
     bit_format = "0:0{}b".format(n)
     bit_format = "{" + bit_format + "}" 
 
@@ -41,7 +41,11 @@ def convert_i_to_meas_type(i, n, lstate = "z"):
         zpos = i-2
 
     n_bit = bit_format.format(zpos)[::-1]
-    meas_type = ['x' if char == '0' else 'z' for char in n_bit]
+
+    if type == "binary":
+        meas_type = [0 if char == '0' else 1 for char in n_bit]
+    else:
+        meas_type = ['x' if char == '0' else 'z' for char in n_bit]
     
     # print(n, lstate, i, n_bit, meas_type)
 
